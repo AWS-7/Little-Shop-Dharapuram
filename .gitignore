@@ -1,0 +1,34 @@
+node_modules/
+.env
+*.log
+4_may_3.jpg
+programming-background-collage.jpg
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+
+# Large video files - don't commit to Git (22MB total)
+# But allow in public folder for GitHub Pages
+src/images/*.mp4
+src/images/*.mov
+src/images/*.avi
