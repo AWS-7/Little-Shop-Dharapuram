@@ -15,6 +15,7 @@ import autoTable from 'jspdf-autotable';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES } from '../../lib/constants';
 import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/orders';
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
+import { loginWithGoogle, logoutUser, getCurrentUser, isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
 import {
   PRODUCT_CATEGORIES, FIELD_LABELS, uploadProductImage, createProduct,
   getAllProducts, updateProduct, deleteProduct, resolveImageUrl,
@@ -115,7 +116,10 @@ function calculateTimeRemaining(endTime) {
 }
 
 export default function AdminDashboard() {
-  const isAuth = localStorage.getItem('admin_auth');
+  if (!isAuthenticated() || !isAdmin(ADMIN_EMAIL)) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [orders, setOrders] = useState(demoOrders);
@@ -503,8 +507,6 @@ export default function AdminDashboard() {
     fetchCats();
   }, []);
 
-  if (!isAuth) return <Navigate to="/admin" />;
-
   const handleSendReminder = async (cart) => {
     setReminderSending((prev) => ({ ...prev, [cart.id]: true }));
     
@@ -535,9 +537,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_auth');
-    localStorage.removeItem('admin_email');
+  const handleLogout = async () => {
+    await logoutUser();
     window.location.href = '/admin';
   };
 
