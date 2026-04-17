@@ -220,3 +220,18 @@ export async function deleteProduct(productId) {
     return { error: e };
   }
 }
+
+// ── Subscribe to real-time product updates ──
+export function subscribeToProducts(callback) {
+  return supabase
+    .channel('products-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', table: 'products' },
+      (payload) => {
+        console.log('Real-time product change:', payload);
+        callback(payload);
+      }
+    )
+    .subscribe();
+}

@@ -255,14 +255,8 @@ export default function AdminOrderDetail() {
                 )}
                 {customer.email && (
                   <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-gray-400" />
+                    <Mail size={14} className="text-gray-400" />
                     <span className="font-inter text-sm text-gray-700">{customer.email}</span>
-                  </div>
-                )}
-                {customer.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone size={14} className="text-gray-400" />
-                    <span className="font-inter text-sm text-gray-700">{customer.phone}</span>
                   </div>
                 )}
               </div>
@@ -279,7 +273,6 @@ export default function AdminOrderDetail() {
                 {(customer.city || customer.state || customer.pincode) && (
                   <p>{[customer.city, customer.state, customer.pincode].filter(Boolean).join(', ')}</p>
                 )}
-                {customer.phone && <p className="text-gray-500 mt-1">Ph: {customer.phone}</p>}
               </div>
             </div>
           </div>

@@ -127,7 +127,6 @@ export default function ProductDetail() {
   // Notify Me modal state
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifyEmail, setNotifyEmail] = useState('');
-  const [notifyPhone, setNotifyPhone] = useState('');
   const [notifyName, setNotifyName] = useState('');
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [notifySuccess, setNotifySuccess] = useState(false);
@@ -171,8 +170,8 @@ export default function ProductDetail() {
     setNotifyLoading(true);
     setNotifyError('');
 
-    if (!notifyEmail && !notifyPhone) {
-      setNotifyError('Please provide either email or phone number');
+    if (!notifyEmail) {
+      setNotifyError('Please provide your email address');
       setNotifyLoading(false);
       return;
     }
@@ -181,7 +180,6 @@ export default function ProductDetail() {
       productId: product.id,
       productName: product.name,
       email: notifyEmail,
-      phone: notifyPhone,
       customerName: notifyName
     });
 
@@ -196,13 +194,12 @@ export default function ProductDetail() {
       setRestockRequestCount(prev => prev + 1);
       // Reset form after 3 seconds
       setTimeout(() => {
-        setShowNotifyModal(false);
-        setNotifySuccess(false);
-        setNotifyEmail('');
-        setNotifyPhone('');
-        setNotifyName('');
-      }, 3000);
-    }
+          setShowNotifyModal(false);
+          setNotifySuccess(false);
+          setNotifyEmail('');
+          setNotifyName('');
+        }, 3000);
+      }
 
     setNotifyLoading(false);
   };
@@ -382,20 +379,20 @@ export default function ProductDetail() {
             <div className="grid grid-cols-2 gap-6 py-8 border-y border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
-                  <Check size={20} className="text-purple-primary" />
+                  <Sparkles size={20} className="text-purple-primary" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Material</p>
-                  <p className="text-sm font-bold text-gray-900">22K Gold Plated</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Fabric</p>
+                  <p className="text-sm font-bold text-gray-900">{product.fabric?.material || 'Premium Silk'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
-                  <Check size={20} className="text-purple-primary" />
+                  <Scissors size={20} className="text-purple-primary" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Weight</p>
-                  <p className="text-sm font-bold text-gray-900">45 grams</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Care</p>
+                  <p className="text-sm font-bold text-gray-900">{product.fabric?.care || 'Dry Clean Only'}</p>
                 </div>
               </div>
             </div>
@@ -427,8 +424,22 @@ export default function ProductDetail() {
 
             {/* Description */}
             <div className="space-y-4 pt-4">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest">Description</h4>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest">Product Highlights</h4>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-primary" />
+                  <span>Handpicked designer piece for elegant look</span>
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-primary" />
+                  <span>Premium quality fabric with intricate detail</span>
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-primary" />
+                  <span>Perfect for weddings and festive occasions</span>
+                </li>
+              </ul>
+              <p className="text-gray-500 text-sm leading-relaxed mt-4">
                 {product.description || 'Exquisitely crafted with premium materials and meticulous attention to detail.'}
               </p>
             </div>
@@ -501,23 +512,23 @@ export default function ProductDetail() {
       </div>
 
       {/* ═══ Mobile Sticky Action Bar ═══ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-100 px-4 py-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-[72px] left-0 right-0 z-40 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-100 px-4 py-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
         <div className="flex gap-3 max-w-lg mx-auto">
           <button
             onClick={() => toggleWishlist(product)}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all shrink-0 ${
+            className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all shrink-0 ${
               wishlisted
                 ? 'bg-purple-primary border-purple-primary text-white'
-                : 'bg-gray-50 border-transparent text-gray-400'
+                : 'bg-gray-50 border-gray-100 text-gray-400'
             }`}
           >
-            <Heart size={24} fill={wishlisted ? 'currentColor' : 'none'} />
+            <Heart size={20} fill={wishlisted ? 'currentColor' : 'none'} />
           </button>
           <button
             onClick={handleAddToCart}
-            className="flex-1 btn-primary h-14 text-base gap-3"
+            className="flex-1 btn-primary h-12 text-sm gap-2"
           >
-            <ShoppingBag size={20} />
+            <ShoppingBag size={18} />
             {addedToCart ? 'Added!' : 'Add to Cart'}
           </button>
         </div>
@@ -541,7 +552,7 @@ export default function ProductDetail() {
               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-rose-gold to-rose-400 p-6 text-white">
+              <div className="bg-gradient-to-r from-purple-primary to-purple-secondary p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
@@ -574,7 +585,7 @@ export default function ProductDetail() {
                   />
                   <div>
                     <p className="font-inter text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                    <p className="font-inter text-sm text-rose-gold font-medium">{CURRENCY}{product.price.toLocaleString()}</p>
+                    <p className="font-inter text-sm text-purple-primary font-medium">{CURRENCY}{product.price.toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -610,7 +621,7 @@ export default function ProductDetail() {
                           value={notifyName}
                           onChange={(e) => setNotifyName(e.target.value)}
                           placeholder="John Doe"
-                          className="w-full border border-gray-200 rounded-lg pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-rose-gold transition-colors"
+                          className="w-full border border-gray-200 rounded-lg pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-purple-primary transition-colors"
                         />
                       </div>
                     </div>
@@ -618,7 +629,7 @@ export default function ProductDetail() {
                     {/* Email */}
                     <div>
                       <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">
-                        Email <span className="text-gray-300 font-normal">(Required if no phone)</span>
+                        Email Address <span className="text-purple-primary font-black">*</span>
                       </label>
                       <div className="relative">
                         <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -627,29 +638,10 @@ export default function ProductDetail() {
                           value={notifyEmail}
                           onChange={(e) => setNotifyEmail(e.target.value)}
                           placeholder="you@example.com"
-                          className="w-full border border-gray-200 rounded-lg pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-rose-gold transition-colors"
+                          className="w-full border border-gray-200 rounded-lg pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-purple-primary transition-colors"
+                          required
                         />
                       </div>
-                    </div>
-
-                    {/* Phone/WhatsApp */}
-                    <div>
-                      <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">
-                        WhatsApp / Phone <span className="text-gray-300 font-normal">(Required if no email)</span>
-                      </label>
-                      <div className="relative">
-                        <Smartphone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="tel"
-                          value={notifyPhone}
-                          onChange={(e) => setNotifyPhone(e.target.value)}
-                          placeholder="+91 98765 43210"
-                          className="w-full border border-gray-200 rounded-lg pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-rose-gold transition-colors"
-                        />
-                      </div>
-                      <p className="font-inter text-[10px] text-gray-400 mt-1.5">
-                        We recommend WhatsApp for instant notifications
-                      </p>
                     </div>
 
                     {/* Error */}
@@ -666,7 +658,7 @@ export default function ProductDetail() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       disabled={notifyLoading}
-                      className="w-full bg-rose-gold text-white font-inter text-sm font-medium py-4 rounded-lg hover:bg-rose-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full bg-purple-primary text-white font-inter text-sm font-medium py-4 rounded-lg hover:bg-purple-secondary transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {notifyLoading ? (
                         <>

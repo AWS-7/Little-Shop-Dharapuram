@@ -1,13 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
-import { ADMIN_MOBILE_NUMBER } from '../../lib/constants';
+import { ADMIN_EMAIL } from '../../lib/constants';
 
 // Loading spinner component
 const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-white">
+  <div className="min-h-screen flex items-center justify-center bg-white">
     <div className="text-center">
-      <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-gray-600">Loading...</p>
+      <div className="w-12 h-12 border-4 border-purple-primary/10 border-t-purple-primary rounded-full animate-spin mx-auto mb-6" />
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Identity Securely Loading</p>
     </div>
   </div>
 );
@@ -29,7 +29,7 @@ export function ClientProtectedRoute({ children }) {
 export function AdminProtectedRoute({ children }) {
   const location = useLocation();
   const authenticated = isAuthenticated();
-  const admin = isAdmin(ADMIN_MOBILE_NUMBER);
+  const admin = isAdmin(ADMIN_EMAIL);
 
   if (!authenticated) {
     // Not logged in - redirect to login
@@ -48,14 +48,14 @@ export function AdminProtectedRoute({ children }) {
 // (useful for login page - redirect to dashboard if already logged in)
 export function PublicOnlyRoute({ children }) {
   const authenticated = isAuthenticated();
-  const admin = isAdmin(ADMIN_MOBILE_NUMBER);
+  const admin = isAdmin(ADMIN_EMAIL);
 
   if (authenticated) {
     // Already logged in - redirect to appropriate dashboard
     if (admin) {
       return <Navigate to="/admin/dashboard" replace />;
     }
-    return <Navigate to="/shop" replace />;
+    return <Navigate to="/account" replace />;
   }
 
   return children;

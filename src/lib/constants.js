@@ -2,8 +2,8 @@ export const SHIPPING_THRESHOLD = 1500;
 export const SHIPPING_COST = 100;
 export const CURRENCY = '₹';
 
-// Admin mobile number for role-based access (without +91 prefix)
-export const ADMIN_MOBILE_NUMBER = '9876543210';
+// Admin email for role-based access
+export const ADMIN_EMAIL = 'admin@littleshop.in'; // Update this to your real admin email
 
 export const BRAND = {
   name: 'Little Shop',

@@ -87,11 +87,11 @@ export function AuthProvider({ children }) {
   };
 
   // Google OAuth Sign In
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectTo = '/account') => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/account`,
+        redirectTo: `${window.location.origin}${redirectTo}`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -101,26 +101,8 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
-  // Phone OTP - Send verification code
-  const signInWithPhone = async (phone) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      phone,
-    });
-    return { data, error };
-  };
-
-  // Phone OTP - Verify code
-  const verifyPhoneOtp = async (phone, token) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms',
-    });
-    return { data, error };
-  };
-
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, signInWithGoogle, signInWithPhone, verifyPhoneOtp, refreshUser }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, signInWithGoogle, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

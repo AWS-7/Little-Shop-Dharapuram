@@ -17,9 +17,9 @@ export async function createOrder(orderData) {
       await processReferralReward(orderData.user_id, data);
     }
 
-    // Send WhatsApp notification for confirmed orders
-    if (data && data.status === 'paid' && data.customer?.phone) {
-      sendWhatsAppNotification(data, 'paid').catch(err => {
+    // Send WhatsApp notification for new orders
+    if (data && (data.status === 'paid' || data.status === 'pending') && data.customer?.phone) {
+      sendWhatsAppNotification(data, data.status).catch(err => {
         console.error('WhatsApp notification failed (non-blocking):', err);
       });
     }

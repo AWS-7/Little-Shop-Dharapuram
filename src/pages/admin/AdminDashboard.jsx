@@ -45,10 +45,10 @@ const TABS = [
 ];
 
 const demoOrders = [
-  { id: 'LS-A3K7YM2P', customer: 'Priya Sharma', phone: '9876543210', total: 5300, status: 'Ordered', date: '2025-04-12', items: 2 },
-  { id: 'LS-BF9HNWQ4', customer: 'Anita Verma', phone: '9123456780', total: 8500, status: 'Shipped', date: '2025-04-11', items: 1 },
-  { id: 'LS-CK2DTPE6', customer: 'Meera Iyer', phone: '9988776655', total: 2800, status: 'Delivered', date: '2025-04-10', items: 3 },
-  { id: 'LS-DM5XRLJ8', customer: 'Kavya Nair', phone: '9090909090', total: 1800, status: 'Packed', date: '2025-04-13', items: 1 },
+  { id: 'LS-A3K7YM2P', customer: 'Priya Sharma', email: 'priya@example.com', total: 5300, status: 'Ordered', date: '2025-04-12', items: 2 },
+  { id: 'LS-BF9HNWQ4', customer: 'Anita Verma', email: 'anita@example.com', total: 8500, status: 'Shipped', date: '2025-04-11', items: 1 },
+  { id: 'LS-CK2DTPE6', customer: 'Meera Iyer', email: 'meera@example.com', total: 2800, status: 'Delivered', date: '2025-04-10', items: 3 },
+  { id: 'LS-DM5XRLJ8', customer: 'Kavya Nair', email: 'kavya@example.com', total: 1800, status: 'Packed', date: '2025-04-13', items: 1 },
 ];
 
 
@@ -214,7 +214,6 @@ export default function AdminDashboard() {
     id: o.order_id || o.id,
     customer: o.customer?.name || 'Unknown',
     email: o.customer?.email || '',
-    phone: o.customer?.phone || '',
     total: o.total || 0,
     status: o.status || 'Ordered',
     date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
@@ -840,10 +839,8 @@ export default function AdminDashboard() {
       });
 
       // Phone numbers
-      const phones = [customer.phone || order.phone, customer.altPhone].filter(Boolean);
-      if (phones.length > 0) {
-        doc.text(`Phone: ${phones.join(' / ')}`, 20, 69 + (addressLines.length * 5));
-      }
+      // Removed per "No phone number required" rule
+      // doc.text(`Phone: ${phones.join(' / ')}`, 20, 69 + (addressLines.length * 5));
 
       // Payment Details
       doc.setFontSize(11);
@@ -961,8 +958,9 @@ export default function AdminDashboard() {
     doc.setFontSize(10);
     doc.setTextColor(80, 80, 80);
     doc.text(customer.name || order.customer || 'N/A', 130, 52);
-    doc.text(customer.email || '', 130, 59);
-    doc.text(customer.phone || order.phone || '', 130, 66);
+    doc.text(customer.email || order.email || '', 130, 59);
+    // Removed per "No phone number required" rule
+    // doc.text(customer.phone || order.phone || '', 130, 66);
 
     // Items Table
     const tableData = items.map((item) => [
@@ -1509,7 +1507,7 @@ export default function AdminDashboard() {
                         className="rounded-sm border-gray-300"
                       />
                     </th>
-                    {['Order ID', 'Customer', 'Phone', 'Items', 'Total', 'Status', 'Actions'].map((h) => (
+                    {['Order ID', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-5 py-3 font-inter text-xs tracking-wider uppercase text-gray-400">{h}</th>
                     ))}
                   </tr>
@@ -1520,7 +1518,7 @@ export default function AdminDashboard() {
                       orderSearch === '' ||
                       order.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
                       order.customer.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                      order.phone.includes(orderSearch)
+                      order.email.toLowerCase().includes(orderSearch.toLowerCase())
                     )
                     .map((order) => (
                     <tr key={order.id} className={`border-b border-gray-50 hover:bg-gray-50/50 ${selectedOrders.includes(order.id) ? 'bg-purple-primary/5' : ''}`}>
@@ -1534,7 +1532,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-5 py-3 font-inter text-sm font-medium text-purple-primary">{order.id}</td>
                       <td className="px-5 py-3 font-inter text-sm text-gray-700">{order.customer}</td>
-                      <td className="px-5 py-3 font-inter text-xs text-gray-500">{order.phone}</td>
+                      <td className="px-5 py-3 font-inter text-xs text-gray-500">{order.email}</td>
                       <td className="px-5 py-3 font-inter text-sm text-gray-700">{order.items}</td>
                       <td className="px-5 py-3 font-inter text-sm font-medium text-purple-primary">{CURRENCY}{order.total.toLocaleString()}</td>
                       <td className="px-5 py-3">
@@ -1719,18 +1717,14 @@ export default function AdminDashboard() {
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div className="grid grid-cols-2 gap-4 mt-4">
                           <div className="bg-amber-50 rounded-lg p-3 text-center">
                             <p className="font-playfair text-2xl text-amber-600">{request.request_count}</p>
                             <p className="font-inter text-[10px] text-gray-500 uppercase tracking-wider">Total Requests</p>
                           </div>
-                          <div className="bg-blue-50 rounded-lg p-3 text-center">
-                            <p className="font-playfair text-2xl text-blue-600">{request.email_requests}</p>
-                            <p className="font-inter text-[10px] text-gray-500 uppercase tracking-wider">Email</p>
-                          </div>
-                          <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                            <p className="font-playfair text-2xl text-emerald-600">{request.phone_requests}</p>
-                            <p className="font-inter text-[10px] text-gray-500 uppercase tracking-wider">WhatsApp</p>
+                          <div className="bg-purple-light rounded-lg p-3 text-center">
+                            <p className="font-playfair text-2xl text-purple-primary">{request.email_requests}</p>
+                            <p className="font-inter text-[10px] text-gray-500 uppercase tracking-wider">Email Requests</p>
                           </div>
                         </div>
 

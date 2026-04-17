@@ -5,7 +5,7 @@ import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { LogoPulse } from '../components/layout/PageTransition';
 import { PLACEHOLDER_PRODUCTS } from '../lib/constants';
-import { getAllProducts } from '../lib/products';
+import { getAllProducts, subscribeToProducts } from '../lib/products';
 
 const OCCASIONS = ['All', 'Wedding', 'Party', 'Daily Wear', 'Festive'];
 const COLORS = ['All', 'Red', 'Pink', 'Blue', 'Green', 'Gold', 'Black', 'White', 'Purple'];
@@ -45,6 +45,21 @@ export default function Shop() {
       setLoadingProducts(false);
     };
     fetchProducts();
+
+    // Set up real-time subscription
+    const subscription = subscribeToProducts((payload) => {
+      if (payload.eventType === 'INSERT') {
+        setAllProducts(prev => [payload.new, ...prev]);
+      } else if (payload.eventType === 'UPDATE') {
+        setAllProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+      } else if (payload.eventType === 'DELETE') {
+        setAllProducts(prev => prev.filter(p => p.id !== payload.old.id));
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const categories = ALL_CATEGORIES;
@@ -83,20 +98,22 @@ export default function Shop() {
         </div>
 
         {/* Filter & Sort Row — Flipkart Style */}
-        <div className="bg-white border border-gray-100 shadow-sm mb-8 sticky top-[100px] md:top-[140px] z-30">
+        <div className="bg-white border-b border-gray-100 shadow-sm mb-4 sticky top-[64px] md:top-[88px] z-30">
           <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100">
             {/* Category Filter */}
-            <div className="flex-1 p-4 overflow-hidden">
-              <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Categories</span>
+            <div className="flex-1 px-4 py-3 overflow-hidden">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <div className="bg-gray-100 p-2 rounded-lg shrink-0 sm:hidden">
+                  <SlidersHorizontal size={16} className="text-gray-500" />
+                </div>
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-1.5 rounded-sm text-xs font-bold transition-all whitespace-nowrap border ${
+                    className={`px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap border shadow-sm ${
                       selectedCategory === cat
-                        ? 'bg-purple-primary border-purple-primary text-white shadow-md'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-purple-primary hover:text-purple-primary'
+                        ? 'bg-purple-primary border-purple-primary text-white'
+                        : 'bg-white border-gray-100 text-gray-600 hover:border-purple-primary'
                     }`}
                   >
                     {cat}
@@ -106,26 +123,30 @@ export default function Shop() {
             </div>
 
             {/* Sort & Quick Filters */}
-            <div className="flex items-center gap-4 p-4 shrink-0 bg-gray-50 md:bg-white">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent border-none text-xs font-black text-gray-900 outline-none cursor-pointer"
-              >
-                <option value="default">Sort: Popularity</option>
-                <option value="newest">Newest First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-              </select>
+            <div className="flex items-center justify-between gap-4 px-4 py-3 shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal size={14} className="text-gray-400 hidden md:block" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent border-none text-[11px] font-bold text-gray-900 outline-none cursor-pointer"
+                >
+                  <option value="default">Popularity</option>
+                  <option value="newest">Newest</option>
+                  <option value="price-asc">Price: Low-High</option>
+                  <option value="price-desc">Price: High-Low</option>
+                </select>
+              </div>
               
-              <div className="h-4 w-px bg-gray-200" />
-
-              <button
-                onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
-                className="text-[10px] font-black text-purple-primary uppercase tracking-widest hover:underline"
-              >
-                Reset
-              </button>
+              <div className="flex items-center gap-4">
+                <div className="h-4 w-px bg-gray-200" />
+                <button
+                  onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
+                  className="text-[10px] font-bold text-purple-primary uppercase tracking-wider hover:underline"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingBag, Heart, User, Menu, X, Package, LogOut, ChevronDown } from 'lucide-react';
 import useStore from '../../store/useStore';
-import { getAllProducts } from '../../lib/products';
-import { CURRENCY, ADMIN_MOBILE_NUMBER } from '../../lib/constants';
-import { isAuthenticated, logoutUser, getCurrentUser, formatPhoneForDisplay } from '../../lib/firebaseAuth';
+import { getAllProducts, subscribeToProducts } from '../../lib/products';
+import { CURRENCY, ADMIN_EMAIL } from '../../lib/constants';
+import { isAuthenticated, logoutUser, getCurrentUser } from '../../lib/firebaseAuth';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -31,9 +31,8 @@ export default function Header() {
         setCurrentUser(user);
         
         // Check if admin
-        if (user && user.phoneNumber) {
-          const userPhone = user.phoneNumber.replace('+91', '');
-          setIsAdmin(userPhone === ADMIN_MOBILE_NUMBER);
+        if (user && user.email) {
+          setIsAdmin(user.email === ADMIN_EMAIL);
         }
       }
     };
@@ -49,6 +48,8 @@ export default function Header() {
 
   // Fetch products for search (including placeholders as fallback)
   useEffect(() => {
+    let subscription;
+
     if (searchOpen) {
       getAllProducts().then(({ data, error }) => {
         if (data && data.length > 0) {
@@ -64,7 +65,22 @@ export default function Header() {
           });
         }
       });
+
+      // Real-time update for search products
+      subscription = subscribeToProducts((payload) => {
+        if (payload.eventType === 'INSERT') {
+          setProducts(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        } else if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      });
     }
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, [searchOpen]);
 
   // Filter products based on search query
@@ -88,6 +104,42 @@ export default function Header() {
     setShowSuggestions(false);
     navigate(`/product/${productId}`);
   };
+
+  const SearchSuggestions = () => (
+    <AnimatePresence>
+      {showSuggestions && (
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 5 }}
+          className="absolute left-0 right-0 top-full bg-white shadow-2xl rounded-b-lg border-t border-gray-100 overflow-hidden z-[9999] mt-2 mx-2 sm:mx-0"
+        >
+          <div className="max-h-96 overflow-y-auto">
+            {filteredProducts.map((product) => (
+              <button
+                key={product.id}
+                onClick={() => handleSearchSelect(product.id)}
+                className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 text-left"
+              >
+                <img
+                  src={product.image_url || product.image || '/placeholder.jpg'}
+                  alt={product.name}
+                  className="w-10 h-10 object-cover rounded bg-gray-50"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
+                  <p className="text-xs text-gray-500">{product.category}</p>
+                </div>
+                <p className="text-sm font-black text-gray-900">
+                  {CURRENCY}{product.price?.toLocaleString()}
+                </p>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -131,6 +183,7 @@ export default function Header() {
                 setSearchQuery(e.target.value);
                 if (!searchOpen) setSearchOpen(true);
               }}
+              onFocus={() => setSearchOpen(true)}
               placeholder="Search for products, brands and more"
               className="w-full bg-white text-gray-900 h-10 px-4 pr-12 rounded-sm shadow-sm focus:outline-none text-sm placeholder:text-gray-500"
             />
@@ -140,39 +193,7 @@ export default function Header() {
           </div>
 
           {/* Search Suggestions */}
-          <AnimatePresence>
-            {showSuggestions && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                className="absolute left-0 right-0 top-full bg-white shadow-xl rounded-b-sm border-t border-gray-100 overflow-hidden z-[60] mt-1"
-              >
-                <div className="max-h-96 overflow-y-auto">
-                  {filteredProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleSearchSelect(product.id)}
-                      className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 text-left"
-                    >
-                      <img
-                        src={product.image_url || product.image || '/placeholder.jpg'}
-                        alt={product.name}
-                        className="w-10 h-10 object-cover rounded bg-gray-50"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
-                        <p className="text-xs text-gray-500">{product.category}</p>
-                      </div>
-                      <p className="text-sm font-black text-gray-900">
-                        {CURRENCY}{product.price?.toLocaleString()}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <SearchSuggestions />
         </div>
 
         {/* Right Actions */}
@@ -226,7 +247,7 @@ export default function Header() {
       </div>
 
       {/* Mobile Search — Visible only on Mobile */}
-      <div className="container-clean pb-3 sm:hidden">
+      <div className="container-clean pb-3 sm:hidden relative">
         <div className="relative">
           <input
             type="text"
@@ -235,11 +256,13 @@ export default function Header() {
               setSearchQuery(e.target.value);
               if (!searchOpen) setSearchOpen(true);
             }}
+            onFocus={() => setSearchOpen(true)}
             placeholder="Search for products..."
             className="w-full bg-white text-gray-900 h-9 px-4 pr-10 rounded-sm shadow-inner text-sm"
           />
           <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
+        <SearchSuggestions />
       </div>
 
       {/* Category Bar — Flipkart Style */}
@@ -270,7 +293,7 @@ export default function Header() {
           >
             <div className="bg-purple-primary p-6 text-white flex items-center gap-4">
               <User size={24} />
-              <p className="font-bold">Welcome, Guest</p>
+              <p className="font-bold">Welcome, {currentUser?.displayName || 'Guest'}</p>
               <button onClick={() => setMobileMenuOpen(false)} className="ml-auto">
                 <X size={24} />
               </button>

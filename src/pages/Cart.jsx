@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Truck, Shield, Lock, BadgeCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Truck, Shield, Lock, BadgeCheck, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
 import { CURRENCY, SHIPPING_THRESHOLD } from '../lib/constants';
 import { PLACEHOLDER_IMG } from '../lib/products';
@@ -13,224 +13,180 @@ export default function Cart() {
 
   if (cart.length === 0) {
     return (
-      <div className="container-luxury section-spacing text-center">
-        <ShoppingBag size={48} className="mx-auto text-gray-300 mb-4" strokeWidth={1} />
-        <h2 className="font-playfair text-2xl text-gray-400 mb-2">Your bag is empty</h2>
-        <p className="font-inter text-sm text-gray-400 mb-8">Discover our curated collections</p>
-        <Link to="/shop" className="btn-primary inline-block">Continue Shopping</Link>
+      <div className="container-clean pt-48 pb-24 text-center min-h-[70vh]">
+        <div className="w-24 h-24 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-8">
+          <ShoppingBag size={48} className="text-gray-200" strokeWidth={1} />
+        </div>
+        <h2 className="text-2xl font-black text-gray-900 mb-4 tracking-tight uppercase">Your Bag is Empty</h2>
+        <p className="text-gray-400 text-sm font-medium mb-12 max-w-xs mx-auto leading-relaxed">
+          Looks like you haven't added anything to your curated collection yet.
+        </p>
+        <Link to="/shop" className="bg-purple-primary text-white px-12 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all">
+          Explore Boutique
+        </Link>
       </div>
     );
   }
 
   return (
     <>
-      <div className="container-luxury section-spacing pb-36 md:pb-16">
-        {/* Page Title — Elegant & Centered */}
-        <div className="text-center mb-8 border-b border-gray-100 pb-6">
-          <h1 className="font-playfair text-xl md:text-2xl text-gray-800 tracking-wide">Shopping Bag</h1>
-          <p className="font-inter text-xs text-gray-400 mt-2">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Free Shipping Progress - Luxury Style */}
-            {subtotal < SHIPPING_THRESHOLD ? (
-              <div className="bg-gradient-to-r from-rose-gold/10 to-purple-primary/5 border border-rose-gold/20 rounded-lg p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-rose-gold/20 flex items-center justify-center">
-                    <Truck size={18} className="text-rose-gold" />
-                  </div>
-                  <div>
-                    <p className="font-playfair text-sm text-purple-primary font-medium">
-                      You're almost there!
-                    </p>
-                    <p className="font-inter text-xs text-gray-500">
-                      Add <span className="text-rose-gold font-semibold">{CURRENCY}{(SHIPPING_THRESHOLD - subtotal).toLocaleString()}</span> more for <span className="text-purple-primary font-medium">FREE shipping</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-rose-gold to-purple-primary rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(100, (subtotal / SHIPPING_THRESHOLD) * 100)}%` }}
-                  />
-                </div>
-                <p className="font-inter text-[10px] text-gray-400 mt-2 text-right">
-                  {Math.round((subtotal / SHIPPING_THRESHOLD) * 100)}% completed
-                </p>
+      <div className="bg-gray-50 min-h-screen">
+        <div className="container-clean pt-36 pb-32">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <div className="flex items-center gap-2 text-purple-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">
+                <Sparkles size={14} />
+                <span>Your Selections</span>
               </div>
-            ) : (
-              <div className="bg-purple-primary/10 border border-purple-primary/20 rounded-lg p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-primary/20 flex items-center justify-center">
-                  <BadgeCheck size={20} className="text-purple-primary" />
-                </div>
-                <div>
-                  <p className="font-playfair text-sm text-purple-primary font-medium">
-                    Congratulations! You get FREE shipping
-                  </p>
-                  <p className="font-inter text-xs text-gray-500">
-                    Your order qualifies for complimentary delivery
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Cart Items — New Card Design with gap-y-6 */}
-            <div className="space-y-6">
-              {cart.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5"
-                >
-                  {/* Remove Icon — Top Right */}
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-rose-gold/10 hover:text-rose-gold transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-
-                  <div className="flex gap-4">
-                    {/* Image — Larger Square */}
-                    <Link to={`/product/${item.id}`} className="w-24 h-24 flex-shrink-0 overflow-hidden bg-gray-100 rounded-xl">
-                      <img src={item.image || PLACEHOLDER_IMG} alt={item.name} onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }} className="w-full h-full object-cover" />
-                    </Link>
-
-                    {/* Content Div */}
-                    <div className="flex-1 flex flex-col justify-between min-w-0">
-                      {/* Title Stack */}
-                      <div>
-                        <p className="font-inter text-[10px] tracking-wider uppercase text-gray-400 mb-1">
-                          {item.category}
-                        </p>
-                        <Link to={`/product/${item.id}`} className="block">
-                          <h3 className="font-playfair text-sm font-semibold text-gray-800 leading-tight hover:text-purple-primary transition-colors line-clamp-2">
-                            {item.name}
-                          </h3>
-                        </Link>
-                        <p className="font-inter text-sm font-semibold text-purple-primary mt-1.5">
-                          {CURRENCY}{item.price.toLocaleString()}
-                          {item.quantity > 1 && (
-                            <span className="text-gray-400 font-normal text-[11px] ml-1">
-                              x {item.quantity}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Quantity Controls — Center Aligned */}
-                      <div className="flex items-center justify-center mt-3">
-                        <div className="flex items-center bg-gray-50 rounded-full p-1">
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-purple-primary shadow-sm hover:bg-purple-primary hover:text-white transition-colors"
-                          >
-                            <Minus size={14} strokeWidth={2.5} />
-                          </button>
-                          <span className="w-10 text-center text-sm font-inter font-semibold text-gray-700">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-purple-primary shadow-sm hover:bg-purple-primary hover:text-white transition-colors"
-                          >
-                            <Plus size={14} strokeWidth={2.5} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+              <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight uppercase">Shopping Bag</h1>
             </div>
-
-            <Link to="/shop" className="inline-flex items-center gap-2 font-inter text-xs tracking-wider uppercase text-gray-500 hover:text-purple-primary transition-colors">
-              <ArrowLeft size={14} /> Continue Shopping
-            </Link>
+            <p className="text-gray-400 text-sm font-medium">
+              {cart.length} exclusive item{cart.length !== 1 ? 's' : ''} in your collection
+            </p>
           </div>
 
-          {/* Order Summary — Desktop - Luxury Design */}
-          <div className="hidden lg:block lg:col-span-1">
-            <div className="bg-white border-2 border-rose-gold/20 p-8 sticky top-28 rounded-lg shadow-lg shadow-rose-gold/5">
-              {/* Header with accent */}
-              <div className="border-b-2 border-rose-gold/20 pb-4 mb-6">
-                <h3 className="font-playfair text-xl text-purple-primary">Order Summary</h3>
-                <p className="font-inter text-xs text-gray-400 mt-1">Review your selections</p>
-              </div>
-
-              {/* Line Items */}
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between font-inter text-sm">
-                  <span className="text-gray-500">Subtotal ({cart.length} items)</span>
-                  <span className="text-gray-700 font-medium">{CURRENCY}{subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-inter text-sm">
-                  <span className="text-gray-500">Shipping</span>
-                  <span className={shipping === 0 ? 'text-purple-primary font-semibold' : 'text-gray-700'}>
-                    {shipping === 0 ? 'FREE' : `${CURRENCY}${shipping}`}
-                  </span>
-                </div>
-                <div className="flex justify-between font-inter text-sm">
-                  <span className="text-gray-500">Taxes (GST)</span>
-                  <span className="text-gray-700">Included</span>
-                </div>
-              </div>
-
-              {/* Total with Rose Gold accent */}
-              <div className="bg-gradient-to-r from-rose-gold/10 to-purple-primary/5 border border-rose-gold/20 rounded-lg p-4 mb-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-playfair text-base text-purple-primary">Order Total</span>
-                    <p className="font-inter text-[10px] text-gray-400 mt-0.5">Inclusive of all taxes</p>
-                  </div>
-                  <span className="font-playfair text-2xl text-purple-primary font-semibold">{CURRENCY}{total.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Trust Badges */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Lock size={16} className="text-purple-primary" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            {/* Cart Items */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Free Shipping Progress */}
+              <div className="bg-white border border-purple-50 rounded-3xl p-6 md:p-8 shadow-sm">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center text-purple-primary shrink-0">
+                    <Truck size={24} />
                   </div>
                   <div>
-                    <p className="font-inter text-xs font-medium text-gray-700">Secure SSL Encrypted</p>
-                    <p className="font-inter text-[10px] text-gray-400">Your data is protected</p>
+                    {subtotal < SHIPPING_THRESHOLD ? (
+                      <>
+                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight">Almost There!</p>
+                        <p className="text-xs font-medium text-gray-400 mt-1">
+                          Add <span className="text-purple-primary font-black">{CURRENCY}{(SHIPPING_THRESHOLD - subtotal).toLocaleString()}</span> more for <span className="text-purple-primary font-black">COMPLIMENTARY shipping</span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-black text-purple-primary uppercase tracking-tight">Priority Shipping Unlocked</p>
+                        <p className="text-xs font-medium text-gray-400 mt-1">Your order qualifies for complimentary luxury delivery.</p>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                  <div className="w-8 h-8 rounded-full bg-rose-gold/10 flex items-center justify-center flex-shrink-0">
-                    <Shield size={16} className="text-rose-gold" />
-                  </div>
-                  <div>
-                    <p className="font-inter text-xs font-medium text-gray-700">Trusted Payments</p>
-                    <p className="font-inter text-[10px] text-gray-400">Razorpay Verified</p>
-                  </div>
+                <div className="w-full h-2 bg-gray-50 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, (subtotal / SHIPPING_THRESHOLD) * 100)}%` }}
+                    className="h-full bg-purple-primary rounded-full"
+                  />
                 </div>
               </div>
 
-              {/* Policy Notes */}
-              <div className="space-y-2 mb-6 text-xs font-inter">
-                <p className="text-rose-gold font-medium flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-rose-gold" /> Online Payment Only
-                </p>
-                <p className="text-gray-400 flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-gray-300" /> No Returns / No Exchanges
-                </p>
+              {/* List */}
+              <div className="grid gap-6">
+                <AnimatePresence mode="popLayout">
+                  {cart.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-white rounded-3xl border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-xl hover:shadow-purple-primary/5 transition-all relative group"
+                    >
+                      <div className="flex gap-8">
+                        {/* Image */}
+                        <Link to={`/product/${item.id}`} className="w-24 h-32 md:w-32 md:h-40 shrink-0 overflow-hidden rounded-2xl bg-gray-50 border border-gray-100">
+                          <img src={item.image || PLACEHOLDER_IMG} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        </Link>
+
+                        {/* Content */}
+                        <div className="flex-1 flex flex-col justify-between min-w-0 py-2">
+                          <div>
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                              <p className="text-[10px] font-black text-purple-primary uppercase tracking-[0.2em]">{item.category}</p>
+                              <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                            <Link to={`/product/${item.id}`}>
+                              <h3 className="text-lg md:text-xl font-black text-gray-900 tracking-tight leading-tight hover:text-purple-primary transition-colors truncate">{item.name}</h3>
+                            </Link>
+                            <p className="text-lg font-black text-purple-primary mt-3">{CURRENCY}{item.price.toLocaleString()}</p>
+                          </div>
+
+                          {/* Controls */}
+                          <div className="flex items-center gap-4 mt-6">
+                            <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
+                              <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-purple-primary transition-colors">
+                                <Minus size={16} />
+                              </button>
+                              <span className="w-12 text-center text-sm font-black text-gray-900">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-purple-primary transition-colors">
+                                <Plus size={16} />
+                              </button>
+                            </div>
+                            <div className="h-6 w-px bg-gray-100" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                              Total: <span className="text-gray-900">{CURRENCY}{(item.price * item.quantity).toLocaleString()}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
-              {/* CTA Button */}
-              <Link
-                to="/checkout"
-                className="btn-primary block text-center w-full py-4 text-sm tracking-wider uppercase font-medium"
-              >
-                Proceed to Secure Checkout
+              <Link to="/shop" className="inline-flex items-center gap-3 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-purple-primary transition-all group">
+                <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                <span>Continue Shopping</span>
               </Link>
+            </div>
+
+            {/* Summary */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-xl shadow-purple-primary/5 sticky top-40">
+                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-8 pb-4 border-b border-gray-50">Order Summary</h2>
+                
+                <div className="space-y-6 mb-8">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Subtotal</span>
+                    <span className="font-black text-gray-900">{CURRENCY}{subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Shipping</span>
+                    <span className={`font-black ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                      {shipping === 0 ? 'FREE' : `${CURRENCY}${shipping}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Taxes (GST)</span>
+                    <span className="font-black text-gray-900 uppercase text-[10px]">Included</span>
+                  </div>
+                </div>
+
+                <div className="bg-purple-light rounded-2xl p-6 mb-8 border border-purple-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-purple-primary uppercase tracking-widest">Total Amount</span>
+                    <span className="text-2xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Trust Section */}
+                <div className="space-y-3 mb-10">
+                  <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <Lock size={14} className="text-purple-primary" />
+                    <span>Secure SSL Encryption</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <Shield size={14} className="text-purple-primary" />
+                    <span>Buyer Protection Guaranteed</span>
+                  </div>
+                </div>
+
+                <Link to="/checkout" className="block w-full bg-purple-primary text-white text-center py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98]">
+                  Secure Checkout
+                </Link>
+              </div>
             </div>
           </div>
         </div>

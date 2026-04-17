@@ -5,7 +5,6 @@ import PageTransition from './components/layout/PageTransition';
 
 // Firebase Auth Pages
 import Login from './pages/Login';
-import OtpVerification from './pages/OtpVerification';
 
 // Storefront Pages
 import Home from './pages/Home';
@@ -42,14 +41,6 @@ function AnimatedRoutes() {
             </PublicOnlyRoute>
           } 
         />
-        <Route 
-          path="/verify-otp" 
-          element={
-            <PublicOnlyRoute>
-              <OtpVerification />
-            </PublicOnlyRoute>
-          } 
-        />
 
         {/* STOREFRONT — uses shared Layout (Header + Footer + Mobile Nav) */}
         <Route element={<Layout />}>
@@ -61,15 +52,9 @@ function AnimatedRoutes() {
           <Route path="/new-arrivals" element={<PageTransition><Shop /></PageTransition>} />
           <Route path="/track-order" element={<PageTransition><TrackOrder /></PageTransition>} />
 
-          {/* Protected Client Routes - Require Firebase Auth */}
-          <Route 
-            path="/cart" 
-            element={
-              <ClientProtectedRoute>
-                <PageTransition><Cart /></PageTransition>
-              </ClientProtectedRoute>
-            } 
-          />
+          <Route path="/cart" element={<PageTransition><Cart /></PageTransition>} />
+
+          {/* Protected Client Routes - Require Google Auth */}
           <Route 
             path="/checkout" 
             element={

@@ -15,25 +15,22 @@ import { supabase } from './supabase';
  * @param {string} request.customerName - Customer name (optional)
  * @returns {Promise<{data: Object|null, error: Error|null}>}
  */
-export async function createRestockRequest({ productId, productName, email, phone, customerName }) {
+export async function createRestockRequest({ productId, productName, email, customerName }) {
   try {
-    // Validate that at least one contact method is provided
-    if (!email && !phone) {
+    // Validate that email is provided
+    if (!email) {
       return { 
         data: null, 
-        error: new Error('Please provide either email or phone number') 
+        error: new Error('Please provide your email address') 
       };
     }
 
-    // Normalize phone number
-    const normalizedPhone = phone ? normalizePhoneNumber(phone) : null;
-
-    // Check if this email/phone already requested for this product
+    // Check if this email already requested for this product
     const { data: existingRequest } = await supabase
       .from('restock_requests')
       .select('id, status')
       .eq('product_id', productId)
-      .or(`customer_email.eq.${email},customer_phone.eq.${normalizedPhone}`)
+      .eq('customer_email', email)
       .eq('status', 'pending')
       .single();
 
@@ -51,8 +48,7 @@ export async function createRestockRequest({ productId, productName, email, phon
       .insert([{
         product_id: productId,
         product_name: productName,
-        customer_email: email || null,
-        customer_phone: normalizedPhone,
+        customer_email: email,
         customer_name: customerName || null,
         status: 'pending'
       }])

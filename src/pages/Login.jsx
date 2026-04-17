@@ -1,83 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Phone, Shield, ArrowRight, Sparkles } from 'lucide-react';
-import { initRecaptcha, sendOTP } from '../lib/firebaseAuth';
-import { ADMIN_MOBILE_NUMBER } from '../lib/constants';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Shield, Sparkles, LogIn } from 'lucide-react';
+import { loginWithGoogle } from '../lib/firebaseAuth';
 
 export default function Login() {
-  const [mobileNumber, setMobileNumber] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [recaptchaReady, setRecaptchaReady] = useState(false);
-  const recaptchaVerifierRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Initialize invisible reCAPTCHA on mount
-  useEffect(() => {
-    const initInvisibleRecaptcha = async () => {
-      try {
-        recaptchaVerifierRef.current = initRecaptcha('recaptcha-container', () => {
-          setRecaptchaReady(true);
-        });
-      } catch (err) {
-        console.error('Failed to initialize recaptcha:', err);
-        setError('Failed to initialize security check. Please refresh the page.');
-      }
-    };
+  // Get the redirect path from location state, default to home
+  const from = location.state?.from?.pathname || "/";
 
-    initInvisibleRecaptcha();
-
-    // Cleanup
-    return () => {
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-      }
-    };
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setError('');
-
-    // Validate mobile number
-    const cleanedNumber = mobileNumber.replace(/\D/g, '');
-    if (!cleanedNumber || cleanedNumber.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number');
-      return;
-    }
-
-    if (!recaptchaVerifierRef.current) {
-      setError('Security verification not ready. Please wait a moment and try again.');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Send OTP via Firebase
-      const result = await sendOTP(cleanedNumber, recaptchaVerifierRef.current);
+      const result = await loginWithGoogle();
       
       if (result.success) {
-        // Navigate to OTP verification page
-        navigate('/verify-otp', { 
-          state: { 
-            phoneNumber: cleanedNumber,
-            isAdmin: cleanedNumber === ADMIN_MOBILE_NUMBER
-          } 
-        });
+        // Successful login, navigate back to previous page or home
+        navigate(from, { replace: true });
       } else {
-        // Handle specific Firebase errors
-        let errorMessage = result.error || 'Failed to send OTP. Please try again.';
-        
-        if (result.code === 'auth/invalid-phone-number') {
-          errorMessage = 'Invalid phone number format. Please check and try again.';
-        } else if (result.code === 'auth/too-many-requests') {
-          errorMessage = 'Too many attempts. Please try again later.';
-        } else if (result.code === 'auth/captcha-check-failed') {
-          errorMessage = 'Security verification failed. Please refresh and try again.';
-        }
-        
-        setError(errorMessage);
+        setError(result.error || 'Failed to login with Google. Please try again.');
         setLoading(false);
       }
     } catch (err) {
@@ -87,124 +33,70 @@ export default function Login() {
     }
   };
 
-  const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-    setMobileNumber(value);
-    setError('');
-  };
-
-  // Format display number with spaces
-  const formatDisplayNumber = (num) => {
-    if (num.length <= 5) return num;
-    return `${num.slice(0, 5)} ${num.slice(5)}`;
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4">
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute -bottom-8 left-20 w-56 h-56 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" style={{ animationDelay: '4s' }} />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="relative max-w-md w-full">
         {/* Card */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl shadow-purple-100/50 p-8 md:p-10 border border-purple-100">
+        <div className="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(106,13,189,0.1)] p-8 md:p-12 border border-purple-50 flex flex-col items-center">
           
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-200">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-purple-primary rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-purple-primary/20 rotate-3 hover:rotate-0 transition-transform duration-500">
               <Sparkles className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome Back
+            <h1 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">
+              Sign In
             </h1>
-            <p className="text-gray-600">
-              Enter your mobile number to continue
+            <p className="text-gray-500 font-medium">
+              Join our exclusive community for a premium shopping experience.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Mobile Number Input */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Mobile Number
-              </label>
-              <div className="relative group">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  value={formatDisplayNumber(mobileNumber)}
-                  onChange={handleMobileChange}
-                  placeholder="98765 43210"
-                  className="w-full pl-14 pr-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300 text-lg font-medium tracking-wide"
-                  disabled={loading}
-                  autoFocus
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
-                </div>
-              </div>
-              
-              {/* Error Message */}
-              {error && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                  <p className="text-red-600 text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                    {error}
-                  </p>
-                </div>
-              )}
+          {/* Error Message */}
+          {error && (
+            <div className="w-full mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl animate-shake">
+              <p className="text-red-600 text-sm font-bold flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full" />
+                {error}
+              </p>
             </div>
+          )}
 
-            {/* Security Note */}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Shield className="w-4 h-4 text-purple-600" />
-              <span>Secured with Firebase Authentication</span>
-            </div>
+          {/* Google Login Button */}
+          <button
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-100 py-4 px-6 rounded-2xl font-black text-gray-700 hover:border-purple-primary hover:bg-purple-light transition-all duration-300 disabled:opacity-50 group relative overflow-hidden shadow-sm hover:shadow-md"
+          >
+            {loading ? (
+              <div className="w-6 h-6 border-3 border-purple-primary/30 border-t-purple-primary rounded-full animate-spin" />
+            ) : (
+              <>
+                <svg className="w-6 h-6" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                  <path fill="none" d="M0 0h48v48H0z" />
+                </svg>
+                <span className="text-base uppercase tracking-wider">Continue with Google</span>
+              </>
+            )}
+          </button>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading || mobileNumber.length !== 10}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-purple-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200 hover:shadow-xl hover:shadow-purple-300 flex items-center justify-center gap-2 group"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Sending OTP...
-                </>
-              ) : (
-                <>
-                  Get OTP
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
-          </form>
+          {/* Security Note */}
+          <div className="mt-12 flex items-center gap-3 text-xs font-black text-gray-400 uppercase tracking-[0.15em]">
+            <Shield className="w-4 h-4 text-purple-primary" />
+            <span>Encrypted Google Auth</span>
+          </div>
 
-          {/* Info Footer */}
-          <div className="mt-8 text-center space-y-2">
-            <p className="text-xs text-gray-400">
-              You will receive a 6-digit verification code
+          {/* Brand Footer */}
+          <div className="mt-8 pt-8 border-t border-gray-50 w-full text-center">
+            <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+              Little Shop Premium Identity
             </p>
-            <div className="flex items-center justify-center gap-2 text-xs">
-              <span className="text-gray-400">Demo Admin:</span>
-              <code className="bg-purple-50 text-purple-700 px-2 py-1 rounded font-mono">
-                {ADMIN_MOBILE_NUMBER}
-              </code>
-            </div>
           </div>
         </div>
-
-        {/* Invisible reCAPTCHA Container */}
-        <div id="recaptcha-container" className="absolute -bottom-20 left-0" />
       </div>
     </div>
   );

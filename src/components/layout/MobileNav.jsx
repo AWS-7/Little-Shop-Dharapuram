@@ -4,8 +4,9 @@ import useStore from '../../store/useStore';
 
 export default function MobileNav() {
   const location = useLocation();
-  const { cart, openCartDrawer } = useStore();
+  const { cart, wishlist, openCartDrawer } = useStore();
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const wishlistCount = wishlist.length;
 
   // Layout: Home | Shop | [Cart] | Wishlist | Profile
   const leftItems = [
@@ -66,15 +67,21 @@ export default function MobileNav() {
           {/* Right items: Wishlist, Profile */}
           {rightItems.map(({ icon: Icon, label, path }) => {
             const isActive = location.pathname === path;
+            const isWishlist = label === 'Wishlist';
             return (
               <Link
                 key={label}
                 to={path}
-                className={`flex flex-col items-center gap-0.5 py-1 px-3 transition-colors ${
+                className={`flex flex-col items-center gap-0.5 py-1 px-3 transition-colors relative ${
                   isActive ? 'text-purple-primary' : 'text-gray-400'
                 }`}
               >
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                {isWishlist && wishlistCount > 0 && (
+                  <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border border-white">
+                    {wishlistCount}
+                  </span>
+                )}
                 <span className="font-inter text-[10px] tracking-wide">{label}</span>
               </Link>
             );

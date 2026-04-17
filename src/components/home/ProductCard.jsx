@@ -24,7 +24,7 @@ export default function ProductCard({ product, index = 0 }) {
 
   const handleWishlist = (e) => {
     e.stopPropagation();
-    toggleWishlist(product.id);
+    toggleWishlist(product);
   };
 
   return (
