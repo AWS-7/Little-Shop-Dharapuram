@@ -316,7 +316,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Gift Wrap */}
+            {/* Gift Wrap moved inside Left Column */}
             <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
               <label className="flex items-center gap-4 cursor-pointer group">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isGiftWrap ? 'bg-purple-primary text-white shadow-lg' : 'bg-gray-50 text-gray-300'}`}>
@@ -415,8 +415,9 @@ export default function Checkout() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Mobile Sticky Pay Button */}
+        {/* Mobile Sticky Pay Button */}
           <div className="fixed bottom-[80px] left-0 right-0 z-40 lg:hidden px-4">
             <div className="bg-white rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4">
               <div className="flex items-center justify-between mb-3">
