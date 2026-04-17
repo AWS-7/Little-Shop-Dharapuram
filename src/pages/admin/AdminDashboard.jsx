@@ -12,7 +12,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES } from '../../lib/constants';
+import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES, ADMIN_EMAIL } from '../../lib/constants';
 import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/orders';
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
 import { loginWithGoogle, logoutUser, getCurrentUser, isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
