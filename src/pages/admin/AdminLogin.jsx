@@ -1,42 +1,58 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, ShieldCheck, Bell, BellRing, Sparkles } from 'lucide-react';
+import { Lock, User, ShieldCheck, Bell, BellRing, Eye, EyeOff, Clock } from 'lucide-react';
 import { requestNotificationPermission, isNotificationSupported } from '../../lib/notifications';
-import { loginWithGoogle, isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
-import { ADMIN_EMAIL } from '../../lib/constants';
+import { loginAdmin, isAdminAuthenticated, getSessionTimeRemaining } from '../../lib/adminAuth';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  
+  // Form state
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
+    // Check if redirected due to session expiration
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      setSessionExpired(true);
+      setError('Session expired. Please login again.');
+    }
+    
     // If already logged in as admin, go to dashboard
-    if (isAuthenticated() && isAdmin(ADMIN_EMAIL)) {
+    if (isAdminAuthenticated()) {
       navigate('/admin/dashboard');
     }
-  }, [navigate]);
+  }, [navigate, location]);
 
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    
+    // Validate input
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both username and password');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
-    const res = await loginWithGoogle();
+    const res = await loginAdmin(username, password);
     
     if (res.success) {
-      if (isAdmin(ADMIN_EMAIL)) {
-        // Logged in as admin, check notifications
-        if (isNotificationSupported() && Notification.permission !== 'granted') {
-          setShowNotifPrompt(true);
-          setLoading(false);
-        } else {
-          navigate('/admin/dashboard');
-        }
-      } else {
-        setError('Access Denied: You do not have admin privileges.');
+      // Login successful - check notifications
+      if (isNotificationSupported() && Notification.permission !== 'granted') {
+        setShowNotifPrompt(true);
         setLoading(false);
+      } else {
+        navigate('/admin/dashboard');
       }
     } else {
       setError(res.error || 'Login failed. Please try again.');
@@ -111,39 +127,79 @@ export default function AdminLogin() {
             >
               {error && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-xs font-bold text-center animate-shake">
+                  {sessionExpired && <Clock size={16} className="inline mr-1" />}
                   {error}
                 </div>
               )}
 
-              <div className="text-center">
-                <p className="text-gray-500 text-sm font-medium mb-8">
-                  Sign in with your authorized Google account to access the management dashboard.
-                </p>
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                    Admin Username
+                  </label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Enter username"
+                      disabled={loading}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-purple-primary focus:bg-white transition-all disabled:opacity-50"
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      disabled={loading}
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-purple-primary focus:bg-white transition-all disabled:opacity-50"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
 
                 <button
-                  onClick={handleGoogleLogin}
+                  type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-100 py-4 rounded-2xl font-black text-gray-700 hover:border-purple-primary hover:bg-purple-light transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                  className="w-full py-4 rounded-2xl bg-purple-primary text-white text-sm font-black hover:bg-purple-secondary transition-all shadow-lg shadow-purple-primary/20 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
-                    <div className="w-6 h-6 border-2 border-purple-primary/20 border-t-purple-primary rounded-full animate-spin" />
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span>Authenticating...</span>
+                    </div>
                   ) : (
-                    <>
-                      <svg className="w-6 h-6" viewBox="0 0 48 48">
-                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-                      </svg>
-                      <span className="uppercase tracking-widest text-xs">Continue with Google</span>
-                    </>
+                    'Sign In'
                   )}
                 </button>
-              </div>
+              </form>
 
-              <div className="pt-6 border-t border-gray-50 flex items-center justify-center gap-3 text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                <Lock size={14} />
-                Secure Encrypted Session
+              <div className="pt-6 border-t border-gray-50 space-y-2">
+                <div className="flex items-center justify-center gap-3 text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                  <Lock size={14} />
+                  Secure Admin Session (1 Hour)
+                </div>
+                <p className="text-[10px] text-center text-gray-400">
+                  Session expires automatically after 1 hour for security
+                </p>
               </div>
             </motion.div>
           )}

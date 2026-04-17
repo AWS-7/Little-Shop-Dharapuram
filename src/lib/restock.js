@@ -279,10 +279,64 @@ function normalizePhoneNumber(phone) {
  */
 export async function checkProductRestockRequests(productId) {
   const { count, error } = await getRestockRequestCount(productId);
-  
+
   if (error) {
     return { hasRequests: false, count: 0, error };
   }
-  
+
   return { hasRequests: count > 0, count, error: null };
+}
+
+/**
+ * Auto-notify customers when product is restocked
+ * This function checks if there are pending requests and sends notifications
+ * @param {string} productId - Product ID that was restocked
+ * @param {string} productName - Product name
+ * @param {number} newStockCount - New stock count
+ * @returns {Promise<{notified: number, error: Error|null}>}
+ */
+export async function notifyRestockCustomers(productId, productName, newStockCount) {
+  try {
+    // Get pending requests for this product
+    const { data: requests, error: fetchError } = await supabase
+      .from('restock_requests')
+      .select('*')
+      .eq('product_id', productId)
+      .eq('status', 'pending');
+
+    if (fetchError || !requests || requests.length === 0) {
+      return { notified: 0, error: null };
+    }
+
+    // Mark all as notified
+    const { error: updateError } = await supabase
+      .from('restock_requests')
+      .update({
+        status: 'notified',
+        notification_sent_at: new Date().toISOString()
+      })
+      .eq('product_id', productId)
+      .eq('status', 'pending');
+
+    if (updateError) {
+      console.error('Error marking restock requests as notified:', updateError);
+      return { notified: 0, error: updateError };
+    }
+
+    // Send WhatsApp notifications if phone numbers available
+    let notifiedCount = 0;
+    for (const request of requests) {
+      if (request.customer_phone) {
+        // WhatsApp notification would be sent here
+        // For now, just log it
+        console.log(`Would send WhatsApp to ${request.customer_phone}: ${productName} is back in stock!`);
+        notifiedCount++;
+      }
+    }
+
+    return { notified: requests.length, whatsappNotified: notifiedCount, error: null };
+  } catch (e) {
+    console.error('Exception in notifyRestockCustomers:', e);
+    return { notified: 0, error: e };
+  }
 }

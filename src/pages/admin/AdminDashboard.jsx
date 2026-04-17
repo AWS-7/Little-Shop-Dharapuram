@@ -15,14 +15,14 @@ import autoTable from 'jspdf-autotable';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES, ADMIN_EMAIL } from '../../lib/constants';
 import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/orders';
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
-import { loginWithGoogle, logoutUser, getCurrentUser, isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
+import { logoutAdmin, getAdminSession, getSessionTimeRemaining, isSessionExpiringSoon, isAdminAuthenticated } from '../../lib/adminAuth';
 import {
   PRODUCT_CATEGORIES, FIELD_LABELS, uploadProductImage, createProduct,
-  getAllProducts, updateProduct, deleteProduct, resolveImageUrl,
+  getAllProductsAdmin, updateProduct, deleteProduct, resolveImageUrl,
   getAllCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage
 } from '../../lib/products';
 import { generateProductDescription } from '../../lib/ai';
-import { getAggregatedRestockRequests, markRequestsAsNotified } from '../../lib/restock';
+import { getAggregatedRestockRequests, markRequestsAsNotified, notifyRestockCustomers } from '../../lib/restock';
 import { startOrderNotifications, stopOrderNotifications, notifyNewOrder, requestNotificationPermission } from '../../lib/notifications';
 import {
   getActiveFlashSale,
@@ -34,6 +34,46 @@ import {
   subscribeToFlashSales
 } from '../../lib/flashSales';
 import BulkImportModal from '../../components/admin/BulkImportModal';
+
+// Session Timer Component
+function SessionTimer() {
+  const [timeRemaining, setTimeRemaining] = useState(getSessionTimeRemaining());
+  const [expiringSoon, setExpiringSoon] = useState(isSessionExpiringSoon());
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = getSessionTimeRemaining();
+      setTimeRemaining(remaining);
+      setExpiringSoon(isSessionExpiringSoon());
+      
+      // Auto logout if expired
+      if (remaining <= 0) {
+        logoutAdmin();
+        window.location.href = '/admin/login?expired=true';
+      }
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const formatTime = (minutes) => {
+    if (minutes <= 0) return 'Expired';
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+  
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
+      expiringSoon 
+        ? 'bg-red-100 text-red-700 border border-red-200' 
+        : 'bg-purple-primary/10 text-purple-primary border border-purple-primary/20'
+    }`}>
+      <Clock size={14} />
+      <span>Session: {formatTime(timeRemaining)}</span>
+    </div>
+  );
+}
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -117,7 +157,7 @@ function calculateTimeRemaining(endTime) {
 }
 
 export default function AdminDashboard() {
-  if (!isAuthenticated() || !isAdmin(ADMIN_EMAIL)) {
+  if (!isAdminAuthenticated()) {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -273,8 +313,8 @@ export default function AdminDashboard() {
     await fetchOrders();
     const { data } = await getAbandonedCarts();
     setAbandonedCarts(data || []);
-    // Refresh products too (getAllProducts already maps image_url to image)
-    const { data: productsData } = await getAllProducts();
+    // Refresh products too (getAllProductsAdmin already maps image_url to image)
+    const { data: productsData } = await getAllProductsAdmin();
     if (productsData && productsData.length > 0) {
       setProducts(productsData);
     }
@@ -502,7 +542,7 @@ export default function AdminDashboard() {
   // Fetch products on mount
   useEffect(() => {
     const fetchProducts = async () => {
-      const { data: productsData } = await getAllProducts();
+      const { data: productsData } = await getAllProductsAdmin();
       if (productsData && productsData.length > 0) {
         setProducts(productsData);
       }
@@ -552,8 +592,8 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await logoutUser();
-    window.location.href = '/admin';
+    logoutAdmin();
+    window.location.href = '/admin/login';
   };
 
   // Add Product handlers
@@ -773,13 +813,18 @@ export default function AdminDashboard() {
   const handleSaveInventory = async (productId) => {
     const edits = inventoryEdits[productId];
     if (!edits) return;
-    
+
     // Check if it's a demo product (numeric ID) - can't update in Supabase
     if (typeof productId === 'string' && /^\d+$/.test(productId)) {
       alert('Demo products cannot be updated. Please create a new product or edit a product from the database.');
       return;
     }
-    
+
+    // Get current product to check if stock is being added
+    const currentProduct = products.find((p) => p.id === productId);
+    const oldStock = currentProduct?.stockCount || 0;
+    const newStock = edits.stockCount !== undefined ? parseInt(edits.stockCount) : oldStock;
+
     setSavingInventory((prev) => ({ ...prev, [productId]: true }));
     const updates = {};
     if (edits.price !== undefined) updates.price = parseFloat(edits.price);
@@ -792,6 +837,14 @@ export default function AdminDashboard() {
       setProducts(products.map((p) => (p.id === productId ? { ...p, ...edits, inStock: (edits.stockCount || p.stockCount) > 0 } : p)));
       setInventoryEdits((prev) => ({ ...prev, [productId]: undefined }));
       showToast('Inventory updated successfully!', 'success');
+
+      // Auto-notify customers if stock was added and there were pending requests
+      if (newStock > 0 && oldStock === 0 && currentProduct) {
+        const { notified, whatsappNotified } = await notifyRestockCustomers(productId, currentProduct.name, newStock);
+        if (notified > 0) {
+          showToast(`${notified} customer${notified > 1 ? 's' : ''} notified about restock!`, 'success');
+        }
+      }
     }
     setSavingInventory((prev) => ({ ...prev, [productId]: false }));
   };
@@ -1256,20 +1309,23 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 p-4 md:p-10 min-w-0">
-        {/* Admin Header Bar with Refresh */}
+        {/* Admin Header Bar with Refresh and Session Timer */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="font-playfair text-xl sm:text-2xl text-purple-primary">Dashboard</h1>
             <p className="font-inter text-xs text-gray-400 mt-1">Last refreshed: {new Date().toLocaleTimeString('en-IN')}</p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-primary text-white font-inter text-xs rounded-sm hover:bg-purple-primary/90 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Refreshing...' : 'Refresh Data'}
-          </button>
+          <div className="flex items-center gap-3">
+            <SessionTimer />
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-primary text-white font-inter text-xs rounded-sm hover:bg-purple-primary/90 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+          </div>
         </div>
         {/* Mobile Tab Bar */}
         <div className="flex md:hidden items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -1494,7 +1550,7 @@ export default function AdminDashboard() {
                         className="rounded-sm border-gray-300"
                       />
                     </th>
-                    {['Product', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map((h) => (
+                    {['Product', 'Category', 'Price', 'Stock', 'Active', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-5 py-3 font-inter text-xs tracking-wider uppercase text-gray-400">{h}</th>
                     ))}
                   </tr>
@@ -1545,11 +1601,29 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`inline-block w-2 h-2 rounded-full ${
-                          p.stockCount === 0 ? 'bg-rose-gold' :
-                          p.stockCount < 5 ? 'bg-red-500 animate-pulse' :
-                          'bg-purple-primary'
-                        }`} />
+                        <button
+                          onClick={async () => {
+                            const newStatus = !(p.is_active !== false); // default to true if undefined
+                            const { error } = await updateProduct(p.id, { is_active: newStatus });
+                            if (!error) {
+                              setProducts(products.map((prod) =>
+                                prod.id === p.id ? { ...prod, is_active: newStatus } : prod
+                              ));
+                              showToast(`Product ${newStatus ? 'activated' : 'deactivated'}!`, 'success');
+                            } else {
+                              showToast('Failed to update status', 'error');
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-inter text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                            p.is_active !== false
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
+                          title={p.is_active !== false ? 'Click to hide from customers' : 'Click to show to customers'}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${p.is_active !== false ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          {p.is_active !== false ? 'Active' : 'Hidden'}
+                        </button>
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
@@ -3054,7 +3128,7 @@ export default function AdminDashboard() {
           isOpen={showBulkImport}
           onClose={() => setShowBulkImport(false)}
           onImportComplete={async () => {
-            const { data } = await getAllProducts();
+            const { data } = await getAllProductsAdmin();
             if (data && data.length > 0) {
               setProducts(data);
             }
@@ -3290,6 +3364,26 @@ export default function AdminDashboard() {
                       onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
                       className="w-full border border-gray-200 px-4 py-3 font-inter text-sm outline-none focus:border-purple-primary h-24 resize-none"
                     />
+                  </div>
+                  {/* Active/Inactive Toggle */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      editingProduct.is_active !== false ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                    onClick={() => setEditingProduct({ ...editingProduct, is_active: editingProduct.is_active === false ? true : false })}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all ${
+                        editingProduct.is_active !== false ? 'left-[22px]' : 'left-0.5'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="font-inter text-sm font-medium text-gray-800">
+                        {editingProduct.is_active !== false ? 'Product is Active' : 'Product is Hidden'}
+                      </p>
+                      <p className="font-inter text-xs text-gray-500">
+                        {editingProduct.is_active !== false ? 'Visible to customers' : 'Hidden from customers'}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="p-6 border-t border-gray-100 flex gap-3">

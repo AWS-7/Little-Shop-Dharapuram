@@ -151,18 +151,18 @@ export default function Shop() {
           </div>
         </div>
 
-        {/* Product Grid — Clean Flipkart Style */}
-        {loadingProducts ? (
+        {/* Product Grid - Increased gaps for breathing room */}
+        {loadingProducts && showSlowLoading ? (
           <ProductGridSkeleton count={8} />
-        ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100 shadow-sm overflow-hidden">
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5 lg:gap-6">
             {filtered.map((product, idx) => (
-              <div key={product.id} className="bg-white">
-                <ProductCard product={product} index={idx} />
-              </div>
+              <ProductCard key={product.id} product={product} index={idx} />
             ))}
           </div>
-        ) : (
+        )}
+
+        {filtered.length === 0 && (
           <div className="text-center py-32 bg-white border border-gray-100 rounded-sm shadow-sm">
             <div className="max-w-xs mx-auto">
               <h3 className="text-xl font-black text-gray-900 mb-2">No results found</h3>

@@ -28,23 +28,44 @@ export const FIELD_LABELS = {
   size: 'Size / Dimension',
 };
 
-// ── Upload image to Supabase Storage ──
+// ── Upload image to Supabase Storage with optimization ──
 export async function uploadProductImage(file) {
   try {
-    console.log('Starting image upload...', file.name, file.size);
+    console.log('Starting optimized image upload...', file.name, file.size);
     
-    const ext = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // Validate image
+    if (!isValidImage(file)) {
+      return { url: null, error: new Error('Invalid image format. Use JPG, PNG, or WebP.') };
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return { url: null, error: new Error('Image too large. Max size: 5MB.') };
+    }
+    
+    // Optimize image: resize to 1200x1200 max, compress, convert to WebP
+    const optimizedBlob = await optimizeImage(file, {
+      maxWidth: 1200,
+      maxHeight: 1200,
+      quality: 0.85,
+      format: 'webp',
+    });
+    
+    console.log('Image optimized:', file.size, '->', optimizedBlob.size, 'bytes');
+    
+    // Generate filename with WebP extension
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
     const filePath = `products/${fileName}`;
     
-    console.log('Uploading to bucket: product-images, path:', filePath);
+    console.log('Uploading optimized image to:', filePath);
 
+    // Upload with long-term caching headers
     const { data, error } = await supabase.storage
       .from('product-images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
+      .upload(filePath, optimizedBlob, {
+        cacheControl: 'public, max-age=31536000, immutable', // 1 year cache
         upsert: false,
-        contentType: file.type,
+        contentType: 'image/webp',
       });
 
     if (error) {
@@ -82,79 +103,123 @@ export async function createProduct(productData) {
   }
 }
 
-// ── Get all products ──
+// ── Get all ACTIVE products (for client-side) ──
 export async function getAllProducts() {
   try {
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('is_active', true)  // Only return active products
       .order('created_at', { ascending: false });
-    
+
     // Map image_url to image for client-side compatibility
     const mappedData = (data || []).map(p => ({
       ...p,
       image: resolveImageUrl(p.image_url || p.image)
     }));
-    
+
     return { data: mappedData, error };
   } catch (e) {
     return { data: [], error: e };
   }
 }
 
-// ── Get single product by ID ──
+// ── Get ALL products including inactive (for admin only) ──
+export async function getAllProductsAdmin() {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // Map image_url to image for client-side compatibility
+    const mappedData = (data || []).map(p => ({
+      ...p,
+      image: resolveImageUrl(p.image_url || p.image)
+    }));
+
+    return { data: mappedData, error };
+  } catch (e) {
+    return { data: [], error: e };
+  }
+}
+
+// ── Get single ACTIVE product by ID ──
 export async function getProductById(id) {
   try {
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('id', id)
+      .eq('is_active', true)  // Only return if active
       .single();
-    
+
     // Map image_url to image for client-side compatibility
     if (data) {
       data.image = resolveImageUrl(data.image_url || data.image);
     }
-    
+
     return { data, error };
   } catch (e) {
     return { data: null, error: e };
   }
 }
 
-// ── Get latest N products for Featured Collection ──
+// ── Get single product by ID for Admin (ignores is_active) ──
+export async function getProductByIdAdmin(id) {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    // Map image_url to image for client-side compatibility
+    if (data) {
+      data.image = resolveImageUrl(data.image_url || data.image);
+    }
+
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+// ── Get latest N ACTIVE products for Featured Collection ──
 export async function getLatestProducts(limit = 4) {
   try {
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('is_active', true)  // Only active products
       .order('created_at', { ascending: false })
       .limit(limit);
-    
+
     const mappedData = (data || []).map(p => ({
       ...p,
       image: resolveImageUrl(p.image_url || p.image)
     }));
-    
+
     return { data: mappedData, error };
   } catch (e) {
     return { data: [], error: e };
   }
 }
 
-// ── Get one random product from each category (Handpicked) ──
+// ── Get one random ACTIVE product from each category (Handpicked) ──
 export async function getHandpickedProducts(categories) {
   try {
     const results = [];
-    
+
     for (const category of categories) {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('category', category.name)
+        .eq('is_active', true)  // Only active products
         .limit(1)
         .maybeSingle();
-      
+
       if (data && !error) {
         results.push({
           ...data,
@@ -163,7 +228,7 @@ export async function getHandpickedProducts(categories) {
         });
       }
     }
-    
+
     return { data: results, error: null };
   } catch (e) {
     return { data: [], error: e };
@@ -275,13 +340,28 @@ export async function deleteCategory(id) {
 
 export async function uploadCategoryImage(file) {
   try {
-    const ext = file.name.split('.').pop();
-    const fileName = `cat-${Date.now()}.${ext}`;
+    // Validate image
+    if (!isValidImage(file)) {
+      return { url: null, error: new Error('Invalid image format. Use JPG, PNG, or WebP.') };
+    }
+    
+    // Optimize image for categories (smaller size)
+    const optimizedBlob = await optimizeImage(file, {
+      maxWidth: 600,
+      maxHeight: 600,
+      quality: 0.8,
+      format: 'webp',
+    });
+    
+    const fileName = `cat-${Date.now()}.webp`;
     const filePath = `categories/${fileName}`;
     
     const { error } = await supabase.storage
       .from('product-images')
-      .upload(filePath, file);
+      .upload(filePath, optimizedBlob, {
+        cacheControl: 'public, max-age=31536000, immutable',
+        contentType: 'image/webp',
+      });
 
     if (error) return { url: null, error };
 

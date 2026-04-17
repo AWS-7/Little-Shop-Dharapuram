@@ -161,7 +161,7 @@ function ProfileView({ user, onSignOut }) {
           setShowForm(false);
         }
       } else {
-        const { data, error } = await updateAddress(showForm, formData);
+        const { data, error } = await updateAddress(user.uid, showForm, formData);
         if (error) throw error;
         if (data) {
           setAddresses(prev => prev.map(a => a.id === data.id ? data : (data.is_default ? { ...a, is_default: false } : a)));

@@ -41,11 +41,9 @@ export default function FeaturedGrid() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
               {handpicked.map((product, idx) => (
-                <div key={`handpicked-${product.id}`} className="bg-white">
-                  <ProductCard product={product} index={idx} />
-                </div>
+                <ProductCard key={`handpicked-${product.id}`} product={product} index={idx} />
               ))}
             </div>
           </div>
@@ -64,17 +62,15 @@ export default function FeaturedGrid() {
 
           {/* Featured Product Grid */}
           {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="aspect-[3/4] bg-white animate-pulse" />
+                <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-sm" />
               ))}
             </div>
           ) : featured.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
               {featured.map((product, idx) => (
-                <div key={product.id} className="bg-white">
-                  <ProductCard product={product} index={idx} />
-                </div>
+                <ProductCard key={product.id} product={product} index={idx} />
               ))}
             </div>
           ) : (

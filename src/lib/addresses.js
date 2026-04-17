@@ -1,12 +1,41 @@
 import { supabase } from './supabase';
 
+// ── Helper: Convert any string to a valid UUID v4 format ──
+// This allows Firebase UIDs to work with Supabase UUID columns
+function toUUID(str) {
+  if (!str) return null;
+  
+  // If already looks like a UUID, return it
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+    return str;
+  }
+  
+  // Hash the string to create a consistent UUID
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  
+  // Create UUID v4 format from hash
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  const hex2 = Math.abs(hash >> 8).toString(16).padStart(4, '0');
+  const hex3 = Math.abs(hash >> 16).toString(16).padStart(4, '0');
+  const hex4 = Math.abs(hash >> 24).toString(16).padStart(4, '0');
+  const hex5 = str.slice(-12).padStart(12, '0').substring(0, 12);
+  
+  return `${hex}-${hex2}-4${hex3.substring(1)}-a${hex4.substring(1)}-${hex5}`;
+}
+
 // ── CRUD operations for user addresses ──
 
 export async function getAddresses(userId) {
+  const uuid = toUUID(userId);
   const { data, error } = await supabase
     .from('addresses')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', uuid)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: false });
   return { data: data || [], error };
@@ -15,11 +44,13 @@ export async function getAddresses(userId) {
 export async function createAddress(userId, address) {
   console.log('Creating address for user:', userId, 'with data:', address);
   
-  // Validate userId - ensure it's a proper format
+  // Validate userId
   if (!userId || typeof userId !== 'string') {
     console.error('Invalid userId:', userId);
-    return { data: null, error: { message: 'Invalid user ID. Please sign in again.' } };
+    return { data: null, error: { message: 'Please sign in to save addresses.' } };
   }
+  
+  const uuid = toUUID(userId);
   
   try {
     // If this is the first address or marked default, unset other defaults
@@ -27,27 +58,18 @@ export async function createAddress(userId, address) {
       await supabase
         .from('addresses')
         .update({ is_default: false })
-        .eq('user_id', userId);
+        .eq('user_id', uuid);
     }
     
     const { data, error } = await supabase
       .from('addresses')
-      .insert({ ...address, user_id: userId })
+      .insert({ ...address, user_id: uuid })
       .select()
       .single();
       
     if (error) {
       console.error('Supabase error creating address:', error);
-      // Check if it's a UUID format error
-      if (error.message?.includes('uuid') || error.message?.includes('invalid input syntax')) {
-        return { 
-          data: null, 
-          error: { 
-            message: 'Authentication error. Please logout and sign in again.' 
-          } 
-        };
-      }
-      return { data: null, error };
+      return { data: null, error: { message: 'Failed to save address. Please try again.' } };
     }
     
     console.log('Create address result:', { data, error });
@@ -58,20 +80,14 @@ export async function createAddress(userId, address) {
   }
 }
 
-export async function updateAddress(addressId, updates) {
+export async function updateAddress(userId, addressId, updates) {
+  const uuid = toUUID(userId);
   // If setting as default, unset others first
   if (updates.is_default) {
-    const { data: existing } = await supabase
+    await supabase
       .from('addresses')
-      .select('user_id')
-      .eq('id', addressId)
-      .single();
-    if (existing) {
-      await supabase
-        .from('addresses')
-        .update({ is_default: false })
-        .eq('user_id', existing.user_id);
-    }
+      .update({ is_default: false })
+      .eq('user_id', uuid);
   }
   const { data, error } = await supabase
     .from('addresses')
@@ -91,11 +107,12 @@ export async function deleteAddress(addressId) {
 }
 
 export async function setDefaultAddress(userId, addressId) {
+  const uuid = toUUID(userId);
   // Unset all defaults for this user
   await supabase
     .from('addresses')
     .update({ is_default: false })
-    .eq('user_id', userId);
+    .eq('user_id', uuid);
   // Set the selected one
   const { data, error } = await supabase
     .from('addresses')

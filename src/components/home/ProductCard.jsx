@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, ShoppingBag, Star } from 'lucide-react';
+import { Heart, ShoppingBag, Star, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
 import { CURRENCY } from '../../lib/constants';
-import { PLACEHOLDER_IMG } from '../../lib/products';
+import LazyImage from '../ui/LazyImage';
 
 export default function ProductCard({ product, index = 0 }) {
   const [hovered, setHovered] = useState(false);
-  const { addToCart, toggleWishlist, isWishlisted, openCartDrawer } = useStore();
+  const [showError, setShowError] = useState(false);
+  const { addToCart, toggleWishlist, isWishlisted, openCartDrawer, cartError, clearCartError } = useStore();
   const wishlisted = isWishlisted(product.id);
   const navigate = useNavigate();
 
@@ -16,10 +17,21 @@ export default function ProductCard({ product, index = 0 }) {
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  // Check stock status
+  const stockCount = product.stockCount ?? product.stock_count ?? 0;
+  const isInStock = product.inStock ?? stockCount > 0;
+  const isLowStock = isInStock && stockCount <= 3;
+
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    addToCart(product);
-    openCartDrawer();
+    clearCartError();
+    const result = addToCart(product);
+    if (result.success) {
+      openCartDrawer();
+    } else {
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+    }
   };
 
   const handleWishlist = (e) => {
@@ -38,15 +50,14 @@ export default function ProductCard({ product, index = 0 }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Image Container - Clean, no extra padding */}
-      <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
-        <img
-          src={product.image || PLACEHOLDER_IMG}
+      {/* Image Container - Uses LazyImage for optimization */}
+      <div className="relative">
+        <LazyImage
+          src={product.image}
           alt={product.name}
-          loading="lazy"
-          className={`w-full h-full object-cover transition-transform duration-500 ${
-            hovered ? 'scale-105' : 'scale-100'
-          }`}
+          aspectRatio="3/4"
+          className={hovered ? 'scale-105' : 'scale-100'}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
         />
 
         {/* Wishlist Button */}
@@ -60,7 +71,15 @@ export default function ProductCard({ product, index = 0 }) {
         </button>
 
         {/* Badge - Positioned bottom left */}
-        {discount > 20 && (
+        {!isInStock ? (
+          <div className="absolute bottom-2 left-2 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-sm z-10 uppercase tracking-wide">
+            SOLD OUT
+          </div>
+        ) : isLowStock ? (
+          <div className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm z-10">
+            Only {stockCount} left
+          </div>
+        ) : discount > 20 && (
           <div className="absolute bottom-2 left-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-sm z-10">
             {discount}% OFF
           </div>
@@ -98,14 +117,31 @@ export default function ProductCard({ product, index = 0 }) {
           )}
         </div>
 
+        {/* Error Message */}
+        {showError && cartError && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-2 p-2 bg-red-50 border border-red-100 rounded-sm flex items-start gap-1.5"
+          >
+            <AlertCircle size={12} className="text-red-500 shrink-0 mt-0.5" />
+            <span className="text-[10px] text-red-600 leading-tight">{cartError}</span>
+          </motion.div>
+        )}
+
         {/* Flipkart Style Buttons — Bottom of card */}
         <div className="mt-auto grid grid-cols-1 gap-2">
           <button
             onClick={handleAddToCart}
-            className="w-full bg-purple-primary text-white py-2 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-wider shadow-sm hover:bg-purple-secondary transition-colors flex items-center justify-center gap-2"
+            disabled={!isInStock}
+            className={`w-full py-2 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-wider shadow-sm transition-colors flex items-center justify-center gap-2 ${
+              isInStock
+                ? 'bg-purple-primary text-white hover:bg-purple-secondary'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
           >
             <ShoppingBag size={14} />
-            Add to Cart
+            {isInStock ? 'Add to Cart' : 'Sold Out'}
           </button>
         </div>
       </div>

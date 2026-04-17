@@ -8,6 +8,7 @@ import { createOrder } from '../lib/orders';
 import { markCartConverted } from '../lib/carts';
 import { CURRENCY, POLICIES } from '../lib/constants';
 import { getAddresses } from '../lib/addresses';
+import { getProductByIdAdmin } from '../lib/products';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -31,6 +32,24 @@ export default function Checkout() {
   const [isGiftWrap, setIsGiftWrap] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const GIFT_WRAP_PRICE = 50;
+  const [stockErrors, setStockErrors] = useState([]);
+
+  // Validate stock availability before payment
+  const validateCartStock = async () => {
+    const errors = [];
+    for (const item of cart) {
+      const { data: product } = await getProductByIdAdmin(item.id);
+      if (!product) {
+        errors.push({ name: item.name, message: 'Product no longer available' });
+      } else if (product.stock_count < item.quantity) {
+        errors.push({
+          name: item.name,
+          message: `Only ${product.stock_count} available (you have ${item.quantity} in cart)`
+        });
+      }
+    }
+    return errors;
+  };
 
   useEffect(() => {
     if (user?.uid) {
@@ -156,7 +175,16 @@ export default function Checkout() {
       return;
     }
 
+    // Validate stock before payment
     setLoading(true);
+    const stockValidation = await validateCartStock();
+    if (stockValidation.length > 0) {
+      setStockErrors(stockValidation);
+      setLoading(false);
+      return;
+    }
+    setStockErrors([]);
+
     if (rzpModalOpen.current) return;
     setPaymentError(null);
 
@@ -392,6 +420,29 @@ export default function Checkout() {
                 <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl">
                   <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-1">{paymentError.title}</p>
                   <p className="text-red-600 text-xs font-medium">{paymentError.message}</p>
+                </div>
+              )}
+
+              {/* Stock Validation Errors */}
+              {stockErrors.length > 0 && (
+                <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                  <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-3">
+                    <Ban size={14} className="inline mr-1" />
+                    Stock Issue - Please Update Cart
+                  </p>
+                  <ul className="space-y-2">
+                    {stockErrors.map((error, idx) => (
+                      <li key={idx} className="text-red-600 text-xs font-medium flex items-start gap-2">
+                        <span className="font-bold">{error.name}:</span> {error.message}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => navigate('/cart')}
+                    className="mt-3 text-xs font-bold text-red-600 underline hover:text-red-700"
+                  >
+                    Go to Cart →
+                  </button>
                 </div>
               )}
 

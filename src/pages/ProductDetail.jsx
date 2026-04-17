@@ -121,7 +121,7 @@ export default function ProductDetail() {
   const [flyIn, setFlyIn] = useState(false);
   const [product, setProduct] = useState(null);
   const [productLoading, setProductLoading] = useState(true);
-  const { addToCart, toggleWishlist, isWishlisted, addToRecentlyViewed } = useStore();
+  const { addToCart, toggleWishlist, isWishlisted, addToRecentlyViewed, cartError, clearCartError, openCartDrawer } = useStore();
   const scrollRef = useRef(null);
 
   // Notify Me modal state
@@ -224,19 +224,38 @@ export default function ProductDetail() {
     ? PLACEHOLDER_PRODUCTS.filter((p) => p.id !== id).slice(0, 5)
     : related;
 
+  const [cartErrorLocal, setCartErrorLocal] = useState('');
+
   const handleAddToCart = () => {
-    addToCart(product, quantity);
-    setAddedToCart(true);
-    setFlyIn(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-    setTimeout(() => setFlyIn(false), 1000);
+    clearCartError();
+    setCartErrorLocal('');
+    const result = addToCart(product, quantity);
+    if (result.success) {
+      setAddedToCart(true);
+      setFlyIn(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+      setTimeout(() => setFlyIn(false), 1000);
+      openCartDrawer();
+    } else {
+      setCartErrorLocal(result.error || cartError);
+    }
   };
 
   const handleBuyNow = () => {
     // Add to cart first, then go to checkout
-    addToCart(product, quantity);
-    navigate('/checkout');
+    clearCartError();
+    setCartErrorLocal('');
+    const result = addToCart(product, quantity);
+    if (result.success) {
+      navigate('/checkout');
+    } else {
+      setCartErrorLocal(result.error || cartError);
+    }
   };
+
+  // Check stock status
+  const isInStock = product?.inStock ?? (product?.stockCount > 0);
+  const isLowStock = isInStock && product?.stockCount <= 3;
 
   const scrollRelated = (dir) => {
     if (scrollRef.current) {
@@ -444,19 +463,36 @@ export default function ProductDetail() {
               </p>
             </div>
 
+            {/* Cart Error Message */}
+            {cartErrorLocal && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-3 rounded-xl border border-red-100"
+              >
+                <AlertCircle size={18} />
+                <p className="text-sm font-bold">{cartErrorLocal}</p>
+              </motion.div>
+            )}
+
             {/* Stock Status */}
             <div className="pt-4">
-              {product.stockCount > 0 && product.stockCount <= 5 ? (
+              {!isInStock ? (
+                <div className="flex items-center gap-3 bg-gray-100 text-gray-500 px-4 py-3 rounded-xl border border-gray-200">
+                  <Ban size={18} />
+                  <p className="text-sm font-bold">Sold Out — Notify me when available</p>
+                </div>
+              ) : isLowStock ? (
                 <div className="flex items-center gap-3 bg-red-50 text-red-600 px-4 py-3 rounded-xl border border-red-100">
                   <AlertCircle size={18} />
                   <p className="text-sm font-bold">Only {product.stockCount} left — Order fast!</p>
                 </div>
-              ) : product.stockCount > 5 ? (
+              ) : (
                 <div className="flex items-center gap-2 text-purple-primary">
                   <div className="w-2 h-2 rounded-full bg-purple-primary animate-pulse" />
                   <p className="text-sm font-bold tracking-wide uppercase">In Stock</p>
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Fabric & Care */}
@@ -467,28 +503,40 @@ export default function ProductDetail() {
             {/* Desktop Actions */}
             <div className="hidden md:flex flex-col gap-4 pt-8 border-t border-gray-100">
               <div className="flex items-center gap-4">
-                <div className="flex items-center bg-gray-50 rounded-xl border border-gray-100 p-1">
+                <div className={`flex items-center rounded-xl border p-1 ${isInStock ? 'bg-gray-50 border-gray-100' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors"
+                    disabled={!isInStock}
+                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors disabled:cursor-not-allowed"
                   >
                     <Minus size={18} />
                   </button>
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
                   <button
-                    onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
-                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors"
+                    onClick={() => setQuantity(Math.min(product.stockCount || 99, quantity + 1))}
+                    disabled={!isInStock}
+                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors disabled:cursor-not-allowed"
                   >
                     <Plus size={18} />
                   </button>
                 </div>
-                <button
-                  onClick={handleAddToCart}
-                  className="btn-primary flex-1 gap-3 h-14"
-                >
-                  <ShoppingBag size={20} />
-                  {addedToCart ? 'Added to Bag!' : 'Add to Bag'}
-                </button>
+                {isInStock ? (
+                  <button
+                    onClick={handleAddToCart}
+                    className="btn-primary flex-1 gap-3 h-14"
+                  >
+                    <ShoppingBag size={20} />
+                    {addedToCart ? 'Added to Bag!' : 'Add to Bag'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowNotifyModal(true)}
+                    className="flex-1 bg-gray-900 text-white h-14 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                  >
+                    <Bell size={20} />
+                    Notify Me
+                  </button>
+                )}
                 <button
                   onClick={() => toggleWishlist(product)}
                   className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 transition-all ${
@@ -500,12 +548,14 @@ export default function ProductDetail() {
                   <Heart size={22} fill={wishlisted ? 'currentColor' : 'none'} />
                 </button>
               </div>
-              <button
-                onClick={handleBuyNow}
-                className="btn-outline w-full h-14"
-              >
-                Buy Now
-              </button>
+              {isInStock ? (
+                <button
+                  onClick={handleBuyNow}
+                  className="btn-outline w-full h-14"
+                >
+                  Buy Now
+                </button>
+              ) : null}
             </div>
           </motion.div>
         </div>
@@ -524,13 +574,23 @@ export default function ProductDetail() {
           >
             <Heart size={20} fill={wishlisted ? 'currentColor' : 'none'} />
           </button>
-          <button
-            onClick={handleAddToCart}
-            className="flex-1 btn-primary h-12 text-sm gap-2"
-          >
-            <ShoppingBag size={18} />
-            {addedToCart ? 'Added!' : 'Add to Cart'}
-          </button>
+          {isInStock ? (
+            <button
+              onClick={handleAddToCart}
+              className="flex-1 btn-primary h-12 text-sm gap-2"
+            >
+              <ShoppingBag size={18} />
+              {addedToCart ? 'Added!' : 'Add to Cart'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowNotifyModal(true)}
+              className="flex-1 bg-gray-900 text-white h-12 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+            >
+              <Bell size={18} />
+              Notify Me
+            </button>
+          )}
         </div>
       </div>
 

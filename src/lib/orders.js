@@ -6,11 +6,62 @@ import { sendOrderStatusNotification, sendAdminOrderNotification, isWhatsAppConf
 // ── Create Order ──
 export async function createOrder(orderData) {
   try {
+    // Validate stock availability before creating order
+    const items = orderData.items || [];
+    for (const item of items) {
+      const { data: product, error: stockError } = await supabase
+        .from('products')
+        .select('stock_count, name')
+        .eq('id', item.id)
+        .single();
+
+      if (stockError || !product) {
+        return { data: null, error: { message: `Product ${item.name} not found` } };
+      }
+
+      if (product.stock_count < item.quantity) {
+        return {
+          data: null,
+          error: {
+            message: `Insufficient stock for "${item.name}". Available: ${product.stock_count}, Requested: ${item.quantity}`
+          }
+        };
+      }
+    }
+
+    // All stock validated - proceed with order creation
     const { data, error } = await supabase
       .from('orders')
       .insert([orderData])
       .select()
       .single();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    // Deduct inventory for each item
+    for (const item of items) {
+      // Get current stock and calculate new value
+      const { data: currentProduct } = await supabase
+        .from('products')
+        .select('stock_count')
+        .eq('id', item.id)
+        .single();
+
+      if (currentProduct) {
+        const newStockCount = Math.max(0, currentProduct.stock_count - item.quantity);
+        const { error: deductError } = await supabase
+          .from('products')
+          .update({ stock_count: newStockCount })
+          .eq('id', item.id);
+
+        if (deductError) {
+          console.error(`Failed to deduct stock for product ${item.id}:`, deductError);
+          // Log but don't fail - order is already created
+        }
+      }
+    }
 
     // Check if this is user's first order and process referral reward
     if (data && orderData.user_id) {

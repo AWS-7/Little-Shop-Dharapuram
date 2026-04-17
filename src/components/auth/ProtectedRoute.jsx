@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
-import { ADMIN_EMAIL } from '../../lib/constants';
+import { isAuthenticated } from '../../lib/firebaseAuth';
+import { isAdminAuthenticated, getSessionTimeRemaining } from '../../lib/adminAuth';
 
 // Loading spinner component
 const LoadingSpinner = () => (
@@ -26,19 +26,26 @@ export function ClientProtectedRoute({ children }) {
 }
 
 // Protected route for admin only
+// Uses completely separate admin auth system (NOT Google)
 export function AdminProtectedRoute({ children }) {
   const location = useLocation();
-  const authenticated = isAuthenticated();
-  const admin = isAdmin(ADMIN_EMAIL);
+  const adminAuthenticated = isAdminAuthenticated();
+  
+  // Check for session expiration message
+  const isExpired = location.search.includes('expired=true');
 
-  if (!authenticated) {
-    // Not logged in - redirect to login
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!adminAuthenticated) {
+    // Not logged in as admin - redirect to admin login
+    // Never redirect to customer login for admin routes
+    return <Navigate to="/admin/login" state={{ from: location, expired: isExpired }} replace />;
   }
 
-  if (!admin) {
-    // Logged in but not admin - redirect to shop
-    return <Navigate to="/shop" replace />;
+  // Admin is authenticated - check session time
+  const timeRemaining = getSessionTimeRemaining();
+  
+  if (timeRemaining <= 0) {
+    // Session expired - force logout and redirect
+    return <Navigate to="/admin/login?expired=true" replace />;
   }
 
   return children;
@@ -47,14 +54,24 @@ export function AdminProtectedRoute({ children }) {
 // Protected route that redirects authenticated users away
 // (useful for login page - redirect to dashboard if already logged in)
 export function PublicOnlyRoute({ children }) {
+  const location = useLocation();
   const authenticated = isAuthenticated();
-  const admin = isAdmin(ADMIN_EMAIL);
+  const adminAuthenticated = isAdminAuthenticated();
+  
+  // Check if this is the admin login page
+  const isAdminLogin = location.pathname === '/admin/login';
 
-  if (authenticated) {
-    // Already logged in - redirect to appropriate dashboard
-    if (admin) {
+  if (isAdminLogin) {
+    // For admin login page - only check admin auth
+    if (adminAuthenticated) {
       return <Navigate to="/admin/dashboard" replace />;
     }
+    // Allow access to admin login if not authenticated as admin
+    return children;
+  }
+
+  // For customer login pages
+  if (authenticated) {
     return <Navigate to="/account" replace />;
   }
 
