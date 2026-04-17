@@ -4,28 +4,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        cream: '#fdfbf7',
-        'rose-gold': '#b76e79',
-        // Luxury Purple Theme
+        // Professional Purple & White Theme
         purple: {
-          primary: '#6a1b9a',      // Deep Purple - buttons, accents
-          secondary: '#4a148c',    // Darker Purple - headers
-          light: '#f3e5f5',        // Lavender - backgrounds
-          lighter: '#e1bee7',      // Soft Purple - borders, badges
-          dark: '#38006b',         // Very Dark Purple - text
+          primary: '#6A0DAD',      // Deep Purple - Primary Brand Color
+          secondary: '#7B2CBF',    // Slightly Lighter Purple
+          accent: '#E0AAFF',       // Soft Lavender for highlights
+          light: '#F8F4FF',        // Very Light Purple for backgrounds
+          dark: '#3C096C',         // Deepest Purple for text contrast
         },
-        // Keep emerald for backward compatibility during transition
-        emerald: {
-          primary: '#6a1b9a', // Map to purple
+        white: {
+          DEFAULT: '#FFFFFF',
+          soft: '#F8F9FA',
+        },
+        gray: {
+          50: '#F9FAFB',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          300: '#D1D5DB',
+          400: '#9CA3AF',
+          500: '#6B7280',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
         },
       },
       fontFamily: {
-        playfair: ['"Playfair Display"', 'serif'],
         inter: ['"Inter"', 'sans-serif'],
-        lato: ['"Lato"', 'sans-serif'],
       },
       maxWidth: {
-        luxury: '1440px',
+        site: '1280px',
       },
     },
   },
