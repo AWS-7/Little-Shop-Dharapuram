@@ -5,30 +5,36 @@ import { CATEGORIES } from '../../lib/constants';
 
 export default function CategoryShowcase() {
   return (
-    <section className="py-12 md:py-20 bg-gray-50">
+    <section className="py-12 md:py-20 bg-white">
       <div className="container-clean">
-        <div className="bg-white p-6 md:p-8 shadow-sm border border-gray-100 rounded-sm">
+        <div className="flex flex-col gap-10">
           {/* Section Header */}
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-            <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">
-              Top Categories
-            </h2>
-            <Link to="/shop" className="text-purple-primary font-black text-xs uppercase tracking-widest hover:underline">
-              View All
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-l-4 border-purple-primary pl-6">
+            <div>
+              <h2 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight uppercase">
+                Top Categories
+              </h2>
+              <p className="text-gray-500 font-medium mt-2 text-sm md:text-base">
+                Explore our handpicked premium collections
+              </p>
+            </div>
+            <Link to="/shop" className="group flex items-center gap-2 text-purple-primary font-black text-xs uppercase tracking-[0.2em] hover:text-purple-dark transition-colors">
+              Explore All <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
-          {/* Categories Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-            {CATEGORIES.map((cat, idx) => (
+          {/* Categories Grid — Premium Layout */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+            {CATEGORIES.slice(0, 8).map((cat, idx) => (
               <motion.div
                 key={cat.name}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: idx * 0.05 }}
+                transition={{ delay: idx * 0.1, duration: 0.5 }}
+                className={idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}
               >
-                <CategoryCard cat={cat} />
+                <CategoryCard cat={cat} isLarge={idx === 0} />
               </motion.div>
             ))}
           </div>
@@ -38,22 +44,34 @@ export default function CategoryShowcase() {
   );
 }
 
-function CategoryCard({ cat }) {
+function CategoryCard({ cat, isLarge }) {
   return (
     <Link
       to={`/shop?category=${encodeURIComponent(cat.name)}`}
-      className="group flex flex-col items-center gap-3 text-center"
+      className="group relative block aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
     >
-      <div className="relative w-24 h-24 md:w-32 md:h-32 overflow-hidden rounded-full bg-gray-50 border border-gray-100 group-hover:shadow-md transition-all duration-300">
-        <img
-          src={cat.image}
-          alt={cat.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+      <img
+        src={cat.image}
+        alt={cat.name}
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+      />
+      {/* Overlay Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-500" />
+      
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+        <h3 className={`text-white font-black uppercase tracking-widest leading-tight ${isLarge ? 'text-2xl md:text-4xl mb-2' : 'text-sm md:text-lg mb-1'}`}>
+          {cat.name}
+        </h3>
+        {isLarge && (
+          <p className="text-white/70 text-xs md:text-sm font-medium mb-4 line-clamp-2 max-w-xs">
+            Discover the latest trends and timeless classics in our {cat.name} collection.
+          </p>
+        )}
+        <div className={`flex items-center gap-2 text-white/90 font-black uppercase tracking-[0.15em] transition-all duration-300 transform ${isLarge ? 'text-xs md:text-sm opacity-100 translate-y-0' : 'text-[10px] opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}>
+          Shop Now <ArrowRight size={isLarge ? 16 : 12} />
+        </div>
       </div>
-      <h3 className="text-xs md:text-sm font-black text-gray-900 uppercase tracking-wide group-hover:text-purple-primary transition-colors">
-        {cat.name}
-      </h3>
     </Link>
   );
 }

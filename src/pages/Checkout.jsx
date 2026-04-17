@@ -246,10 +246,11 @@ export default function Checkout() {
           </div>
         </div>
 
-        <form onSubmit={handlePayment} className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {currentStep === 'address' ? (
+        <form onSubmit={handlePayment}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-8">
+              {currentStep === 'address' ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-sm">
                 <div className="flex items-center justify-between mb-10 pb-4 border-b border-gray-50">
                   <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Delivery Details</h2>
@@ -347,7 +348,23 @@ export default function Checkout() {
             <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-xl shadow-purple-primary/5 sticky top-40">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-8 pb-4 border-b border-gray-50">Order Summary</h2>
               
-              <div className="space-y-6 mb-8">
+              {/* Item Details with Images */}
+              <div className="space-y-4 mb-8 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex gap-4 items-center">
+                    <div className="w-16 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-black text-gray-900 truncate">{item.name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Qty: {item.quantity}</p>
+                      <p className="text-xs font-black text-purple-primary mt-1">{CURRENCY}{item.price.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-6 mb-8 border-t border-gray-50 pt-6">
                 <div className="flex justify-between text-sm">
                   <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Items Total</span>
                   <span className="font-black text-gray-900">{CURRENCY}{subtotal.toLocaleString()}</span>
@@ -381,9 +398,9 @@ export default function Checkout() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                className="w-full bg-purple-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-3"
               >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : 'Complete Purchase'}
+                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : `PAY ${CURRENCY}${total.toLocaleString()}`}
               </button>
               
               <div className="mt-8 pt-8 border-t border-gray-50 space-y-4">
@@ -398,28 +415,28 @@ export default function Checkout() {
               </div>
             </div>
           </div>
-        </form>
-      </div>
 
-      {/* Mobile Sticky Pay Button */}
-      <div className="fixed bottom-[80px] left-0 right-0 z-40 lg:hidden px-4">
-        <div className="bg-white rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="font-black text-[10px] tracking-widest uppercase text-gray-400">Total to Pay</p>
-              <p className="font-bold text-xs text-gray-500">{cart.length} item{cart.length !== 1 ? 's' : ''} · Secured</p>
+          {/* Mobile Sticky Pay Button */}
+          <div className="fixed bottom-[80px] left-0 right-0 z-40 lg:hidden px-4">
+            <div className="bg-white rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-black text-[10px] tracking-widest uppercase text-gray-400">Total to Pay</p>
+                  <p className="font-bold text-xs text-gray-500">{cart.length} item{cart.length !== 1 ? 's' : ''} · Secured</p>
+                </div>
+                <span className="text-xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-black text-sm uppercase tracking-widest py-4 rounded-full hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20"
+              >
+                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : `PAY ${CURRENCY}${total.toLocaleString()}`}
+              </button>
             </div>
-            <span className="text-xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-black text-sm uppercase tracking-widest py-4 rounded-full hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20"
-          >
-            {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : `PAY ${CURRENCY}${total.toLocaleString()}`}
-          </button>
-        </div>
+        </form>
       </div>
 
       {/* Payment Error Toast */}

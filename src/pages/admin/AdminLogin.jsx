@@ -94,7 +94,7 @@ export default function AdminLogin() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="w-full border border-gray-200 pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-purple-primary transition-colors"
-                    placeholder="admin@littleshop.in"
+                    placeholder="littleshopboutiqueaws@gmail.com"
                     required
                   />
                 </div>

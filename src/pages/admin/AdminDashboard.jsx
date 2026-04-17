@@ -17,7 +17,7 @@ import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/or
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
 import { PRODUCT_CATEGORIES, FIELD_LABELS, uploadProductImage, createProduct, getAllProducts, updateProduct, deleteProduct, resolveImageUrl } from '../../lib/products';
 import { getAggregatedRestockRequests, markRequestsAsNotified } from '../../lib/restock';
-import { startOrderNotifications, stopOrderNotifications, notifyNewOrder } from '../../lib/notifications';
+import { startOrderNotifications, stopOrderNotifications, notifyNewOrder, requestNotificationPermission } from '../../lib/notifications';
 import {
   getActiveFlashSale,
   getAllFlashSales,
@@ -389,6 +389,11 @@ export default function AdminDashboard() {
 
   // Start order push notifications for admin
   useEffect(() => {
+    // Request permission on mount
+    requestNotificationPermission().then(granted => {
+      if (granted) console.log('Notification permission granted');
+    });
+
     const notifSubscription = startOrderNotifications(
       async (newOrder) => {
         console.log('New order notification:', newOrder);

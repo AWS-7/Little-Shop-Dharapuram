@@ -5,7 +5,7 @@ import {
   ArrowLeft, Package, Truck, CheckCircle, Clock, MapPin, CreditCard,
   User, Phone, PackageCheck, Check, ChevronDown,
 } from 'lucide-react';
-import { getOrderById, updateOrderStatus, subscribeToOrder } from '../../lib/orders';
+import { getOrderById, updateOrderStatus, updateOrderTrackingId, subscribeToOrder } from '../../lib/orders';
 import { CURRENCY, ORDER_STATUSES } from '../../lib/constants';
 
 const statusSteps = [
@@ -32,6 +32,7 @@ export default function AdminOrderDetail() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [trackingId, setTrackingId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -39,7 +40,10 @@ export default function AdminOrderDetail() {
     const fetchOrder = async () => {
       const { data, error: err } = await getOrderById(id);
       if (err) setError('Order not found');
-      else setOrder(data);
+      else {
+        setOrder(data);
+        setTrackingId(data.courier_tracking_id || '');
+      }
       setLoading(false);
     };
     fetchOrder();
@@ -57,6 +61,16 @@ export default function AdminOrderDetail() {
     setUpdating(true);
     const { data, error: err } = await updateOrderStatus(id, newStatus);
     if (!err && data) setOrder(data);
+    setUpdating(false);
+  };
+
+  const handleTrackingUpdate = async () => {
+    setUpdating(true);
+    const { data, error: err } = await updateOrderTrackingId(id, trackingId);
+    if (!err && data) {
+      setOrder(data);
+      alert('Tracking ID updated successfully!');
+    }
     setUpdating(false);
   };
 
@@ -267,12 +281,34 @@ export default function AdminOrderDetail() {
               <h3 className="font-playfair text-lg text-purple-primary mb-4 flex items-center gap-2">
                 <MapPin size={16} className="text-rose-gold" /> Shipping Address
               </h3>
-              <div className="font-inter text-sm text-gray-700 leading-relaxed">
+              <div className="font-inter text-sm text-gray-700 leading-relaxed mb-6">
                 {customer.name && <p className="font-medium">{customer.name}</p>}
                 {customer.address && <p>{customer.address}</p>}
                 {(customer.city || customer.state || customer.pincode) && (
                   <p>{[customer.city, customer.state, customer.pincode].filter(Boolean).join(', ')}</p>
                 )}
+              </div>
+
+              {/* Courier Tracking ID Input */}
+              <div className="pt-6 border-t border-gray-100">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Courier Tracking ID</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={trackingId}
+                    onChange={(e) => setTrackingId(e.target.value)}
+                    placeholder="Enter Tracking ID"
+                    className="flex-1 bg-gray-50 border border-gray-100 rounded-sm px-4 py-2 text-xs font-medium outline-none focus:border-purple-primary transition-all"
+                  />
+                  <button
+                    onClick={handleTrackingUpdate}
+                    disabled={updating}
+                    className="bg-purple-primary text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-purple-secondary transition-all disabled:opacity-50"
+                  >
+                    Update
+                  </button>
+                </div>
+                <p className="text-[9px] text-gray-400 mt-2 italic">Update this to notify the customer about their courier tracking ID.</p>
               </div>
             </div>
           </div>

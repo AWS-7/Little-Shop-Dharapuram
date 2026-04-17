@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { completeReferral, checkUserReferralStatus } from './referrals';
 import { createReferralRewardCoupon } from './coupons';
-import { sendOrderStatusNotification, isWhatsAppConfigured } from './whatsapp';
+import { sendOrderStatusNotification, sendAdminOrderNotification, isWhatsAppConfigured } from './whatsapp';
 
 // ── Create Order ──
 export async function createOrder(orderData) {
@@ -18,9 +18,17 @@ export async function createOrder(orderData) {
     }
 
     // Send WhatsApp notification for new orders
-    if (data && (data.status === 'paid' || data.status === 'pending') && data.customer?.phone) {
-      sendWhatsAppNotification(data, data.status).catch(err => {
-        console.error('WhatsApp notification failed (non-blocking):', err);
+    if (data && (data.status === 'paid' || data.status === 'pending')) {
+      // 1. Notify Customer
+      if (data.customer?.phone) {
+        sendWhatsAppNotification(data, data.status).catch(err => {
+          console.error('WhatsApp notification failed (non-blocking):', err);
+        });
+      }
+
+      // 2. Notify Admin
+      sendAdminOrderNotification(data).catch(err => {
+        console.error('Admin WhatsApp notification failed:', err);
       });
     }
 
@@ -173,6 +181,22 @@ export async function updateOrderStatus(orderId, status) {
     return { data: data[0], error: null };
   } catch (e) {
     console.error('Order status update exception:', e);
+    return { data: null, error: e };
+  }
+}
+
+// ── Update order tracking ID (admin) ──
+export async function updateOrderTrackingId(orderId, trackingId) {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ courier_tracking_id: trackingId })
+      .eq('order_id', orderId)
+      .select();
+    
+    if (error) throw error;
+    return { data: data?.[0], error: null };
+  } catch (e) {
     return { data: null, error: e };
   }
 }

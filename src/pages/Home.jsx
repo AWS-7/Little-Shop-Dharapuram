@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <div className="pt-24 md:pt-32 lg:pt-40 bg-gray-50">
       <HeroLookbook />
-      <FeaturedGrid />
       <CategoryShowcase />
+      <FeaturedGrid />
       <FlashSaleBanner />
       <PolicyBanner />
       <NewsletterSection />

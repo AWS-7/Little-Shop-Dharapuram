@@ -3,7 +3,7 @@ export const SHIPPING_COST = 100;
 export const CURRENCY = '₹';
 
 // Admin email for role-based access
-export const ADMIN_EMAIL = 'admin@littleshop.in'; // Update this to your real admin email
+export const ADMIN_EMAIL = 'littleshopboutiqueaws@gmail.com'; // Updated to match user's email
 
 export const BRAND = {
   name: 'Little Shop',

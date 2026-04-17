@@ -95,6 +95,30 @@ export async function sendDeliveryNotification(order) {
   return sendOrderStatusNotification(order, 'delivered');
 }
 
+/**
+ * Send notification to ADMIN about new order
+ * @param {Object} order - Order object
+ */
+export async function sendAdminOrderNotification(order) {
+  try {
+    const adminPhone = import.meta.env.VITE_ADMIN_PHONE; // Admin's WhatsApp number
+    if (!adminPhone) return { success: false, error: 'Admin phone not configured' };
+
+    const phone = formatPhoneNumber(adminPhone);
+    const message = `🔔 *New Order Received!* \n\nOrder ID: ${order.order_id}\nCustomer: ${order.customer?.name}\nAmount: ₹${order.total}\n\nClick here to view: ${window.location.origin}/admin/dashboard`;
+
+    let result;
+    if (WHATSAPP_PROVIDER === 'interakt') {
+      result = await sendViaInterakt(phone, message, order);
+    } else {
+      result = await sendViaTwilio(phone, message, order);
+    }
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // Message Builders
 // ═══════════════════════════════════════════════════════════

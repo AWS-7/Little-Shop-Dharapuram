@@ -91,36 +91,55 @@ export default function OrderSuccess() {
   const total = order.total || subtotal + shipping;
 
   return (
-    <div className="container-luxury section-spacing">
+    <div className="container-luxury section-spacing min-h-screen">
       {/* Hero Success */}
       <div className="text-center mb-12">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 12 }}
-          className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-purple-primary/10 mb-6"
-        >
-          <CheckCircle size={40} className="text-purple-primary" strokeWidth={1.5} />
-        </motion.div>
+        <div className="relative inline-block mb-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', damping: 12, duration: 0.5 }}
+            className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/30 relative z-10"
+          >
+            <motion.div
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.8, ease: "easeOut" }}
+            >
+              <svg className="w-12 h-12 md:w-16 md:h-16 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </motion.div>
+          </motion.div>
+          
+          {/* Pulsing rings */}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0.5 }}
+            animate={{ scale: 1.5, opacity: 0 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+            className="absolute inset-0 rounded-full bg-green-500 -z-0"
+          />
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0.3 }}
+            animate={{ scale: 2, opacity: 0 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut", delay: 0.5 }}
+            className="absolute inset-0 rounded-full bg-green-500 -z-0"
+          />
+        </div>
 
-        <motion.h1
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="font-playfair text-3xl md:text-5xl text-purple-primary mb-3"
+          transition={{ delay: 0.8 }}
         >
-          Order Confirmed!
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="font-inter text-sm text-gray-500 max-w-lg mx-auto"
-        >
-          Thank you for shopping with Little Shop. Your order has been placed successfully
-          and you'll receive a confirmation email shortly.
-        </motion.p>
+          <h1 className="font-playfair text-3xl md:text-5xl text-purple-primary mb-3">
+            Order Confirmed!
+          </h1>
+          <p className="font-inter text-sm text-gray-500 max-w-lg mx-auto">
+            Vetti Vedikkanum! Your order has been placed successfully. 
+            We're preparing your luxury items with love.
+          </p>
+        </motion.div>
       </div>
 
       {/* ═══ Digital Receipt ═══ */}

@@ -19,6 +19,7 @@ import Account from './pages/Account';
 import MyOrders from './pages/MyOrders';
 
 // Admin Pages
+import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 
@@ -100,7 +101,15 @@ function AnimatedRoutes() {
         {/* ADMIN ROUTES — Protected, standalone layout */}
         <Route 
           path="/admin" 
-          element={<Navigate to="/login" replace />} 
+          element={<Navigate to="/admin/dashboard" replace />} 
+        />
+        <Route 
+          path="/admin/login" 
+          element={
+            <PublicOnlyRoute>
+              <AdminLogin />
+            </PublicOnlyRoute>
+          } 
         />
         <Route 
           path="/admin/dashboard" 

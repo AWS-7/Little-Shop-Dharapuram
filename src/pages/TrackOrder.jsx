@@ -45,6 +45,7 @@ export default function TrackOrder() {
     setResult({
       orderId: data.order_id,
       status: data.status,
+      courierTrackingId: data.courier_tracking_id,
       date: new Date(data.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
       estimatedDelivery: data.status !== 'Delivered' ? 'Estimated 3-5 business days' : null,
       items: data.items || [],
@@ -159,6 +160,28 @@ export default function TrackOrder() {
                   </div>
                 )}
               </div>
+
+              {/* Courier Tracking ID Display */}
+              {result.courierTrackingId && (
+                <div className="mt-6 p-4 bg-purple-light border border-purple-100 rounded-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Truck className="text-purple-primary" size={20} />
+                    <div>
+                      <p className="font-inter text-[10px] tracking-widest uppercase text-purple-primary/60 font-bold">Courier Tracking ID</p>
+                      <p className="font-inter text-sm font-black text-purple-primary tracking-widest uppercase">{result.courierTrackingId}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(result.courierTrackingId);
+                      alert('Tracking ID copied!');
+                    }}
+                    className="text-purple-primary hover:text-purple-dark transition-colors"
+                  >
+                    <Check size={16} />
+                  </button>
+                </div>
+              )}
 
               {/* Items */}
               <div className="pt-5 space-y-3">

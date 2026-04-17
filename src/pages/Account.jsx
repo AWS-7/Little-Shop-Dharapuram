@@ -106,6 +106,7 @@ function ProfileView({ user, onSignOut }) {
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Referral state
   const [referralCode, setReferralCode] = useState(null);
@@ -150,20 +151,29 @@ function ProfileView({ user, onSignOut }) {
 
   const handleSave = async (formData) => {
     setSaving(true);
-    if (showForm === 'add') {
-      const { data, error } = await createAddress(user.uid, formData);
-      if (!error && data) {
-        setAddresses(prev => data.is_default ? prev.map(a => ({ ...a, is_default: false })).concat(data) : [...prev, data]);
-        setShowForm(false);
+    setError('');
+    try {
+      if (showForm === 'add') {
+        const { data, error } = await createAddress(user.uid, formData);
+        if (error) throw error;
+        if (data) {
+          setAddresses(prev => data.is_default ? prev.map(a => ({ ...a, is_default: false })).concat(data) : [...prev, data]);
+          setShowForm(false);
+        }
+      } else {
+        const { data, error } = await updateAddress(showForm, formData);
+        if (error) throw error;
+        if (data) {
+          setAddresses(prev => prev.map(a => a.id === data.id ? data : (data.is_default ? { ...a, is_default: false } : a)));
+          setShowForm(false);
+        }
       }
-    } else {
-      const { data, error } = await updateAddress(showForm, formData);
-      if (!error && data) {
-        setAddresses(prev => prev.map(a => a.id === data.id ? data : (data.is_default ? { ...a, is_default: false } : a)));
-        setShowForm(false);
-      }
+    } catch (err) {
+      console.error('Error saving address:', err);
+      setError(err.message || 'Failed to save address. Please check your connection.');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleDelete = async (id) => {
@@ -218,6 +228,13 @@ function ProfileView({ user, onSignOut }) {
                 </div>
                 <ChevronRight size={16} className="text-gray-300" />
               </Link>
+              <Link to="/track-order" className="flex items-center justify-between p-4 rounded-2xl hover:bg-purple-light transition-colors group">
+                <div className="flex items-center gap-3">
+                  <MapPin size={18} className="text-gray-400 group-hover:text-purple-primary" />
+                  <span className="text-sm font-black text-gray-700">Track Order</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-300" />
+              </Link>
               <button onClick={onSignOut} className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-red-50 transition-colors group">
                 <div className="flex items-center gap-3">
                   <LogOut size={18} className="text-gray-400 group-hover:text-red-500" />
@@ -262,6 +279,11 @@ function ProfileView({ user, onSignOut }) {
 
         {/* Right: Addresses */}
         <div className="lg:col-span-2 space-y-8">
+          {error && (
+            <div className="bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-sm font-bold animate-shake">
+              {error}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Saved Addresses</h2>
             {!showForm && (
