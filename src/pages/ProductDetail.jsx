@@ -249,38 +249,38 @@ export default function ProductDetail() {
 
   return (
     <>
-      <div className="container-luxury pt-20 md:pt-8 pb-32 md:pb-24 section-spacing">
+      <div className="container-clean pt-24 md:pt-12 pb-32 md:pb-24">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-xs font-inter text-gray-400 mb-8">
+        <nav className="flex items-center gap-2 text-xs font-inter text-gray-400 mb-8 px-1">
           <Link to="/" className="hover:text-purple-primary transition-colors">Home</Link>
           <ChevronRight size={12} />
           <Link to="/shop" className="hover:text-purple-primary transition-colors">Shop</Link>
           <ChevronRight size={12} />
           <Link to={`/shop?category=${product.category}`} className="hover:text-purple-primary transition-colors">{product.category}</Link>
           <ChevronRight size={12} />
-          <span className="text-gray-700 truncate max-w-[140px]">{product.name}</span>
+          <span className="text-gray-900 font-medium truncate max-w-[100px] sm:max-w-none">{product.name}</span>
         </nav>
 
         {/* ═══ Main 2-Column Layout ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 lg:gap-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-20">
 
           {/* ── LEFT: Image Gallery ── */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col-reverse md:flex-row gap-3 md:gap-4 items-center"
+            className="flex flex-col-reverse md:flex-row gap-4 items-center"
           >
             {/* Thumbnail Strip */}
-            <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-y-auto md:max-h-[600px] pb-1 md:pb-0 md:pr-1 scrollbar-hide items-center md:items-start justify-center md:justify-start">
+            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:max-h-[600px] pb-2 md:pb-0 scrollbar-hide items-center md:items-start w-full md:w-auto">
               {gallery.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`flex-shrink-0 w-16 h-20 md:w-[72px] md:h-[90px] overflow-hidden rounded-sm transition-all duration-300 ${
+                  className={`flex-shrink-0 w-16 h-20 md:w-20 md:h-24 overflow-hidden rounded-xl transition-all duration-300 border-2 ${
                     activeImage === idx
-                      ? 'ring-2 ring-rose-gold ring-offset-2 opacity-100'
-                      : 'opacity-50 hover:opacity-80'
+                      ? 'border-purple-primary shadow-md opacity-100'
+                      : 'border-transparent opacity-60 hover:opacity-100'
                   }`}
                 >
                   <img src={img} alt={`${product.name} view ${idx + 1}`} onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }} className="w-full h-full object-cover" />
@@ -289,14 +289,14 @@ export default function ProductDetail() {
             </div>
 
             {/* Main Image with Zoom */}
-            <div className="relative flex-1 aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm">
+            <div className="relative flex-1 w-full aspect-[3/4] overflow-hidden bg-gray-50 rounded-2xl shadow-sm">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeImage}
-                  initial={{ opacity: 0, scale: 1.03 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.35 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
                   className="w-full h-full"
                 >
                   <ImageMagnifier src={gallery[activeImage]} alt={product.name} zoom={2.5} />
@@ -308,28 +308,28 @@ export default function ProductDetail() {
                 <>
                   <button
                     onClick={() => setActiveImage((prev) => (prev - 1 + gallery.length) % gallery.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center text-gray-600 hover:text-purple-primary transition-colors"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center text-gray-900 hover:text-purple-primary transition-all"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={20} />
                   </button>
                   <button
                     onClick={() => setActiveImage((prev) => (prev + 1) % gallery.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center text-gray-600 hover:text-purple-primary transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center text-gray-900 hover:text-purple-primary transition-all"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={20} />
                   </button>
                 </>
               )}
 
               {/* Badge */}
               {product.badge && (
-                <span className={`absolute top-4 left-4 z-10 ${product.badge === 'Sale' ? 'bg-rose-gold' : 'bg-purple-primary'} text-white text-[10px] font-inter font-semibold tracking-widest uppercase px-3 py-1`}>
+                <span className={`absolute top-6 left-6 z-10 ${product.badge === 'Sale' ? 'bg-red-500' : 'bg-purple-primary'} text-white text-[10px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-lg shadow-lg`}>
                   {product.badge}
                 </span>
               )}
 
               {/* Image Counter */}
-              <span className="absolute bottom-4 right-4 bg-black/40 backdrop-blur-sm text-white font-inter text-[10px] tracking-wider px-2.5 py-1 rounded-full">
+              <span className="absolute bottom-6 right-6 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full">
                 {activeImage + 1} / {gallery.length}
               </span>
             </div>
@@ -337,304 +337,189 @@ export default function ProductDetail() {
 
           {/* ── RIGHT: Product Info ── */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col space-y-6"
+            className="flex flex-col space-y-8"
           >
-            {/* Category */}
-            <p className="font-inter text-[10px] tracking-[0.25em] uppercase text-gray-400 mb-1">
-              {product.category}
-            </p>
+            <div className="space-y-4">
+              {/* Category */}
+              <p className="text-purple-primary text-xs font-bold uppercase tracking-[0.2em]">
+                {product.category}
+              </p>
 
-            {/* Title */}
-            <h1 className="font-playfair text-2xl md:text-3xl text-gray-900 leading-snug capitalize mt-2">
-              {product.name}
-            </h1>
+              {/* Title */}
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                {product.name}
+              </h1>
 
-            {/* Star Ratings - Below Title */}
-            {product.rating && (
-              <div className="-mt-4">
-                <StarRating rating={product.rating} reviewCount={product.reviewCount} />
-              </div>
-            )}
-
-            {/* Compact Price Block */}
-            <div className="flex items-center gap-3">
-              <span className="font-playfair text-3xl font-medium text-gray-900">
-                {CURRENCY}{product.price.toLocaleString()}
-              </span>
-              {product.originalPrice && (
-                <span className="font-inter text-base text-gray-400 line-through">
-                  {CURRENCY}{product.originalPrice.toLocaleString()}
-                </span>
-              )}
-              {product.originalPrice && (
-                <span className="bg-rose-gold text-white text-xs font-inter font-medium px-2 py-0.5">
-                  {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
-                </span>
+              {/* Star Ratings */}
+              {product.rating && (
+                <StarRating rating={product.rating} reviewCount={product.reviewCount} size="lg" />
               )}
             </div>
 
-            {/* GST */}
-            <p className="font-inter text-[11px] text-gray-400 -mt-4">Inclusive of all taxes</p>
-
-            {/* Product Details Cards */}
-            <div className="border-t border-gray-100 pt-6 space-y-4">
-              {/* Material & Weight */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <Check size={14} className="text-purple-primary" />
-                  </div>
-                  <div>
-                    <p className="font-inter text-[10px] text-gray-400 uppercase tracking-wider">Material</p>
-                    <p className="font-inter text-sm text-gray-700">22K Gold Plated</p>
-                  </div>
+            {/* Price Block */}
+            <div className="flex items-center gap-4">
+              <span className="text-4xl font-bold text-gray-900">
+                {CURRENCY}{product.price.toLocaleString()}
+              </span>
+              {product.originalPrice && (
+                <div className="flex flex-col">
+                  <span className="text-lg text-gray-400 line-through">
+                    {CURRENCY}{product.originalPrice.toLocaleString()}
+                  </span>
+                  <span className="text-red-500 text-xs font-bold">
+                    {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                  </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <Check size={14} className="text-purple-primary" />
-                  </div>
-                  <div>
-                    <p className="font-inter text-[10px] text-gray-400 uppercase tracking-wider">Weight</p>
-                    <p className="font-inter text-sm text-gray-700">45 grams</p>
-                  </div>
+              )}
+            </div>
+
+            <p className="text-gray-400 text-xs font-medium -mt-4">Inclusive of all taxes</p>
+
+            {/* Product Highlights */}
+            <div className="grid grid-cols-2 gap-6 py-8 border-y border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
+                  <Check size={20} className="text-purple-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Material</p>
+                  <p className="text-sm font-bold text-gray-900">22K Gold Plated</p>
                 </div>
               </div>
-
-              {/* Delivery Card */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Truck size={18} className="text-purple-primary" />
-                  <p className="font-inter text-sm font-medium text-gray-800">Delivery</p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
+                  <Check size={20} className="text-purple-primary" />
                 </div>
-                <p className="font-inter text-sm text-gray-600 pl-9">
-                  by <span className="font-medium text-purple-primary">Wed, 22 Apr</span>
-                </p>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Weight</p>
+                  <p className="text-sm font-bold text-gray-900">45 grams</p>
+                </div>
               </div>
+            </div>
 
-              {/* Policies */}
-              <div className="flex gap-6">
-                <div className="flex items-center gap-2">
-                  <RotateCcw size={14} className="text-gray-400" />
-                  <span className="font-inter text-xs text-gray-500">7 Day Easy Return</span>
+            {/* Delivery Info */}
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                  <Truck size={20} className="text-purple-primary" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Award size={14} className="text-gray-400" />
-                  <span className="font-inter text-xs text-gray-500">100% Authentic</span>
-                </div>
+                <p className="text-sm font-bold text-gray-900">Delivery Details</p>
+              </div>
+              <p className="text-sm text-gray-600 pl-14">
+                Expected by <span className="font-bold text-purple-primary">Wed, 22 Apr</span>
+              </p>
+            </div>
+
+            {/* Policies */}
+            <div className="flex flex-wrap gap-8">
+              <div className="flex items-center gap-3">
+                <RotateCcw size={18} className="text-purple-primary" />
+                <span className="text-xs font-bold text-gray-600">7 Day Returns</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Award size={18} className="text-purple-primary" />
+                <span className="text-xs font-bold text-gray-600">100% Authentic</span>
               </div>
             </div>
 
             {/* Description */}
-            <p className="font-inter text-sm text-gray-500 leading-relaxed border-t border-gray-100 pt-6">
-              {product.description || 'Exquisitely crafted with premium materials and meticulous attention to detail.'}
-            </p>
-
-            {/* Stock Indicator */}
-            {product.stockCount > 0 && product.stockCount <= 5 && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-sm px-4 py-2.5"
-              >
-                <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
-                <p className="font-inter text-xs text-amber-700 font-medium">
-                  Only {product.stockCount} left in stock — order soon!
-                </p>
-              </motion.div>
-            )}
-            {product.stockCount > 5 && (
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-primary" />
-                <p className="font-inter text-xs text-purple-primary font-medium">In Stock ({product.stockCount} available)</p>
-              </div>
-            )}
-            {/* Out of Stock - Notify Me */}
-            {product.stockCount === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-rose-50 border border-rose-100 rounded-lg p-4"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                    <Ban size={18} className="text-rose-500" />
-                  </div>
-                  <div>
-                    <p className="font-inter text-sm font-medium text-rose-700">Out of Stock</p>
-                    <p className="font-inter text-xs text-rose-500">
-                      {restockRequestCount > 0 
-                        ? `${restockRequestCount} customer${restockRequestCount > 1 ? 's' : ''} waiting for restock`
-                        : 'Be the first to know when it\'s back!'
-                      }
-                    </p>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => setShowNotifyModal(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-rose-gold text-white font-inter text-sm font-medium py-3 rounded-lg hover:bg-rose-600 transition-colors"
-                >
-                  <Bell size={16} />
-                  Notify me when available
-                </motion.button>
-              </motion.div>
-            )}
-
-            {/* Fabric & Care Accordion */}
-            {product.fabric && (
-              <div className="border-t border-gray-100 pt-6">
-                <FabricCareAccordion fabric={product.fabric} />
-              </div>
-            )}
-
-            {/* Quantity & Actions */}
-            <div className="border-t border-gray-100 pt-6 space-y-4">
-              {/* Quantity Selector */}
-              <div className="flex items-center gap-4">
-                <span className="font-inter text-xs tracking-wider uppercase text-gray-500">Quantity</span>
-                <div className="flex items-center border border-gray-200 rounded-sm">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-12 h-10 flex items-center justify-center font-inter text-sm font-medium border-x border-gray-200">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
-                    className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Premium Action Buttons — Equal Width */}
-              <div className="hidden md:grid grid-cols-2 gap-3 z-30 relative">
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={handleAddToCart}
-                  animate={flyIn ? { x: [0, -5, 5, 0], transition: { duration: 0.3 } } : {}}
-                  className="py-4 md:py-5 border-2 border-purple-primary text-purple-primary font-inter text-sm md:text-base font-medium tracking-wide rounded-sm hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 min-h-[56px] md:min-h-[64px]"
-                >
-                  <ShoppingBag size={18} strokeWidth={1.5} />
-                  {addedToCart ? 'Added!' : 'Add to Bag'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={handleBuyNow}
-                  className="py-4 md:py-5 bg-[#c9a89a] text-white font-inter text-sm md:text-base font-medium tracking-wide rounded-sm hover:bg-[#b8988a] transition-colors flex items-center justify-center gap-2 min-h-[56px] md:min-h-[64px] z-30"
-                  style={{ backgroundColor: '#c9a89a' }}  /* Soft mauve/rose gold */
-                >
-                  <span className="font-light">Buy Now</span>
-                </motion.button>
-              </div>
-
-              {/* Wishlist & Share - Secondary Actions */}
-              <div className="hidden md:flex items-center gap-3 pt-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => toggleWishlist(product)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-sm transition-colors text-sm font-inter text-gray-600 hover:border-rose-gold hover:text-rose-gold"
-                >
-                  <Heart size={16} fill={wishlisted ? 'currentColor' : 'none'} strokeWidth={1.5} />
-                  {wishlisted ? 'Wishlisted' : 'Add to Wishlist'}
-                </motion.button>
-                <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-sm transition-colors text-sm font-inter text-gray-600 hover:border-gray-400">
-                  <Share2 size={16} strokeWidth={1.5} />
-                  Share
-                </button>
-              </div>
+            <div className="space-y-4 pt-4">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest">Description</h4>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                {product.description || 'Exquisitely crafted with premium materials and meticulous attention to detail.'}
+              </p>
             </div>
 
-            {/* Additional Info */}
-            <div className="border-t border-gray-100 pt-6 space-y-3">
-              <div className="flex items-center gap-3 text-sm text-gray-500 font-inter">
-                <ShieldCheck size={16} className="text-purple-primary flex-shrink-0" strokeWidth={1.5} />
-                <span>Secure Payment & Easy Checkout</span>
+            {/* Stock Status */}
+            <div className="pt-4">
+              {product.stockCount > 0 && product.stockCount <= 5 ? (
+                <div className="flex items-center gap-3 bg-red-50 text-red-600 px-4 py-3 rounded-xl border border-red-100">
+                  <AlertCircle size={18} />
+                  <p className="text-sm font-bold">Only {product.stockCount} left — Order fast!</p>
+                </div>
+              ) : product.stockCount > 5 ? (
+                <div className="flex items-center gap-2 text-purple-primary">
+                  <div className="w-2 h-2 rounded-full bg-purple-primary animate-pulse" />
+                  <p className="text-sm font-bold tracking-wide uppercase">In Stock</p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Fabric & Care */}
+            {product.fabric && (
+              <FabricCareAccordion fabric={product.fabric} />
+            )}
+
+            {/* Desktop Actions */}
+            <div className="hidden md:flex flex-col gap-4 pt-8 border-t border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center bg-gray-50 rounded-xl border border-gray-100 p-1">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
+                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                <button
+                  onClick={handleAddToCart}
+                  className="btn-primary flex-1 gap-3 h-14"
+                >
+                  <ShoppingBag size={20} />
+                  {addedToCart ? 'Added to Bag!' : 'Add to Bag'}
+                </button>
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 transition-all ${
+                    wishlisted
+                      ? 'bg-purple-primary border-purple-primary text-white shadow-lg'
+                      : 'bg-white border-gray-200 text-gray-400 hover:border-purple-primary'
+                  }`}
+                >
+                  <Heart size={22} fill={wishlisted ? 'currentColor' : 'none'} />
+                </button>
               </div>
-              <div className="flex items-center gap-3 text-sm text-rose-gold font-inter font-medium">
-                <Ban size={16} className="flex-shrink-0" strokeWidth={1.5} />
-                <span>No Returns / No Exchanges — All Sales Final</span>
-              </div>
+              <button
+                onClick={handleBuyNow}
+                className="btn-outline w-full h-14"
+              >
+                Buy Now
+              </button>
             </div>
           </motion.div>
         </div>
-
-        {/* ═══ Complete the Look / Related Products ═══ */}
-        {completeTheLook.length > 0 && (
-          <div className="mt-20 md:mt-28">
-            {/* Section Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <p className="font-inter text-xs tracking-[0.3em] uppercase text-rose-gold mb-2">
-                  Curated For You
-                </p>
-                <h2 className="font-playfair text-2xl md:text-3xl text-purple-primary">
-                  {related.length >= 2 ? 'Complete the Look' : 'You May Also Like'}
-                </h2>
-              </div>
-              <div className="hidden md:flex items-center gap-2">
-                <button
-                  onClick={() => scrollRelated(-1)}
-                  className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-purple-primary hover:text-purple-primary transition-colors"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  onClick={() => scrollRelated(1)}
-                  className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-purple-primary hover:text-purple-primary transition-colors"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* Horizontal Scroll Grid */}
-            <div
-              ref={scrollRef}
-              className="flex gap-4 md:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0"
-            >
-              {completeTheLook.map((p, idx) => (
-                <div key={p.id} className="flex-shrink-0 w-[48%] md:w-[calc(25%-18px)] lg:w-[calc(20%-19px)] snap-start">
-                  <ProductCard product={p} index={idx} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ═══ Mobile/Tablet Sticky Action Bar — sits above bottom nav ═══ */}
-      <div className="fixed bottom-[64px] left-0 right-0 z-50 lg:hidden">
-        <div className="bg-white border-t border-gray-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)] px-4 md:px-6 py-3 md:py-4">
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={handleAddToCart}
-              className="py-3 md:py-4 border-2 border-purple-primary text-purple-primary font-inter text-sm md:text-base font-medium rounded-sm flex items-center justify-center gap-2 min-h-[52px] md:min-h-[56px]"
-            >
-              <ShoppingBag size={18} strokeWidth={1.5} />
-              {addedToCart ? 'Added!' : 'Add to Bag'}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={handleBuyNow}
-              className="py-3 md:py-4 text-white font-inter text-sm md:text-base font-medium rounded-sm flex items-center justify-center min-h-[52px] md:min-h-[56px] z-50"
-              style={{ backgroundColor: '#c9a89a' }}  /* Soft mauve/rose gold */
-            >
-              <span className="font-light">Buy Now</span>
-            </motion.button>
-          </div>
+      {/* ═══ Mobile Sticky Action Bar ═══ */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-100 px-4 py-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="flex gap-3 max-w-lg mx-auto">
+          <button
+            onClick={() => toggleWishlist(product)}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all shrink-0 ${
+              wishlisted
+                ? 'bg-purple-primary border-purple-primary text-white'
+                : 'bg-gray-50 border-transparent text-gray-400'
+            }`}
+          >
+            <Heart size={24} fill={wishlisted ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={handleAddToCart}
+            className="flex-1 btn-primary h-14 text-base gap-3"
+          >
+            <ShoppingBag size={20} />
+            {addedToCart ? 'Added!' : 'Add to Cart'}
+          </button>
         </div>
       </div>
 
