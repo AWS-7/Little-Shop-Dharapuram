@@ -8,7 +8,7 @@ import NewsletterSection from '../components/home/NewsletterSection';
 
 export default function Home() {
   return (
-    <div className="pt-16 md:pt-20">
+    <div className="pt-24 md:pt-32 lg:pt-40 bg-gray-50">
       <HeroLookbook />
       <FeaturedGrid />
       <CategoryShowcase />

@@ -249,7 +249,7 @@ export default function ProductDetail() {
 
   return (
     <>
-      <div className="container-clean pt-24 md:pt-12 pb-32 md:pb-24">
+      <div className="container-clean pt-36 md:pt-48 pb-32 md:pb-24">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs font-inter text-gray-400 mb-8 px-1">
           <Link to="/" className="hover:text-purple-primary transition-colors">Home</Link>

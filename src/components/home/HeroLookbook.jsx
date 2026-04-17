@@ -1,56 +1,116 @@
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const BANNERS = [
+  {
+    id: 1,
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop',
+    title: 'Huge Summer Sale',
+    subtitle: 'Up to 50% Off on All Collections',
+    cta: 'Shop Now',
+    color: 'bg-purple-primary'
+  },
+  {
+    id: 2,
+    image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2000&auto=format&fit=crop',
+    title: 'New Arrivals 2026',
+    subtitle: 'Premium Lifestyle Essentials',
+    cta: 'Explore More',
+    color: 'bg-indigo-600'
+  },
+  {
+    id: 3,
+    image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=2000&auto=format&fit=crop',
+    title: 'Exclusive Jewellery',
+    subtitle: 'Timeless Elegance in Every Piece',
+    cta: 'View Collection',
+    color: 'bg-pink-600'
+  }
+];
 
 const HeroLookbook = () => {
-  return (
-    <section className="relative w-full h-[80vh] min-h-[600px] flex items-center overflow-hidden bg-purple-light pt-16">
-      <div className="container-clean grid lg:grid-cols-2 gap-12 items-center">
-        {/* Text Content */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="z-10"
-        >
-          <span className="inline-block px-4 py-1.5 rounded-full bg-purple-primary/10 text-purple-primary text-xs font-bold tracking-widest uppercase mb-6">
-            New Collection 2026
-          </span>
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] mb-8">
-            Elegance in <br />
-            <span className="text-purple-primary">Every Detail.</span>
-          </h2>
-          <p className="text-lg text-gray-600 mb-10 max-w-lg leading-relaxed">
-            Discover our curated selection of premium lifestyle essentials. 
-            Designed for those who appreciate quality and minimalist aesthetics.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link to="/shop" className="btn-primary text-base px-12">
-              Shop Collection
-            </Link>
-            <Link to="/collections" className="btn-outline text-base px-12">
-              View Lookbook
-            </Link>
-          </div>
-        </motion.div>
+  const [current, setCurrent] = useState(0);
 
-        {/* Hero Image / Graphic */}
+  const next = () => setCurrent((prev) => (prev + 1) % BANNERS.length);
+  const prev = () => setCurrent((prev) => (prev - 1 + BANNERS.length) % BANNERS.length);
+
+  useEffect(() => {
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] overflow-hidden bg-gray-100">
+      <AnimatePresence mode="wait">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="relative hidden lg:block"
+          key={current}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0"
         >
-          <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="relative h-full w-full">
             <img 
-              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop" 
-              alt="Fashion Hero"
-              className="w-full h-[600px] object-cover"
+              src={BANNERS[current].image} 
+              alt={BANNERS[current].title}
+              className="w-full h-full object-cover"
             />
+            {/* Gradient Overlay for Text Visibility */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+            
+            {/* Content Container */}
+            <div className="container-clean h-full flex flex-col justify-center relative z-10 text-white">
+              <motion.div
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                <h2 className="text-3xl md:text-5xl lg:text-6xl font-black mb-4 tracking-tight drop-shadow-lg">
+                  {BANNERS[current].title}
+                </h2>
+                <p className="text-lg md:text-xl lg:text-2xl font-medium mb-8 text-white/90 drop-shadow-md">
+                  {BANNERS[current].subtitle}
+                </p>
+                <Link 
+                  to="/shop" 
+                  className="inline-block bg-white text-gray-900 px-8 md:px-12 py-3 md:py-4 rounded-sm font-black text-sm uppercase tracking-wider hover:bg-gray-100 transition-all shadow-xl active:scale-95"
+                >
+                  {BANNERS[current].cta}
+                </Link>
+              </motion.div>
+            </div>
           </div>
-          {/* Decorative Elements */}
-          <div className="absolute -bottom-6 -right-6 w-64 h-64 bg-purple-primary/10 rounded-full blur-3xl -z-10" />
-          <div className="absolute -top-6 -left-6 w-64 h-64 bg-purple-accent/20 rounded-full blur-3xl -z-10" />
         </motion.div>
+      </AnimatePresence>
+
+      {/* Navigation Arrows */}
+      <button 
+        onClick={prev}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 text-white p-4 rounded-r-md backdrop-blur-sm transition-all hidden md:block"
+      >
+        <ChevronLeft size={32} />
+      </button>
+      <button 
+        onClick={next}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 text-white p-4 rounded-l-md backdrop-blur-sm transition-all hidden md:block"
+      >
+        <ChevronRight size={32} />
+      </button>
+
+      {/* Slide Indicators */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        {BANNERS.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrent(idx)}
+            className={`w-2.5 h-2.5 rounded-full transition-all ${
+              idx === current ? 'bg-white w-8' : 'bg-white/40'
+            }`}
+          />
+        ))}
       </div>
     </section>
   );

@@ -27,74 +27,61 @@ export default function FeaturedGrid() {
   }, []);
 
   return (
-    <section className="section-spacing bg-white">
+    <section className="py-12 md:py-20 bg-gray-50">
       <div className="container-clean">
         {/* Handpicked for You Section */}
         {handpicked.length > 0 && (
-          <div className="mb-24">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
-              <div>
-                <span className="text-purple-primary text-xs font-bold uppercase tracking-[0.2em] mb-3 block">
-                  Curated for You
-                </span>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                  Handpicked Selection
-                </h2>
-              </div>
-              <Link to="/shop" className="text-purple-primary font-bold text-sm hover:underline">
-                View All Handpicked
+          <div className="mb-16 md:mb-24 bg-white p-4 md:p-6 shadow-sm border border-gray-100 rounded-sm">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+              <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">
+                Handpicked Selection
+              </h2>
+              <Link to="/shop" className="bg-purple-primary text-white px-6 py-2 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-purple-secondary transition-all">
+                View All
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100 overflow-hidden">
               {handpicked.map((product, idx) => (
-                <ProductCard key={`handpicked-${product.id}`} product={product} index={idx} />
+                <div key={`handpicked-${product.id}`} className="bg-white">
+                  <ProductCard product={product} index={idx} />
+                </div>
               ))}
             </div>
           </div>
         )}
 
         {/* Featured Collection Section */}
-        <div>
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
-            <div>
-              <span className="text-purple-primary text-xs font-bold uppercase tracking-[0.2em] mb-3 block">
-                Fresh Arrivals
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                Featured Collection
-              </h2>
-            </div>
-            <Link to="/shop" className="text-purple-primary font-bold text-sm hover:underline">
-              Browse Everything
+        <div className="bg-white p-4 md:p-6 shadow-sm border border-gray-100 rounded-sm">
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">
+              Featured Collection
+            </h2>
+            <Link to="/shop" className="bg-purple-primary text-white px-6 py-2 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-purple-secondary transition-all">
+              View All
             </Link>
           </div>
 
           {/* Featured Product Grid */}
           {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="aspect-[3/4] bg-gray-50 animate-pulse rounded-xl" />
+                <div key={i} className="aspect-[3/4] bg-white animate-pulse" />
               ))}
             </div>
           ) : featured.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 border border-gray-100 overflow-hidden">
               {featured.map((product, idx) => (
-                <ProductCard key={product.id} product={product} index={idx} />
+                <div key={product.id} className="bg-white">
+                  <ProductCard product={product} index={idx} />
+                </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-20 bg-gray-50 rounded-3xl">
-              <p className="text-gray-500 font-bold">No products available yet.</p>
+            <div className="text-center py-20 bg-white">
+              <p className="text-gray-500 font-black">No products available yet.</p>
             </div>
           )}
-
-          {/* View All Button */}
-          <div className="text-center mt-16">
-            <Link to="/shop" className="btn-outline inline-flex px-12">
-              View All Products
-            </Link>
-          </div>
         </div>
       </div>
     </section>

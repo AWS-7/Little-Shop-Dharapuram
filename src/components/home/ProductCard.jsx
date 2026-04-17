@@ -8,7 +8,7 @@ import { PLACEHOLDER_IMG } from '../../lib/products';
 
 export default function ProductCard({ product, index = 0 }) {
   const [hovered, setHovered] = useState(false);
-  const { addToCart, toggleWishlist, isWishlisted } = useStore();
+  const { addToCart, toggleWishlist, isWishlisted, openCartDrawer } = useStore();
   const wishlisted = isWishlisted(product.id);
   const navigate = useNavigate();
 
@@ -16,88 +16,74 @@ export default function ProductCard({ product, index = 0 }) {
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    addToCart(product);
+    openCartDrawer();
+  };
+
+  const handleWishlist = (e) => {
+    e.stopPropagation();
+    toggleWishlist(product.id);
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.05 }}
-      className="group cursor-pointer bg-white rounded-xl overflow-hidden transition-all duration-300"
+      transition={{ duration: 0.3, delay: index * 0.02 }}
+      className="group bg-white border border-gray-100 hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] transition-all duration-300 flex flex-col h-full rounded-sm"
       onClick={() => navigate(`/product/${product.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* Image Container */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 rounded-xl">
+      <div className="relative aspect-[3/4] p-2 md:p-4 bg-white overflow-hidden flex items-center justify-center">
         <img
           src={product.image || PLACEHOLDER_IMG}
           alt={product.name}
           loading="lazy"
-          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+          className={`w-full h-full object-contain transition-transform duration-500 ${
             hovered ? 'scale-105' : 'scale-100'
           }`}
         />
 
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {discount > 0 && (
-            <span className="bg-purple-primary text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
-              {discount}% OFF
-            </span>
-          )}
-          {product.stockCount > 0 && product.stockCount < 5 && (
-            <span className="bg-white/90 backdrop-blur-sm text-red-600 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-red-100">
-              Low Stock
-            </span>
-          )}
-        </div>
-
-        {/* Wishlist Button */}
+        {/* Wishlist Button — Always Visible like Flipkart */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleWishlist(product.id);
-          }}
-          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all duration-300 ${
-            wishlisted ? 'bg-purple-primary text-white' : 'bg-white/80 text-gray-900 hover:bg-white'
+          onClick={handleWishlist}
+          className={`absolute top-3 right-3 p-2 rounded-full shadow-md transition-all duration-300 z-10 ${
+            wishlisted ? 'bg-red-50 text-red-500' : 'bg-white text-gray-300 hover:text-red-500'
           }`}
         >
           <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>
 
-        {/* Quick Add Button - Desktop Hover */}
-        <div className="absolute inset-x-3 bottom-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hidden md:block">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              addToCart(product);
-            }}
-            className="w-full bg-white text-gray-900 hover:bg-purple-primary hover:text-white py-3 rounded-lg font-bold text-xs uppercase tracking-wider shadow-lg transition-colors flex items-center justify-center gap-2"
-          >
-            <ShoppingBag size={14} />
-            Quick Add
-          </button>
-        </div>
+        {/* Badge */}
+        {discount > 20 && (
+          <div className="absolute top-3 left-3 bg-green-600 text-white text-[10px] font-black px-2 py-0.5 rounded-sm shadow-sm z-10">
+            {discount}% OFF
+          </div>
+        )}
       </div>
 
-      {/* Product Info */}
-      <div className="pt-4 pb-2 px-1">
-        <div className="flex justify-between items-start gap-2 mb-1">
-          <p className="text-[10px] font-bold text-purple-primary uppercase tracking-widest truncate">
-            {product.category}
-          </p>
-          <div className="flex items-center gap-1">
-            <Star size={10} className="text-amber-400 fill-current" />
-            <span className="text-[10px] font-bold text-gray-500">{product.rating || '4.8'}</span>
-          </div>
-        </div>
-        
-        <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-1 group-hover:text-purple-primary transition-colors">
+      {/* Info Section */}
+      <div className="p-3 md:p-4 flex flex-col flex-1 border-t border-gray-50">
+        <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-primary transition-colors">
           {product.name}
         </h3>
+        
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-1 bg-green-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-sm">
+            <span>{product.rating || '4.5'}</span>
+            <Star size={10} fill="currentColor" />
+          </div>
+          <span className="text-[10px] font-bold text-gray-400">({(product.reviewCount || 120).toLocaleString()})</span>
+        </div>
 
-        <div className="flex items-baseline gap-2">
-          <span className="text-base font-bold text-gray-900">
+        {/* Price Row */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-base md:text-lg font-black text-gray-900">
             {CURRENCY}{product.price.toLocaleString()}
           </span>
           {product.originalPrice && (
@@ -105,6 +91,22 @@ export default function ProductCard({ product, index = 0 }) {
               {CURRENCY}{product.originalPrice.toLocaleString()}
             </span>
           )}
+          {discount > 0 && (
+            <span className="text-xs font-black text-green-600">
+              {discount}% off
+            </span>
+          )}
+        </div>
+
+        {/* Flipkart Style Buttons — Bottom of card */}
+        <div className="mt-auto grid grid-cols-1 gap-2">
+          <button
+            onClick={handleAddToCart}
+            className="w-full bg-purple-primary text-white py-2 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-wider shadow-sm hover:bg-purple-secondary transition-colors flex items-center justify-center gap-2"
+          >
+            <ShoppingBag size={14} />
+            Add to Cart
+          </button>
         </div>
       </div>
     </motion.div>

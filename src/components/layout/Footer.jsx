@@ -9,10 +9,15 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-purple-primary tracking-tight uppercase">
-              {BRAND.name}
-            </h3>
-            <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
+            <Link to="/" className="flex flex-col">
+              <span className="text-2xl font-black italic tracking-tighter leading-none text-purple-primary">
+                LittleShop
+              </span>
+              <span className="text-xs font-medium italic text-purple-accent tracking-wide flex items-center gap-0.5">
+                Explore <span className="text-purple-primary font-bold">Plus</span>
+              </span>
+            </Link>
+            <p className="text-gray-500 text-sm leading-relaxed max-w-xs font-medium">
               {BRAND.description}
             </p>
             <div className="flex items-center gap-4">

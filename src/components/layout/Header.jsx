@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingBag, Heart, User, Menu, X, Package, LogOut } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, X, Package, LogOut, ChevronDown } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { getAllProducts } from '../../lib/products';
 import { CURRENCY, ADMIN_MOBILE_NUMBER } from '../../lib/constants';
@@ -98,173 +98,165 @@ export default function Header() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-white/80 backdrop-blur-lg border-b border-gray-100 shadow-sm py-2'
-          : 'bg-white border-b border-transparent py-4'
-      }`}
-    >
-      <div className="container-clean flex items-center justify-between">
-        {/* Left Nav — Desktop */}
-        <nav className="hidden lg:flex items-center gap-10">
-          <Link to="/shop" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
-            Shop
-          </Link>
-          <Link to="/collections" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
-            Collections
-          </Link>
-          <Link to="/new-arrivals" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
-            New Arrivals
-          </Link>
-        </nav>
-
-        {/* Mobile — Hamburger (left) */}
+    <header className="fixed top-0 left-0 right-0 z-50 bg-purple-primary text-white shadow-md">
+      {/* Top Strip — Flipkart Style */}
+      <div className="container-clean h-16 md:h-20 flex items-center gap-4 md:gap-8">
+        {/* Mobile Menu Button */}
         <button
-          className="lg:hidden p-2 text-gray-900 hover:text-purple-primary transition-colors"
+          className="lg:hidden p-1 hover:bg-white/10 rounded transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          <Menu size={24} />
         </button>
 
-        {/* Logo — centered */}
-        <Link to="/" className="absolute left-1/2 -translate-x-1/2">
-          <h1 className="text-xl md:text-2xl font-bold text-purple-primary tracking-tight uppercase">
-            Little Shop
-          </h1>
+        {/* Logo */}
+        <Link to="/" className="flex-shrink-0">
+          <div className="flex flex-col">
+            <span className="text-xl md:text-2xl font-black italic tracking-tighter leading-none">
+              LittleShop
+            </span>
+            <span className="text-[10px] md:text-xs font-medium italic text-purple-accent tracking-wide flex items-center gap-0.5">
+              Explore <span className="text-white font-bold">Plus</span>
+            </span>
+          </div>
         </Link>
 
-        {/* Right Icons */}
-        <div className="flex items-center gap-1 md:gap-3">
-          <button
-            onClick={() => setSearchOpen(!searchOpen)}
-            className="p-2 text-gray-900 hover:text-purple-primary transition-colors"
-            aria-label="Search"
-          >
-            <Search size={20} />
-          </button>
+        {/* Search Bar — Center & Always Visible */}
+        <div className="flex-1 relative max-w-2xl hidden sm:block">
+          <div className="relative group">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!searchOpen) setSearchOpen(true);
+              }}
+              placeholder="Search for products, brands and more"
+              className="w-full bg-white text-gray-900 h-10 px-4 pr-12 rounded-sm shadow-sm focus:outline-none text-sm placeholder:text-gray-500"
+            />
+            <button className="absolute right-0 top-0 h-10 px-4 text-purple-primary hover:text-purple-secondary transition-colors">
+              <Search size={20} />
+            </button>
+          </div>
 
-          <Link to="/wishlist" className="relative p-2 text-gray-900 hover:text-purple-primary transition-colors hidden sm:block" aria-label="Wishlist">
+          {/* Search Suggestions */}
+          <AnimatePresence>
+            {showSuggestions && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 5 }}
+                className="absolute left-0 right-0 top-full bg-white shadow-xl rounded-b-sm border-t border-gray-100 overflow-hidden z-[60] mt-1"
+              >
+                <div className="max-h-96 overflow-y-auto">
+                  {filteredProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleSearchSelect(product.id)}
+                      className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 text-left"
+                    >
+                      <img
+                        src={product.image_url || product.image || '/placeholder.jpg'}
+                        alt={product.name}
+                        className="w-10 h-10 object-cover rounded bg-gray-50"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
+                        <p className="text-xs text-gray-500">{product.category}</p>
+                      </div>
+                      <p className="text-sm font-black text-gray-900">
+                        {CURRENCY}{product.price?.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-4 md:gap-8 ml-auto">
+          {/* Login Button */}
+          {isLoggedIn ? (
+            <div className="relative group">
+              <Link 
+                to={isAdmin ? "/admin/dashboard" : "/account"} 
+                className="flex items-center gap-1 font-bold hover:text-purple-accent transition-colors py-2"
+              >
+                <User size={20} />
+                <span className="hidden lg:block">Account</span>
+              </Link>
+              {/* Dropdown can be added here */}
+            </div>
+          ) : (
+            <Link 
+              to="/login" 
+              className="bg-white text-purple-primary px-8 py-1.5 rounded-sm font-bold text-sm hover:bg-gray-100 transition-colors hidden sm:block"
+            >
+              Login
+            </Link>
+          )}
+
+          {/* Wishlist */}
+          <Link to="/wishlist" className="relative font-bold hover:text-purple-accent transition-colors flex items-center gap-2">
             <Heart size={20} />
+            <span className="hidden lg:block">Wishlist</span>
             {wishlist.length > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-purple-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-white">
                 {wishlist.length}
               </span>
             )}
           </Link>
 
+          {/* Cart */}
           <button 
             onClick={openCartDrawer}
-            className="relative p-2 text-gray-900 hover:text-purple-primary transition-colors"
-            aria-label="Cart"
+            className="relative font-bold hover:text-purple-accent transition-colors flex items-center gap-2"
           >
             <ShoppingBag size={20} />
+            <span className="hidden lg:block">Cart</span>
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-purple-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-white">
                 {cartCount}
               </span>
             )}
           </button>
-
-          {isLoggedIn ? (
-            <div className="hidden sm:flex items-center gap-1">
-              <Link to={isAdmin ? "/admin/dashboard" : "/account"} className="p-2 text-gray-900 hover:text-purple-primary transition-colors flex items-center gap-2">
-                <User size={20} />
-              </Link>
-              <button
-                onClick={async () => {
-                  await logoutUser();
-                  setIsLoggedIn(false);
-                  setIsAdmin(false);
-                  setCurrentUser(null);
-                  navigate('/login');
-                }}
-                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                title="Logout"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" className="hidden sm:block p-2 text-gray-900 hover:text-purple-primary transition-colors" aria-label="Login">
-              <User size={20} />
-            </Link>
-          )}
         </div>
       </div>
 
-      {/* Search Bar */}
-      <AnimatePresence>
-        {searchOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-gray-100 bg-white shadow-lg overflow-hidden"
-          >
-            <div className="container-clean py-8">
-              <div className="flex items-center gap-4 max-w-3xl mx-auto border-b border-gray-200 focus-within:border-purple-primary transition-colors py-3">
-                <Search size={22} className="text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="What are you looking for?"
-                  className="w-full bg-transparent text-lg outline-none placeholder:text-gray-400"
-                  autoFocus
-                />
-                <button 
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery('');
-                    setShowSuggestions(false);
-                  }} 
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <X size={22} />
-                </button>
-              </div>
-            </div>
+      {/* Mobile Search — Visible only on Mobile */}
+      <div className="container-clean pb-3 sm:hidden">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (!searchOpen) setSearchOpen(true);
+            }}
+            placeholder="Search for products..."
+            className="w-full bg-white text-gray-900 h-9 px-4 pr-10 rounded-sm shadow-inner text-sm"
+          />
+          <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        </div>
+      </div>
 
-            {/* Search Suggestions Dropdown */}
-            <AnimatePresence>
-              {showSuggestions && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute left-0 right-0 top-full bg-white shadow-xl border-t border-gray-100 z-50"
-                >
-                  <div className="container-clean py-4">
-                    <div className="max-h-96 overflow-y-auto">
-                      {filteredProducts.map((product) => (
-                        <button
-                          key={product.id}
-                          onClick={() => handleSearchSelect(product.id)}
-                          className="w-full flex items-center gap-4 p-3 hover:bg-purple-light transition-colors rounded-xl text-left"
-                        >
-                          <img
-                            src={product.image_url || product.image || '/placeholder.jpg'}
-                            alt={product.name}
-                            className="w-14 h-14 object-cover rounded-lg bg-gray-50"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500">{product.category}</p>
-                          </div>
-                          <p className="font-bold text-purple-primary">
-                            {CURRENCY}{product.price?.toLocaleString()}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Category Bar — Flipkart Style */}
+      <div className="bg-white border-b border-gray-200 hidden lg:block shadow-sm">
+        <div className="container-clean flex items-center justify-center gap-12 py-3">
+          {['Shop', 'Collections', 'New Arrivals', 'Offers'].map((item) => (
+            <Link
+              key={item}
+              to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+              className="text-gray-900 text-sm font-bold hover:text-purple-primary transition-colors flex items-center gap-2"
+            >
+              {item}
+              <ChevronDown size={14} className="text-gray-400" />
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
@@ -274,64 +266,61 @@ export default function Header() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-0 top-[61px] bg-white z-40 md:hidden border-t border-gray-100"
+            className="fixed inset-0 top-0 bg-white z-[70] w-[80%] max-w-xs shadow-2xl flex flex-col"
           >
-            <nav className="flex flex-col p-6 gap-6">
+            <div className="bg-purple-primary p-6 text-white flex items-center gap-4">
+              <User size={24} />
+              <p className="font-bold">Welcome, Guest</p>
+              <button onClick={() => setMobileMenuOpen(false)} className="ml-auto">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <nav className="flex flex-col p-4 gap-2">
               {['Shop', 'Collections', 'New Arrivals'].map((item) => (
                 <Link
                   key={item}
                   to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="text-xl font-bold text-gray-900 hover:text-purple-primary transition-colors"
+                  className="flex items-center gap-4 p-3 text-gray-900 font-bold hover:bg-gray-50 rounded-lg transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <Package size={20} className="text-gray-400" />
                   {item}
                 </Link>
               ))}
 
-              <div className="h-px bg-gray-100" />
+              <div className="h-px bg-gray-100 my-2" />
 
-              <div className="flex flex-col gap-4">
-                {isLoggedIn ? (
-                  <>
-                    <Link
-                      to="/my-orders"
-                      className="flex items-center gap-3 text-base font-medium text-gray-600"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Package size={20} /> My Orders
-                    </Link>
-                    {isAdmin && (
-                      <Link
-                        to="/admin/dashboard"
-                        className="flex items-center gap-3 text-base font-medium text-purple-primary"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <User size={20} /> Admin Dashboard
-                      </Link>
-                    )}
-                    <button
-                      onClick={async () => {
-                        await logoutUser();
-                        setIsLoggedIn(false);
-                        setIsAdmin(false);
-                        setMobileMenuOpen(false);
-                        navigate('/login');
-                      }}
-                      className="flex items-center gap-3 text-base font-medium text-red-500"
-                    >
-                      <LogOut size={20} /> Logout
-                    </button>
-                  </>
-                ) : (
+              {isLoggedIn ? (
+                <>
                   <Link
-                    to="/login"
-                    className="flex items-center gap-3 text-base font-medium text-gray-600"
+                    to="/my-orders"
+                    className="flex items-center gap-4 p-3 text-gray-900 font-bold hover:bg-gray-50 rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <User size={20} /> Login / Register
+                    <Package size={20} className="text-gray-400" /> My Orders
                   </Link>
-                )}
-              </div>
+                  <button
+                    onClick={async () => {
+                      await logoutUser();
+                      setIsLoggedIn(false);
+                      setMobileMenuOpen(false);
+                      navigate('/login');
+                    }}
+                    className="flex items-center gap-4 p-3 text-red-500 font-bold hover:bg-red-50 rounded-lg"
+                  >
+                    <LogOut size={20} /> Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center gap-4 p-3 text-purple-primary font-bold hover:bg-purple-50 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <User size={20} /> Login / Register
+                </Link>
+              )}
             </nav>
           </motion.div>
         )}
