@@ -33,35 +33,35 @@ export default function ProductCard({ product, index = 0 }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.3, delay: index * 0.02 }}
-      className="group bg-white border border-gray-100 hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] transition-all duration-300 flex flex-col h-full rounded-sm"
+      className="group bg-white border border-gray-100 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col h-full"
       onClick={() => navigate(`/product/${product.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Image Container */}
-      <div className="relative aspect-[3/4] p-2 md:p-4 bg-white overflow-hidden flex items-center justify-center">
+      {/* Image Container - Clean, no extra padding */}
+      <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
         <img
           src={product.image || PLACEHOLDER_IMG}
           alt={product.name}
           loading="lazy"
-          className={`w-full h-full object-contain transition-transform duration-500 ${
+          className={`w-full h-full object-cover transition-transform duration-500 ${
             hovered ? 'scale-105' : 'scale-100'
           }`}
         />
 
-        {/* Wishlist Button — Always Visible like Flipkart */}
+        {/* Wishlist Button */}
         <button
           onClick={handleWishlist}
-          className={`absolute top-3 right-3 p-2 rounded-full shadow-md transition-all duration-300 z-10 ${
-            wishlisted ? 'bg-red-50 text-red-500' : 'bg-white text-gray-300 hover:text-red-500'
+          className={`absolute top-2 right-2 p-2 rounded-full shadow-sm transition-all duration-200 z-10 ${
+            wishlisted ? 'bg-red-50 text-red-500' : 'bg-white/90 text-gray-400 hover:text-red-500'
           }`}
         >
-          <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
+          <Heart size={16} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>
 
-        {/* Badge */}
+        {/* Badge - Positioned bottom left */}
         {discount > 20 && (
-          <div className="absolute top-3 left-3 bg-green-600 text-white text-[10px] font-black px-2 py-0.5 rounded-sm shadow-sm z-10">
+          <div className="absolute bottom-2 left-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-sm z-10">
             {discount}% OFF
           </div>
         )}

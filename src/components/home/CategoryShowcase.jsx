@@ -46,16 +46,33 @@ export default function CategoryShowcase() {
             </Link>
           </div>
 
-          {/* Categories Grid — Premium Layout */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            {categories.slice(0, 8).map((cat, idx) => (
+          {/* Categories Grid — Mobile: Horizontal Scroll, Desktop: Grid */}
+          {/* Mobile: Horizontal scrolling container */}
+          <div className="md:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory flex gap-4 pb-4 -mx-4 px-4">
+            {categories.map((cat, idx) => (
+              <motion.div
+                key={cat.id || cat.name}
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.05, duration: 0.4 }}
+                className="flex-shrink-0 snap-start"
+              >
+                <CategoryCardMobile cat={cat} />
+              </motion.div>
+            ))}
+          </div>
+          
+          {/* Desktop: Grid Layout */}
+          <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+            {categories.map((cat, idx) => (
               <motion.div
                 key={cat.id || cat.name}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className={idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}
+                className={`${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
               >
                 <CategoryCard cat={cat} isLarge={idx === 0} />
               </motion.div>
@@ -71,29 +88,56 @@ function CategoryCard({ cat, isLarge }) {
   return (
     <Link
       to={`/shop?category=${encodeURIComponent(cat.name)}`}
-      className="group relative block aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+      className={`group relative block overflow-hidden rounded-2xl bg-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 ${isLarge ? 'aspect-[1/1.1] md:aspect-auto md:h-full min-h-[300px] lg:min-h-[400px]' : 'aspect-square min-h-[200px]'}`}
     >
       <img
         src={cat.image}
         alt={cat.name}
         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        loading="lazy"
       />
       {/* Overlay Gradient */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-500" />
       
       {/* Content */}
-      <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-        <h3 className={`text-white font-black uppercase tracking-widest leading-tight ${isLarge ? 'text-2xl md:text-4xl mb-2' : 'text-sm md:text-lg mb-1'}`}>
+      <div className="absolute inset-0 flex flex-col justify-end p-6 lg:p-8">
+        <h3 className={`text-white font-black uppercase tracking-widest leading-tight ${isLarge ? 'text-2xl lg:text-4xl mb-2' : 'text-sm lg:text-lg mb-1'}`}>
           {cat.name}
         </h3>
         {isLarge && (
-          <p className="text-white/70 text-xs md:text-sm font-medium mb-4 line-clamp-2 max-w-xs">
+          <p className="text-white/70 text-xs lg:text-sm font-medium mb-4 line-clamp-2 max-w-xs">
             Discover the latest trends and timeless classics in our {cat.name} collection.
           </p>
         )}
-        <div className={`flex items-center gap-2 text-white/90 font-black uppercase tracking-[0.15em] transition-all duration-300 transform ${isLarge ? 'text-xs md:text-sm opacity-100 translate-y-0' : 'text-[10px] opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}>
+        <div className={`flex items-center gap-2 text-white/90 font-black uppercase tracking-[0.15em] transition-all duration-300 transform ${isLarge ? 'text-xs lg:text-sm opacity-100 translate-y-0' : 'text-[10px] opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}>
           Shop Now <ArrowRight size={isLarge ? 16 : 12} />
         </div>
+      </div>
+    </Link>
+  );
+}
+
+// Mobile-specific card - smaller, optimized for horizontal scroll
+function CategoryCardMobile({ cat }) {
+  return (
+    <Link
+      to={`/shop?category=${encodeURIComponent(cat.name)}`}
+      className="group relative block overflow-hidden rounded-xl bg-gray-100 w-[140px] h-[180px] flex-shrink-0 shadow-sm"
+    >
+      <img
+        src={cat.image}
+        alt={cat.name}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+      
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-3">
+        <h3 className="text-white font-bold text-xs uppercase tracking-wider leading-tight">
+          {cat.name}
+        </h3>
       </div>
     </Link>
   );

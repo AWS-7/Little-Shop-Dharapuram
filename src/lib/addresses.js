@@ -14,20 +14,48 @@ export async function getAddresses(userId) {
 
 export async function createAddress(userId, address) {
   console.log('Creating address for user:', userId, 'with data:', address);
-  // If this is the first address or marked default, unset other defaults
-  if (address.is_default) {
-    await supabase
-      .from('addresses')
-      .update({ is_default: false })
-      .eq('user_id', userId);
+  
+  // Validate userId - ensure it's a proper format
+  if (!userId || typeof userId !== 'string') {
+    console.error('Invalid userId:', userId);
+    return { data: null, error: { message: 'Invalid user ID. Please sign in again.' } };
   }
-  const { data, error } = await supabase
-    .from('addresses')
-    .insert({ ...address, user_id: userId })
-    .select()
-    .single();
-  console.log('Create address result:', { data, error });
-  return { data, error };
+  
+  try {
+    // If this is the first address or marked default, unset other defaults
+    if (address.is_default) {
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', userId);
+    }
+    
+    const { data, error } = await supabase
+      .from('addresses')
+      .insert({ ...address, user_id: userId })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Supabase error creating address:', error);
+      // Check if it's a UUID format error
+      if (error.message?.includes('uuid') || error.message?.includes('invalid input syntax')) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Authentication error. Please logout and sign in again.' 
+          } 
+        };
+      }
+      return { data: null, error };
+    }
+    
+    console.log('Create address result:', { data, error });
+    return { data, error };
+  } catch (err) {
+    console.error('Exception creating address:', err);
+    return { data: null, error: { message: err.message || 'Failed to save address' } };
+  }
 }
 
 export async function updateAddress(addressId, updates) {

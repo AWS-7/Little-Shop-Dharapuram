@@ -1,31 +1,54 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, ShieldCheck, Bell, BellRing } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, Bell, BellRing, Sparkles } from 'lucide-react';
 import { requestNotificationPermission, isNotificationSupported } from '../../lib/notifications';
+import { loginWithGoogle, isAuthenticated, isAdmin } from '../../lib/firebaseAuth';
+import { ADMIN_EMAIL } from '../../lib/constants';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
-  const [notifEnabled, setNotifEnabled] = useState(false);
 
-  // Check if notifications were already enabled
   useEffect(() => {
-    if (Notification.permission === 'granted') {
-      setNotifEnabled(true);
+    // If already logged in as admin, go to dashboard
+    if (isAuthenticated() && isAdmin(ADMIN_EMAIL)) {
+      navigate('/admin/dashboard');
     }
-  }, []);
+  }, [navigate]);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    
+    const res = await loginWithGoogle();
+    
+    if (res.success) {
+      if (isAdmin(ADMIN_EMAIL)) {
+        // Logged in as admin, check notifications
+        if (isNotificationSupported() && Notification.permission !== 'granted') {
+          setShowNotifPrompt(true);
+          setLoading(false);
+        } else {
+          navigate('/admin/dashboard');
+        }
+      } else {
+        setError('Access Denied: You do not have admin privileges.');
+        setLoading(false);
+      }
+    } else {
+      setError(res.error || 'Login failed. Please try again.');
+      setLoading(false);
+    }
+  };
 
   const handleNotificationRequest = async () => {
     const granted = await requestNotificationPermission();
     if (granted) {
-      setNotifEnabled(true);
       setShowNotifPrompt(false);
-      // Navigate after a short delay
-      setTimeout(() => navigate('/admin/dashboard'), 500);
+      navigate('/admin/dashboard');
     }
   };
 
@@ -34,135 +57,93 @@ export default function AdminLogin() {
     navigate('/admin/dashboard');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    // Simple localStorage auth (any non-empty credentials work)
-    setTimeout(() => {
-      if (form.email && form.password) {
-        localStorage.setItem('admin_auth', 'true');
-        localStorage.setItem('admin_email', form.email);
-        
-        // Check if we should show notification prompt
-        if (isNotificationSupported() && Notification.permission !== 'granted') {
-          setShowNotifPrompt(true);
-          setLoading(false);
-        } else {
-          navigate('/admin/dashboard');
-        }
-      } else {
-        setError('Please enter email and password');
-        setLoading(false);
-      }
-    }, 600);
-  };
-
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center px-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <ShieldCheck size={40} className="mx-auto text-purple-primary mb-4" strokeWidth={1.5} />
+          <div className="w-20 h-20 bg-purple-primary rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-purple-primary/20 rotate-3">
+            <ShieldCheck size={40} className="text-white" strokeWidth={1.5} />
+          </div>
           <h1 className="font-playfair text-3xl text-purple-primary mb-1">Admin Access</h1>
-          <p className="font-inter text-sm text-gray-400">Little Shop Management Console</p>
+          <p className="font-inter text-sm text-gray-400 uppercase tracking-widest font-bold">Little Shop Console</p>
         </div>
 
         <AnimatePresence mode="wait">
-          {!showNotifPrompt ? (
-            <motion.form
+          {showNotifPrompt ? (
+            <motion.div
+              key="notif"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-10 text-center shadow-xl border border-gray-100"
+            >
+              <div className="w-16 h-16 bg-purple-light rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <BellRing size={32} className="text-purple-primary animate-bounce" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Stay Updated!</h3>
+              <p className="text-gray-500 text-sm font-medium mb-10 leading-relaxed">
+                Enable push notifications to get real-time alerts for new orders and inventory updates.
+              </p>
+              
+              <div className="space-y-4">
+                <button
+                  onClick={handleNotificationRequest}
+                  className="w-full py-4 rounded-2xl bg-purple-primary text-white text-sm font-black hover:bg-purple-secondary transition-all shadow-lg shadow-purple-primary/20 uppercase tracking-widest"
+                >
+                  Enable Notifications
+                </button>
+                <button
+                  onClick={skipNotifications}
+                  className="w-full py-4 rounded-2xl border-2 border-gray-100 text-sm font-black text-gray-400 hover:bg-gray-50 transition-all uppercase tracking-widest"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          ) : (            <motion.div
               key="login"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0, x: -20 }}
-              onSubmit={handleSubmit}
-              className="bg-white border border-gray-100 p-8 space-y-5"
+              className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100 space-y-8"
             >
               {error && (
-                <p className="font-inter text-sm text-rose-gold text-center">{error}</p>
+                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-xs font-bold text-center animate-shake">
+                  {error}
+                </div>
               )}
 
-              <div>
-                <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">Email</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full border border-gray-200 pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-purple-primary transition-colors"
-                    placeholder="littleshopboutiqueaws@gmail.com"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">Password</label>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="w-full border border-gray-200 pl-11 pr-4 py-3 font-inter text-sm outline-none focus:border-purple-primary transition-colors"
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-              </div>
-
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={loading}
-                className="btn-primary w-full disabled:opacity-50"
-              >
-                {loading ? 'Authenticating...' : 'Sign In'}
-              </motion.button>
-            </motion.form>
-          ) : (
-            <motion.div
-              key="notif"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white border border-gray-100 p-8 space-y-5"
-            >
               <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BellRing size={32} className="text-purple-primary" />
-                </div>
-                <h3 className="font-playfair text-xl text-purple-primary mb-2">
-                  Enable Order Notifications?
-                </h3>
-                <p className="font-inter text-sm text-gray-500 mb-6">
-                  Get instant alerts when new orders arrive. You'll hear a chime sound and see a notification even when the tab is closed.
+                <p className="text-gray-500 text-sm font-medium mb-8">
+                  Sign in with your authorized Google account to access the management dashboard.
                 </p>
+
+                <button
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-100 py-4 rounded-2xl font-black text-gray-700 hover:border-purple-primary hover:bg-purple-light transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="w-6 h-6 border-2 border-purple-primary/20 border-t-purple-primary rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                      </svg>
+                      <span className="uppercase tracking-widest text-xs">Continue with Google</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              <div className="space-y-3">
-                <motion.button
-                  onClick={handleNotificationRequest}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  <Bell size={18} />
-                  Enable Notifications
-                </motion.button>
-
-                <motion.button
-                  onClick={skipNotifications}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 font-inter text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Skip for now
-                </motion.button>
+              <div className="pt-6 border-t border-gray-50 flex items-center justify-center gap-3 text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                <Lock size={14} />
+                Secure Encrypted Session
               </div>
             </motion.div>
           )}
