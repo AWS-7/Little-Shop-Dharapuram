@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, X, Palette, Sparkles, Loader2 } from 'lucide-react';
+import { SlidersHorizontal, X, Palette, Sparkles } from 'lucide-react';
 import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { LogoPulse } from '../components/layout/PageTransition';
-import { PLACEHOLDER_PRODUCTS, CATEGORIES } from '../lib/constants';
+import { PLACEHOLDER_PRODUCTS } from '../lib/constants';
 import { getAllProducts } from '../lib/products';
 
 const OCCASIONS = ['All', 'Wedding', 'Party', 'Daily Wear', 'Festive'];
@@ -23,7 +23,6 @@ export default function Shop() {
   const [selectedColor, setSelectedColor] = useState('All');
   const [priceRange, setPriceRange] = useState('All');
   const [sortBy, setSortBy] = useState('default');
-  const [showFilters, setShowFilters] = useState(false);
 
   // Show LogoPulse if loading takes more than 500ms
   useEffect(() => {
@@ -53,7 +52,6 @@ export default function Shop() {
   const filtered = useMemo(() => {
     let items = [...allProducts];
     if (selectedCategory !== 'All') {
-      // Match exact or partial (e.g., "Silk Sarees" matches products with category containing "Sarees")
       items = items.filter((p) => p.category === selectedCategory || p.category?.includes(selectedCategory.split(' ').pop()));
     }
     if (selectedOccasion !== 'All') {
@@ -62,247 +60,149 @@ export default function Shop() {
     if (selectedColor !== 'All') {
       items = items.filter((p) => p.color === selectedColor || p.name.toLowerCase().includes(selectedColor.toLowerCase()));
     }
-    if (priceRange !== 'All') {
-      const [min, max] = priceRange.split('-').map(Number);
-      items = items.filter((p) => p.price >= min && (max ? p.price <= max : true));
-    }
     if (sortBy === 'price-asc') items.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') items.sort((a, b) => b.price - a.price);
     if (sortBy === 'name') items.sort((a, b) => a.name.localeCompare(b.name));
     if (sortBy === 'newest') items.sort((a, b) => (b.id > a.id ? 1 : -1));
     return items;
-  }, [allProducts, selectedCategory, selectedOccasion, selectedColor, priceRange, sortBy]);
+  }, [allProducts, selectedCategory, selectedOccasion, selectedColor, sortBy]);
 
   return (
     <>
-      {/* Logo Pulse for slow loading */}
       <LogoPulse show={showSlowLoading} />
       
-      <div className="container-luxury section-spacing">
-      {/* Page Header */}
-      <div className="text-center mb-12">
-        <p className="font-inter text-xs tracking-[0.3em] uppercase text-rose-gold mb-3">
-          Browse
-        </p>
-        <h1 className="font-playfair text-3xl md:text-5xl text-purple-primary mb-4">
-          All Products
-        </h1>
-        <div className="divider-luxury" />
-      </div>
-
-      {/* Smart Filters */}
-      <div className="mb-8 space-y-4">
-        {/* Category Filter */}
-        <div className="hidden md:flex items-center gap-3 flex-wrap">
-          <span className="font-inter text-[10px] tracking-wider uppercase text-gray-400 mr-2">Category</span>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`font-inter text-xs tracking-wider uppercase px-4 py-2 transition-colors ${
-                selectedCategory === cat
-                  ? 'bg-purple-primary text-white'
-                  : 'border border-gray-200 text-gray-500 hover:border-purple-primary hover:text-purple-primary'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+      <div className="container-clean section-spacing pt-32">
+        {/* Page Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Shop All
+          </h1>
+          <p className="text-gray-500 max-w-2xl text-lg">
+            Explore our curated collection of premium essentials. 
+            Filtered by quality, designed for longevity.
+          </p>
         </div>
 
-        {/* Occasion & Color Filters */}
-        <div className="hidden md:flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Sparkles size={14} className="text-rose-gold" />
-            <span className="font-inter text-[10px] tracking-wider uppercase text-gray-400">Shop by Occasion</span>
-            {OCCASIONS.map((occ) => (
-              <button
-                key={occ}
-                onClick={() => setSelectedOccasion(occ)}
-                className={`font-inter text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-full transition-colors ${
-                  selectedOccasion === occ
-                    ? 'bg-rose-gold text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-rose-gold/10 hover:text-rose-gold'
-                }`}
-              >
-                {occ}
-              </button>
+        {/* Top Filters Section */}
+        <div className="bg-white border-y border-gray-100 py-6 mb-10 sticky top-[64px] md:top-[80px] z-30">
+          <div className="flex flex-col gap-6">
+            {/* Category Pills */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2 flex-shrink-0">Categories</span>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? 'bg-purple-primary text-white shadow-md'
+                      : 'bg-gray-50 text-gray-500 hover:bg-purple-light hover:text-purple-primary'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Other Filters Row */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Occasion Dropdown */}
+                <div className="relative">
+                  <select
+                    value={selectedOccasion}
+                    onChange={(e) => setSelectedOccasion(e.target.value)}
+                    className="appearance-none bg-gray-50 border-none text-xs font-bold text-gray-700 px-5 py-3 pr-10 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-purple-primary/10"
+                  >
+                    <option value="All">All Occasions</option>
+                    {OCCASIONS.filter(o => o !== 'All').map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <Sparkles size={12} />
+                  </div>
+                </div>
+
+                {/* Color Dropdown */}
+                <div className="relative">
+                  <select
+                    value={selectedColor}
+                    onChange={(e) => setSelectedColor(e.target.value)}
+                    className="appearance-none bg-gray-50 border-none text-xs font-bold text-gray-700 px-5 py-3 pr-10 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-purple-primary/10"
+                  >
+                    <option value="All">All Colors</option>
+                    {COLORS.filter(c => c !== 'All').map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <Palette size={12} />
+                  </div>
+                </div>
+
+                {/* Clear Filters */}
+                {(selectedCategory !== 'All' || selectedOccasion !== 'All' || selectedColor !== 'All') && (
+                  <button
+                    onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
+                    className="flex items-center gap-2 text-xs font-bold text-purple-primary hover:text-purple-dark transition-colors"
+                  >
+                    <X size={14} /> Clear All
+                  </button>
+                )}
+              </div>
+
+              {/* Sort By */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:block">Sort By</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent border-none text-xs font-bold text-gray-900 outline-none cursor-pointer py-2"
+                >
+                  <option value="default">Newest</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Header */}
+        {!loadingProducts && (
+          <div className="flex items-center justify-between mb-8">
+            <p className="text-sm text-gray-500 font-medium">
+              Showing <span className="text-gray-900 font-bold">{filtered.length}</span> results
+            </p>
+          </div>
+        )}
+
+        {/* Product Grid */}
+        {loadingProducts ? (
+          <ProductGridSkeleton count={8} />
+        ) : filtered.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10 md:gap-x-8 md:gap-y-16">
+            {filtered.map((product, idx) => (
+              <ProductCard key={product.id} product={product} index={idx} />
             ))}
           </div>
-
-          <div className="flex items-center gap-2">
-            <Palette size={14} className="text-purple-primary" />
-            <span className="font-inter text-[10px] tracking-wider uppercase text-gray-400">Shop by Color</span>
-            {COLORS.map((col) => (
+        ) : (
+          <div className="text-center py-32 bg-gray-50 rounded-3xl">
+            <div className="max-w-xs mx-auto">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No results found</h3>
+              <p className="text-gray-500 mb-8">Try adjusting your filters or search criteria.</p>
               <button
-                key={col}
-                onClick={() => setSelectedColor(col)}
-                className={`font-inter text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-full transition-colors ${
-                  selectedColor === col
-                    ? 'bg-purple-primary text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-purple-primary/10 hover:text-purple-primary'
-                }`}
+                onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
+                className="btn-primary w-full"
               >
-                {col}
+                Clear All Filters
               </button>
-            ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-6 gap-4">
-        <button
-          onClick={() => setShowFilters(true)}
-          className="md:hidden flex items-center gap-2 font-inter text-xs tracking-wider uppercase text-gray-600 border border-gray-200 px-4 py-2"
-        >
-          <SlidersHorizontal size={14} /> Filters
-        </button>
-
-        <div className="flex items-center gap-2">
-          {(selectedCategory !== 'All' || selectedOccasion !== 'All' || selectedColor !== 'All') && (
-            <button
-              onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
-              className="font-inter text-xs text-rose-gold hover:underline"
-            >
-              Clear all filters
-            </button>
-          )}
-        </div>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="font-inter text-xs tracking-wider uppercase bg-transparent border border-gray-200 px-4 py-2 outline-none"
-        >
-          <option value="default">Sort By</option>
-          <option value="newest">Newest First</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="name">Name</option>
-        </select>
-      </div>
-
-      {/* Results count - hide when loading */}
-      {!loadingProducts && (
-        <p className="font-inter text-xs text-gray-400 mb-6">
-          Showing {filtered.length} product{filtered.length !== 1 ? 's' : ''}
-        </p>
-      )}
-
-      {/* Product Grid or Skeleton */}
-      {loadingProducts ? (
-        <ProductGridSkeleton count={8} />
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4 md:gap-x-6 md:gap-y-10">
-          {filtered.map((product, idx) => (
-            <ProductCard key={product.id} product={product} index={idx} />
-          ))}
-        </div>
-      )}
-
-      {!loadingProducts && filtered.length === 0 && (
-        <div className="text-center py-20">
-          <p className="font-playfair text-xl text-gray-400">No products found</p>
-        </div>
-      )}
-
-      {/* Mobile Filter Drawer */}
-      {showFilters && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 bg-black/40 md:hidden"
-          onClick={() => setShowFilters(false)}
-        >
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            className="absolute right-0 top-0 bottom-0 w-72 bg-cream p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="font-playfair text-lg text-purple-primary">Filters</h3>
-              <button onClick={() => setShowFilters(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-6">
-              {/* Category */}
-              <div>
-                <h4 className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-3">Category</h4>
-                <div className="space-y-1">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => { setSelectedCategory(cat); }}
-                      className={`block w-full text-left font-inter text-sm px-4 py-2 transition-colors ${
-                        selectedCategory === cat
-                          ? 'bg-purple-primary text-white'
-                          : 'text-gray-600 hover:text-purple-primary'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Occasion */}
-              <div>
-                <h4 className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-3 flex items-center gap-2">
-                  <Sparkles size={12} /> Shop by Occasion
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {OCCASIONS.map((occ) => (
-                    <button
-                      key={occ}
-                      onClick={() => { setSelectedOccasion(occ); }}
-                      className={`font-inter text-xs px-3 py-1.5 rounded-full transition-colors ${
-                        selectedOccasion === occ
-                          ? 'bg-rose-gold text-white'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {occ}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Color */}
-              <div>
-                <h4 className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-3 flex items-center gap-2">
-                  <Palette size={12} /> Shop by Color
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {COLORS.map((col) => (
-                    <button
-                      key={col}
-                      onClick={() => { setSelectedColor(col); }}
-                      className={`font-inter text-xs px-3 py-1.5 rounded-full transition-colors ${
-                        selectedColor === col
-                          ? 'bg-purple-primary text-white'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {col}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowFilters(false)}
-                className="w-full btn-primary py-3 text-sm"
-              >
-                Show {filtered.length} Results
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </div>
     </>
   );
 }

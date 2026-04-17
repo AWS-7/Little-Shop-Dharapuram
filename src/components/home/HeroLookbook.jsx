@@ -1,149 +1,59 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { HERO_SLIDES } from '../../lib/constants';
 
-const HeroLookbook = forwardRef(function HeroLookbook(props, ref) {
-  const [current, setCurrent] = useState(0);
-  const [activeHotspot, setActiveHotspot] = useState(null);
-
-  const next = useCallback(() => {
-    setCurrent((prev) => (prev + 1) % HERO_SLIDES.length);
-    setActiveHotspot(null);
-  }, []);
-
-  // Expose nextSlide to parent via ref
-  useImperativeHandle(ref, () => ({
-    nextSlide: () => {
-      next();
-    }
-  }));
-
-  const prev = useCallback(() => {
-    setCurrent((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
-    setActiveHotspot(null);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(next, 6000);
-    return () => clearInterval(timer);
-  }, [next]);
-
-  const slide = HERO_SLIDES[current];
-
+const HeroLookbook = () => {
   return (
-    <section className="relative w-full h-[85vh] md:h-[90vh] overflow-hidden">
-      <AnimatePresence mode="wait">
+    <section className="relative w-full h-[80vh] min-h-[600px] flex items-center overflow-hidden bg-purple-light pt-16">
+      <div className="container-clean grid lg:grid-cols-2 gap-12 items-center">
+        {/* Text Content */}
         <motion.div
-          key={slide.id}
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.8, ease: 'easeInOut' }}
-          className="absolute inset-0"
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="z-10"
         >
-          {/* Background Image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${slide.image})` }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
-          </div>
-
-          {/* Hotspots */}
-          {slide.hotspots.map((hotspot, idx) => (
-            <div
-              key={idx}
-              className="absolute z-20 cursor-pointer"
-              style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
-              onClick={() =>
-                setActiveHotspot(activeHotspot === idx ? null : idx)
-              }
-            >
-              <motion.div
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-sm border border-white/50 flex items-center justify-center"
-              >
-                <Plus size={14} className="text-white" />
-              </motion.div>
-
-              <AnimatePresence>
-                {activeHotspot === idx && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.9 }}
-                    className="absolute left-10 top-0 glass-dark text-white px-4 py-2.5 rounded-sm whitespace-nowrap"
-                  >
-                    <Link
-                      to={`/product/${hotspot.productId}`}
-                      className="font-inter text-xs tracking-wide hover:text-rose-gold transition-colors"
-                    >
-                      {hotspot.label}
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
-
-          {/* Content */}
-          <div className="container-luxury relative z-10 h-full flex flex-col justify-end pb-20 md:pb-28">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-            >
-              <p className="font-inter text-xs tracking-[0.3em] uppercase text-white/70 mb-3">
-                {HERO_SLIDES[current].subtitle}
-              </p>
-              <h2 className="font-playfair text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white font-semibold mb-6 leading-tight">
-                {slide.title}
-              </h2>
-              <Link to="/shop" className="inline-block">
-                <motion.span
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="btn-primary inline-block"
-                >
-                  {slide.cta}
-                </motion.span>
-              </Link>
-            </motion.div>
+          <span className="inline-block px-4 py-1.5 rounded-full bg-purple-primary/10 text-purple-primary text-xs font-bold tracking-widest uppercase mb-6">
+            New Collection 2026
+          </span>
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] mb-8">
+            Elegance in <br />
+            <span className="text-purple-primary">Every Detail.</span>
+          </h2>
+          <p className="text-lg text-gray-600 mb-10 max-w-lg leading-relaxed">
+            Discover our curated selection of premium lifestyle essentials. 
+            Designed for those who appreciate quality and minimalist aesthetics.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link to="/shop" className="btn-primary text-base px-12">
+              Shop Collection
+            </Link>
+            <Link to="/collections" className="btn-outline text-base px-12">
+              View Lookbook
+            </Link>
           </div>
         </motion.div>
-      </AnimatePresence>
 
-      {/* Navigation Arrows */}
-      <button
-        onClick={prev}
-        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full glass flex items-center justify-center text-gray-700 hover:text-purple-primary transition-colors"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <button
-        onClick={next}
-        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full glass flex items-center justify-center text-gray-700 hover:text-purple-primary transition-colors"
-      >
-        <ChevronRight size={20} />
-      </button>
-
-      {/* Slide Indicators */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-        {HERO_SLIDES.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => { setCurrent(idx); setActiveHotspot(null); }}
-            className={`h-[2px] transition-all duration-500 ${
-              idx === current ? 'w-8 bg-white' : 'w-4 bg-white/40'
-            }`}
-          />
-        ))}
+        {/* Hero Image / Graphic */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="relative hidden lg:block"
+        >
+          <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl">
+            <img 
+              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop" 
+              alt="Fashion Hero"
+              className="w-full h-[600px] object-cover"
+            />
+          </div>
+          {/* Decorative Elements */}
+          <div className="absolute -bottom-6 -right-6 w-64 h-64 bg-purple-primary/10 rounded-full blur-3xl -z-10" />
+          <div className="absolute -top-6 -left-6 w-64 h-64 bg-purple-accent/20 rounded-full blur-3xl -z-10" />
+        </motion.div>
       </div>
     </section>
   );
-});
+};
 
 export default HeroLookbook;

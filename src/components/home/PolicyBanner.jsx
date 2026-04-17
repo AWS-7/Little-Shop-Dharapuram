@@ -26,9 +26,9 @@ const policies = [
 
 export default function PolicyBanner() {
   return (
-    <section className="border-y border-gray-100">
-      <div className="container-luxury py-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section className="bg-white border-y border-gray-100">
+      <div className="container-clean py-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {policies.map((p, idx) => (
             <motion.div
               key={p.title}
@@ -36,13 +36,17 @@ export default function PolicyBanner() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1 }}
-              className="text-center"
+              className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-4"
             >
-              <p.icon size={24} className="mx-auto text-rose-gold mb-3" strokeWidth={1.5} />
-              <h4 className="font-inter text-sm font-semibold text-purple-primary mb-1">
-                {p.title}
-              </h4>
-              <p className="font-inter text-xs text-gray-400">{p.desc}</p>
+              <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
+                <p.icon size={22} className="text-purple-primary" strokeWidth={2} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 mb-1">
+                  {p.title}
+                </h4>
+                <p className="text-xs font-medium text-gray-500 leading-relaxed">{p.desc}</p>
+              </div>
             </motion.div>
           ))}
         </div>

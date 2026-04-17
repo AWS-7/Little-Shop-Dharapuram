@@ -31,6 +31,7 @@ export default {
       },
       fontFamily: {
         inter: ['"Inter"', 'sans-serif'],
+        sans: ['"Inter"', 'sans-serif'],
       },
       maxWidth: {
         site: '1280px',

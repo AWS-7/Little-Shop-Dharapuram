@@ -4,93 +4,88 @@ import { BRAND, POLICIES } from '../../lib/constants';
 
 export default function Footer() {
   return (
-    <footer className="bg-purple-secondary text-white/90">
-      <div className="container-luxury py-16 md:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-          {/* Brand */}
-          <div className="md:col-span-1">
-            <h3 className="font-playfair text-2xl font-semibold text-white mb-4">
+    <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
+      <div className="container-clean">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          {/* Brand Info */}
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-purple-primary tracking-tight uppercase">
               {BRAND.name}
             </h3>
-            <p className="font-inter text-sm text-white/60 leading-relaxed">
+            <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
               {BRAND.description}
             </p>
-            <div className="flex items-center gap-4 mt-6">
-              <a href="#" className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors">
-                <Instagram size={16} />
+            <div className="flex items-center gap-4">
+              <a href="#" className="w-10 h-10 rounded-full bg-purple-light text-purple-primary flex items-center justify-center hover:bg-purple-primary hover:text-white transition-all duration-300">
+                <Instagram size={18} />
               </a>
-              <a href="#" className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors">
-                <Mail size={16} />
+              <a href="#" className="w-10 h-10 rounded-full bg-purple-light text-purple-primary flex items-center justify-center hover:bg-purple-primary hover:text-white transition-all duration-300">
+                <Mail size={18} />
               </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-inter text-xs tracking-[0.2em] uppercase text-white/40 mb-6">Quick Links</h4>
-            <ul className="space-y-3">
-              {['Shop All', 'New Arrivals', 'Collections', 'About Us'].map((link) => (
-                <li key={link}>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Shopping</h4>
+            <ul className="space-y-4">
+              {['Shop All', 'New Arrivals', 'Collections', 'Bestsellers'].map((item) => (
+                <li key={item}>
                   <Link
-                    to={`/${link.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="font-inter text-sm text-white/70 hover:text-rose-gold transition-colors"
+                    to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="text-sm text-gray-500 hover:text-purple-primary transition-colors"
                   >
-                    {link}
+                    {item}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Customer Care */}
+          {/* Customer Service */}
           <div>
-            <h4 className="font-inter text-xs tracking-[0.2em] uppercase text-white/40 mb-6">Customer Care</h4>
-            <ul className="space-y-3">
-              {['Track Order', 'Shipping Info', 'FAQ', 'Contact Us'].map((link) => (
-                <li key={link}>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Customer Care</h4>
+            <ul className="space-y-4">
+              {['Track Order', 'Shipping Info', 'Returns & Exchanges', 'Contact Us'].map((item) => (
+                <li key={item}>
                   <Link
-                    to={`/${link.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="font-inter text-sm text-white/70 hover:text-rose-gold transition-colors"
+                    to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="text-sm text-gray-500 hover:text-purple-primary transition-colors"
                   >
-                    {link}
+                    {item}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Policies + Contact */}
+          {/* Contact Info */}
           <div>
-            <h4 className="font-inter text-xs tracking-[0.2em] uppercase text-white/40 mb-6">Policies</h4>
-            <div className="space-y-3 mb-6">
-              <p className="font-inter text-sm text-rose-gold font-medium">{POLICIES.payment}</p>
-              <p className="font-inter text-sm text-rose-gold font-medium">{POLICIES.returns}</p>
-            </div>
-            <div className="space-y-2 text-sm text-white/60">
-              <div className="flex items-center gap-2">
-                <Phone size={14} />
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Contact Us</h4>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 text-sm text-gray-500">
+                <MapPin size={18} className="text-purple-primary shrink-0" />
+                <span>Chennai, Tamil Nadu, India</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-500">
+                <Phone size={18} className="text-purple-primary shrink-0" />
                 <span>+91 98765 43210</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail size={14} />
+              <div className="flex items-center gap-3 text-sm text-gray-500">
+                <Mail size={18} className="text-purple-primary shrink-0" />
                 <span>hello@littleshop.in</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin size={14} className="mt-0.5" />
-                <span>Chennai, Tamil Nadu</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="font-inter text-xs text-white/40">
-            © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
-          </p>
-          <p className="font-inter text-xs text-white/40">
-            Crafted with love in India
-          </p>
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-gray-400">
+          <p>© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <Link to="/privacy-policy" className="hover:text-purple-primary transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-purple-primary transition-colors">Terms of Service</Link>
+          </div>
         </div>
       </div>
     </footer>

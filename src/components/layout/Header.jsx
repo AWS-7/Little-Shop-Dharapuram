@@ -99,54 +99,55 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 border-b ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-white/90 backdrop-blur-xl py-3 border-gray-100'
-          : 'bg-white/80 backdrop-blur-md py-3 border-gray-100/60 md:bg-transparent md:backdrop-blur-none md:py-5 md:border-transparent'
+          ? 'bg-white/80 backdrop-blur-lg border-b border-gray-100 shadow-sm py-2'
+          : 'bg-white border-b border-transparent py-4'
       }`}
     >
-      <div className="container-luxury flex items-center justify-between">
-        {/* Left Nav — Desktop (hidden on tablet, use hamburger) */}
-        <nav className="hidden lg:flex items-center gap-8">
-          <Link to="/shop" className="font-inter text-xs tracking-[0.2em] uppercase text-gray-700 hover:text-purple-primary transition-colors">
+      <div className="container-clean flex items-center justify-between">
+        {/* Left Nav — Desktop */}
+        <nav className="hidden lg:flex items-center gap-10">
+          <Link to="/shop" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
             Shop
           </Link>
-          <Link to="/collections" className="font-inter text-xs tracking-[0.2em] uppercase text-gray-700 hover:text-purple-primary transition-colors">
+          <Link to="/collections" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
             Collections
           </Link>
-          <Link to="/new-arrivals" className="font-inter text-xs tracking-[0.2em] uppercase text-gray-700 hover:text-purple-primary transition-colors">
+          <Link to="/new-arrivals" className="text-sm font-medium text-gray-600 hover:text-purple-primary transition-colors">
             New Arrivals
           </Link>
         </nav>
 
-        {/* Mobile/Tablet — Hamburger (left) */}
+        {/* Mobile — Hamburger (left) */}
         <button
-          className="lg:hidden p-1 text-gray-700"
+          className="lg:hidden p-2 text-gray-900 hover:text-purple-primary transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          {mobileMenuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
-        {/* Logo — always centered */}
+        {/* Logo — centered */}
         <Link to="/" className="absolute left-1/2 -translate-x-1/2">
-          <h1 className="font-playfair text-lg md:text-3xl font-semibold text-purple-primary tracking-wide whitespace-nowrap">
+          <h1 className="text-xl md:text-2xl font-bold text-purple-primary tracking-tight uppercase">
             Little Shop
           </h1>
         </Link>
 
         {/* Right Icons */}
-        <div className="flex items-center gap-3 md:gap-5">
+        <div className="flex items-center gap-1 md:gap-3">
           <button
             onClick={() => setSearchOpen(!searchOpen)}
-            className="text-gray-700 hover:text-purple-primary transition-colors"
+            className="p-2 text-gray-900 hover:text-purple-primary transition-colors"
+            aria-label="Search"
           >
-            <Search size={18} />
+            <Search size={20} />
           </button>
 
-          <Link to="/wishlist" className="relative text-gray-700 hover:text-rose-gold transition-colors hidden lg:block">
-            <Heart size={18} />
+          <Link to="/wishlist" className="relative p-2 text-gray-900 hover:text-purple-primary transition-colors hidden sm:block" aria-label="Wishlist">
+            <Heart size={20} />
             {wishlist.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-gold text-white text-[9px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-purple-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full">
                 {wishlist.length}
               </span>
             )}
@@ -154,27 +155,21 @@ export default function Header() {
 
           <button 
             onClick={openCartDrawer}
-            className="relative text-gray-700 hover:text-purple-primary transition-colors hidden lg:block"
+            className="relative p-2 text-gray-900 hover:text-purple-primary transition-colors"
+            aria-label="Cart"
           >
-            <ShoppingBag size={18} />
+            <ShoppingBag size={20} />
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-purple-primary text-white text-[9px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-purple-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full">
                 {cartCount}
               </span>
             )}
           </button>
 
           {isLoggedIn ? (
-            <div className="hidden lg:flex items-center gap-3">
-              <Link to={isAdmin ? "/admin/dashboard" : "/account"} className="text-gray-700 hover:text-purple-primary transition-colors">
-                <div className="flex items-center gap-2">
-                  <User size={18} />
-                  {currentUser && (
-                    <span className="text-xs text-gray-500">
-                      {formatPhoneForDisplay(currentUser.phoneNumber)}
-                    </span>
-                  )}
-                </div>
+            <div className="hidden sm:flex items-center gap-1">
+              <Link to={isAdmin ? "/admin/dashboard" : "/account"} className="p-2 text-gray-900 hover:text-purple-primary transition-colors flex items-center gap-2">
+                <User size={20} />
               </Link>
               <button
                 onClick={async () => {
@@ -184,15 +179,15 @@ export default function Header() {
                   setCurrentUser(null);
                   navigate('/login');
                 }}
-                className="text-gray-400 hover:text-red-500 transition-colors"
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                 title="Logout"
               >
                 <LogOut size={18} />
               </button>
             </div>
           ) : (
-            <Link to="/login" className="hidden lg:block text-gray-700 hover:text-purple-primary transition-colors">
-              <User size={18} />
+            <Link to="/login" className="hidden sm:block p-2 text-gray-900 hover:text-purple-primary transition-colors" aria-label="Login">
+              <User size={20} />
             </Link>
           )}
         </div>
@@ -205,18 +200,17 @@ export default function Header() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-gray-100 bg-white relative z-50"
+            className="border-t border-gray-100 bg-white shadow-lg overflow-hidden"
           >
-            <div className="container-luxury py-4">
-              {/* Search Input */}
-              <div className="flex items-center gap-3">
-                <Search size={16} className="text-gray-400 flex-shrink-0" />
+            <div className="container-clean py-8">
+              <div className="flex items-center gap-4 max-w-3xl mx-auto border-b border-gray-200 focus-within:border-purple-primary transition-colors py-3">
+                <Search size={22} className="text-gray-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search for sarees, kurtas, accessories..."
-                  className="w-full bg-transparent font-inter text-sm outline-none placeholder:text-gray-400"
+                  placeholder="What are you looking for?"
+                  className="w-full bg-transparent text-lg outline-none placeholder:text-gray-400"
                   autoFocus
                 />
                 <button 
@@ -225,69 +219,44 @@ export default function Header() {
                     setSearchQuery('');
                     setShowSuggestions(false);
                   }} 
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <X size={16} />
+                  <X size={22} />
                 </button>
               </div>
             </div>
 
-            {/* Search Suggestions Dropdown - Outside container to avoid clipping */}
+            {/* Search Suggestions Dropdown */}
             <AnimatePresence>
               {showSuggestions && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-100 overflow-hidden z-50"
+                  className="absolute left-0 right-0 top-full bg-white shadow-xl border-t border-gray-100 z-50"
                 >
-                  <div className="container-luxury">
-                    <div className="max-h-80 overflow-y-auto py-2">
-                      {filteredProducts.map((product, idx) => (
-                        <motion.button
+                  <div className="container-clean py-4">
+                    <div className="max-h-96 overflow-y-auto">
+                      {filteredProducts.map((product) => (
+                        <button
                           key={product.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
                           onClick={() => handleSearchSelect(product.id)}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 text-left rounded-lg"
+                          className="w-full flex items-center gap-4 p-3 hover:bg-purple-light transition-colors rounded-xl text-left"
                         >
-                          {/* Product Thumbnail */}
                           <img
                             src={product.image_url || product.image || '/placeholder.jpg'}
                             alt={product.name}
-                            className="w-12 h-12 object-cover rounded-md bg-gray-100 flex-shrink-0"
-                            onError={(e) => e.target.src = '/placeholder.jpg'}
+                            className="w-14 h-14 object-cover rounded-lg bg-gray-50"
                           />
-                          
-                          {/* Product Info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-inter text-sm text-gray-800 truncate">{product.name}</p>
-                            <p className="font-inter text-xs text-gray-400">{product.category}</p>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">{product.name}</p>
+                            <p className="text-xs text-gray-500">{product.category}</p>
                           </div>
-                          
-                          {/* Price */}
-                          <p className="font-playfair text-sm text-emerald-primary">
+                          <p className="font-bold text-purple-primary">
                             {CURRENCY}{product.price?.toLocaleString()}
                           </p>
-                        </motion.button>
+                        </button>
                       ))}
-                    </div>
-                    
-                    {/* View All Results Link */}
-                    <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
-                      <button
-                        onClick={() => {
-                          setSearchOpen(false);
-                          navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
-                          setSearchQuery('');
-                          setShowSuggestions(false);
-                        }}
-                        className="w-full text-center font-inter text-xs text-gray-500 hover:text-emerald-primary transition-colors"
-                      >
-                        View all results for "{searchQuery}"
-                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -304,70 +273,65 @@ export default function Header() {
             initial={{ opacity: 0, x: -300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
-            transition={{ type: 'spring', damping: 25 }}
-            className="fixed inset-0 top-[49px] bg-cream z-40 md:hidden"
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed inset-0 top-[61px] bg-white z-40 md:hidden border-t border-gray-100"
           >
-            <nav className="flex flex-col p-8 gap-5">
+            <nav className="flex flex-col p-6 gap-6">
               {['Shop', 'Collections', 'New Arrivals'].map((item) => (
                 <Link
                   key={item}
                   to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="font-playfair text-2xl text-emerald-primary hover:text-rose-gold transition-colors"
+                  className="text-xl font-bold text-gray-900 hover:text-purple-primary transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item}
                 </Link>
               ))}
 
-              <div className="border-t border-gray-200 my-2" />
+              <div className="h-px bg-gray-100" />
 
-              {isLoggedIn ? (
-                <>
-                  <Link
-                    to="/my-orders"
-                    className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Package size={16} /> My Orders
-                  </Link>
-                  {isAdmin && (
+              <div className="flex flex-col gap-4">
+                {isLoggedIn ? (
+                  <>
                     <Link
-                      to="/admin/dashboard"
-                      className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-purple-600 hover:text-purple-800 transition-colors"
+                      to="/my-orders"
+                      className="flex items-center gap-3 text-base font-medium text-gray-600"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <User size={16} /> Admin Dashboard
+                      <Package size={20} /> My Orders
                     </Link>
-                  )}
-                  <button
-                    onClick={async () => {
-                      await logoutUser();
-                      setIsLoggedIn(false);
-                      setIsAdmin(false);
-                      setMobileMenuOpen(false);
-                      navigate('/login');
-                    }}
-                    className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-red-500 hover:text-red-700 transition-colors"
+                    {isAdmin && (
+                      <Link
+                        to="/admin/dashboard"
+                        className="flex items-center gap-3 text-base font-medium text-purple-primary"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <User size={20} /> Admin Dashboard
+                      </Link>
+                    )}
+                    <button
+                      onClick={async () => {
+                        await logoutUser();
+                        setIsLoggedIn(false);
+                        setIsAdmin(false);
+                        setMobileMenuOpen(false);
+                        navigate('/login');
+                      }}
+                      className="flex items-center gap-3 text-base font-medium text-red-500"
+                    >
+                      <LogOut size={20} /> Logout
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="flex items-center gap-3 text-base font-medium text-gray-600"
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    <LogOut size={16} /> Logout
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <User size={16} /> Sign In
-                </Link>
-              )}
-              <Link
-                to="/track-order"
-                className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Package size={16} /> Track Order
-              </Link>
+                    <User size={20} /> Login / Register
+                  </Link>
+                )}
+              </div>
             </nav>
           </motion.div>
         )}

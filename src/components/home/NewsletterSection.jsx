@@ -15,55 +15,52 @@ export default function NewsletterSection() {
   };
 
   return (
-    <section className="section-spacing bg-purple-primary/5">
-      <div className="container-luxury">
-        <div className="max-w-2xl mx-auto text-center">
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="font-inter text-xs tracking-[0.3em] uppercase text-rose-gold mb-3"
-          >
-            Stay Connected
-          </motion.p>
-          <motion.h2
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="font-playfair text-3xl md:text-4xl text-purple-primary mb-4"
-          >
-            Join the Little Shop Circle
-          </motion.h2>
-          <p className="font-inter text-sm text-gray-500 mb-8">
-            Be the first to know about new arrivals, exclusive offers, and curated style guides.
-          </p>
+    <section className="section-spacing bg-white">
+      <div className="container-clean">
+        <div className="bg-purple-primary rounded-3xl p-10 md:p-20 text-center relative overflow-hidden">
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-accent/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl" />
 
-          {submitted ? (
-            <motion.p
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="font-inter text-sm text-purple-primary font-medium"
-            >
-              Thank you for subscribing! Welcome to the circle.
-            </motion.p>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex items-center max-w-md mx-auto">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
-                className="flex-1 bg-white border border-gray-200 px-5 py-3 font-inter text-sm outline-none focus:border-rose-gold transition-colors"
-                required
-              />
-              <button
-                type="submit"
-                className="bg-purple-primary text-white px-6 py-3 hover:bg-opacity-90 transition-colors"
+          <div className="max-w-2xl mx-auto relative z-10">
+            <span className="text-white/70 text-xs font-bold uppercase tracking-[0.2em] mb-4 block">
+              Exclusive Access
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Join our VIP List
+            </h2>
+            <p className="text-white/70 text-base md:text-lg mb-10 leading-relaxed">
+              Get early access to new collections, secret sales, and 
+              exclusive events. No spam, just pure inspiration.
+            </p>
+
+            {submitted ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white/10 backdrop-blur-md rounded-xl p-6 text-white font-bold inline-block border border-white/20"
               >
-                <Send size={16} />
-              </button>
-            </form>
-          )}
+                Welcome to the inner circle! Check your inbox soon.
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 bg-white/10 border border-white/20 px-6 py-4 rounded-xl text-white placeholder:text-white/40 outline-none focus:bg-white/20 focus:border-white/40 transition-all text-sm font-medium"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="bg-white text-purple-primary px-10 py-4 rounded-xl font-bold text-sm hover:bg-purple-light transition-all shadow-lg active:scale-95"
+                >
+                  Subscribe
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </section>
