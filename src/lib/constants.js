@@ -2,6 +2,9 @@ export const SHIPPING_THRESHOLD = 1500;
 export const SHIPPING_COST = 100;
 export const CURRENCY = '₹';
 
+// Admin mobile number for role-based access (without +91 prefix)
+export const ADMIN_MOBILE_NUMBER = '9876543210';
+
 export const BRAND = {
   name: 'Little Shop',
   tagline: 'Curated Luxury for the Modern Woman',
@@ -220,6 +223,13 @@ export const HERO_SLIDES = [
     ],
   },
 ];
+
+// Firebase Auth storage keys
+export const AUTH_STORAGE_KEYS = {
+  USER: 'firebase_auth_user',
+  TOKEN: 'firebase_auth_token',
+  TEMP_PHONE: 'firebase_temp_phone'
+};
 
 export const CATEGORIES = [
   { name: 'Sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&h=800&fit=crop', featured: true },

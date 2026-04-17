@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingBag, Heart, User, Menu, X, Package } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, X, Package, LogOut } from 'lucide-react';
 import useStore from '../../store/useStore';
-import { useAuth } from '../../context/AuthContext';
 import { getAllProducts } from '../../lib/products';
-import { CURRENCY } from '../../lib/constants';
+import { CURRENCY, ADMIN_MOBILE_NUMBER } from '../../lib/constants';
+import { isAuthenticated, logoutUser, getCurrentUser, formatPhoneForDisplay } from '../../lib/firebaseAuth';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -14,9 +14,38 @@ export default function Header() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
   const { cart, wishlist, mobileMenuOpen, setMobileMenuOpen, openCartDrawer } = useStore();
-  const { user } = useAuth();
+
+  // Check auth status on mount
+  useEffect(() => {
+    const checkAuth = () => {
+      const authenticated = isAuthenticated();
+      setIsLoggedIn(authenticated);
+      
+      if (authenticated) {
+        const user = getCurrentUser();
+        setCurrentUser(user);
+        
+        // Check if admin
+        if (user && user.phoneNumber) {
+          const userPhone = user.phoneNumber.replace('+91', '');
+          setIsAdmin(userPhone === ADMIN_MOBILE_NUMBER);
+        }
+      }
+    };
+
+    checkAuth();
+    
+    // Listen for storage changes (login/logout in other tabs)
+    const handleStorageChange = () => checkAuth();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Fetch products for search (including placeholders as fallback)
   useEffect(() => {
@@ -135,9 +164,37 @@ export default function Header() {
             )}
           </button>
 
-          <Link to="/account" className="hidden lg:block text-gray-700 hover:text-purple-primary transition-colors">
-            <User size={18} />
-          </Link>
+          {isLoggedIn ? (
+            <div className="hidden lg:flex items-center gap-3">
+              <Link to={isAdmin ? "/admin/dashboard" : "/account"} className="text-gray-700 hover:text-purple-primary transition-colors">
+                <div className="flex items-center gap-2">
+                  <User size={18} />
+                  {currentUser && (
+                    <span className="text-xs text-gray-500">
+                      {formatPhoneForDisplay(currentUser.phoneNumber)}
+                    </span>
+                  )}
+                </div>
+              </Link>
+              <button
+                onClick={async () => {
+                  await logoutUser();
+                  setIsLoggedIn(false);
+                  setIsAdmin(false);
+                  setCurrentUser(null);
+                  navigate('/login');
+                }}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+                title="Logout"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="hidden lg:block text-gray-700 hover:text-purple-primary transition-colors">
+              <User size={18} />
+            </Link>
+          )}
         </div>
       </div>
 
@@ -264,13 +321,44 @@ export default function Header() {
 
               <div className="border-t border-gray-200 my-2" />
 
-              {user && (
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    to="/my-orders"
+                    className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Package size={16} /> My Orders
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin/dashboard"
+                      className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-purple-600 hover:text-purple-800 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User size={16} /> Admin Dashboard
+                    </Link>
+                  )}
+                  <button
+                    onClick={async () => {
+                      await logoutUser();
+                      setIsLoggedIn(false);
+                      setIsAdmin(false);
+                      setMobileMenuOpen(false);
+                      navigate('/login');
+                    }}
+                    className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </>
+              ) : (
                 <Link
-                  to="/my-orders"
+                  to="/login"
                   className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Package size={16} /> My Orders
+                  <User size={16} /> Sign In
                 </Link>
               )}
               <Link
@@ -279,13 +367,6 @@ export default function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Package size={16} /> Track Order
-              </Link>
-              <Link
-                to="/account"
-                className="flex items-center gap-3 font-inter text-sm tracking-wider uppercase text-gray-600 hover:text-emerald-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <User size={16} /> {user ? 'My Account' : 'Sign In'}
               </Link>
             </nav>
           </motion.div>

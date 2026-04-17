@@ -1,7 +1,13 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
+
+// Firebase Auth Pages
+import Login from './pages/Login';
+import OtpVerification from './pages/OtpVerification';
+
+// Storefront Pages
 import Home from './pages/Home';
 import Shop from './pages/Shop';
 import ProductDetail from './pages/ProductDetail';
@@ -12,36 +18,124 @@ import Wishlist from './pages/Wishlist';
 import TrackOrder from './pages/TrackOrder';
 import Account from './pages/Account';
 import MyOrders from './pages/MyOrders';
-import AdminLogin from './pages/admin/AdminLogin';
+
+// Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 
+// Protected Route Components
+import { ClientProtectedRoute, AdminProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute';
+
 function AnimatedRoutes() {
   const location = useLocation();
-  
+
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Storefront — uses shared Layout (Header + Footer + Mobile Nav) */}
+
+        {/* PUBLIC AUTH ROUTES */}
+        <Route 
+          path="/login" 
+          element={
+            <PublicOnlyRoute>
+              <Login />
+            </PublicOnlyRoute>
+          } 
+        />
+        <Route 
+          path="/verify-otp" 
+          element={
+            <PublicOnlyRoute>
+              <OtpVerification />
+            </PublicOnlyRoute>
+          } 
+        />
+
+        {/* STOREFRONT — uses shared Layout (Header + Footer + Mobile Nav) */}
         <Route element={<Layout />}>
+          {/* Public Routes */}
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/shop" element={<PageTransition><Shop /></PageTransition>} />
           <Route path="/product/:id" element={<PageTransition><ProductDetail /></PageTransition>} />
-          <Route path="/cart" element={<PageTransition><Cart /></PageTransition>} />
-          <Route path="/checkout" element={<PageTransition><Checkout /></PageTransition>} />
-          <Route path="/order-success" element={<PageTransition><OrderSuccess /></PageTransition>} />
-          <Route path="/wishlist" element={<PageTransition><Wishlist /></PageTransition>} />
-          <Route path="/track-order" element={<PageTransition><TrackOrder /></PageTransition>} />
-          <Route path="/account" element={<PageTransition><Account /></PageTransition>} />
-          <Route path="/my-orders" element={<PageTransition><MyOrders /></PageTransition>} />
           <Route path="/collections" element={<PageTransition><Shop /></PageTransition>} />
           <Route path="/new-arrivals" element={<PageTransition><Shop /></PageTransition>} />
+          <Route path="/track-order" element={<PageTransition><TrackOrder /></PageTransition>} />
+
+          {/* Protected Client Routes - Require Firebase Auth */}
+          <Route 
+            path="/cart" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><Cart /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/checkout" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><Checkout /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/order-success" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><OrderSuccess /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/wishlist" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><Wishlist /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/account" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><Account /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/my-orders" 
+            element={
+              <ClientProtectedRoute>
+                <PageTransition><MyOrders /></PageTransition>
+              </ClientProtectedRoute>
+            } 
+          />
         </Route>
 
-        {/* Admin — standalone layout */}
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/order/:id" element={<AdminOrderDetail />} />
+        {/* ADMIN ROUTES — Protected, standalone layout */}
+        <Route 
+          path="/admin" 
+          element={<Navigate to="/login" replace />} 
+        />
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/order/:id" 
+          element={
+            <AdminProtectedRoute>
+              <AdminOrderDetail />
+            </AdminProtectedRoute>
+          } 
+        />
+
+        {/* Catch all - redirect to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AnimatePresence>
   );
