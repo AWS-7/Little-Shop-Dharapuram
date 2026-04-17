@@ -1,9 +1,32 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { CATEGORIES } from '../../lib/constants';
+import { getAllCategories } from '../../lib/products';
 
 export default function CategoryShowcase() {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      const { data } = await getAllCategories();
+      if (data && data.length > 0) {
+        setCategories(data);
+      }
+      setLoading(false);
+    };
+    fetchCats();
+  }, []);
+
+  if (loading) return (
+    <div className="py-20 flex justify-center">
+      <div className="w-10 h-10 border-4 border-purple-primary/10 border-t-purple-primary rounded-full animate-spin" />
+    </div>
+  );
+
+  if (categories.length === 0) return null;
+
   return (
     <section className="py-12 md:py-20 bg-white">
       <div className="container-clean">
@@ -25,9 +48,9 @@ export default function CategoryShowcase() {
 
           {/* Categories Grid — Premium Layout */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            {CATEGORIES.slice(0, 8).map((cat, idx) => (
+            {categories.slice(0, 8).map((cat, idx) => (
               <motion.div
-                key={cat.name}
+                key={cat.id || cat.name}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

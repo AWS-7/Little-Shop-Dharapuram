@@ -15,7 +15,11 @@ import autoTable from 'jspdf-autotable';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES } from '../../lib/constants';
 import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/orders';
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
-import { PRODUCT_CATEGORIES, FIELD_LABELS, uploadProductImage, createProduct, getAllProducts, updateProduct, deleteProduct, resolveImageUrl } from '../../lib/products';
+import {
+  PRODUCT_CATEGORIES, FIELD_LABELS, uploadProductImage, createProduct,
+  getAllProducts, updateProduct, deleteProduct, resolveImageUrl,
+  getAllCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage
+} from '../../lib/products';
 import { getAggregatedRestockRequests, markRequestsAsNotified } from '../../lib/restock';
 import { startOrderNotifications, stopOrderNotifications, notifyNewOrder, requestNotificationPermission } from '../../lib/notifications';
 import {
@@ -36,7 +40,7 @@ const TABS = [
   { key: 'inventory', label: 'Inventory', icon: Boxes },
   { key: 'restock', label: 'Restock', icon: RotateCcw },
   { key: 'flashsale', label: 'Flash Sale', icon: Zap },
-  { key: 'categories', label: 'Categories', icon: Grid3X3 },
+  { key: 'top-categories', label: 'Top Categories', icon: Grid3X3 },
   { key: 'analytics', label: 'Analytics', icon: BarChart3 },
   { key: 'customers', label: 'Customers', icon: Users },
   { key: 'notifications', label: 'Alerts', icon: Bell },
@@ -204,6 +208,15 @@ export default function AdminDashboard() {
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [savingFlashSale, setSavingFlashSale] = useState(false);
+
+  // Categories management state
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', image: '', displayOrder: 0 });
+  const [catImageFile, setCatImageFile] = useState(null);
+  const [catImagePreview, setCatImagePreview] = useState(null);
 
   // Sound notification ref
   const audioRef = useRef(null);
@@ -477,6 +490,17 @@ export default function AdminDashboard() {
       }
     };
     fetchProducts();
+  }, []);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCats = async () => {
+      setLoadingCategories(true);
+      const { data } = await getAllCategories();
+      if (data) setCategories(data);
+      setLoadingCategories(false);
+    };
+    fetchCats();
   }, []);
 
   if (!isAuth) return <Navigate to="/admin" />;
@@ -765,6 +789,77 @@ export default function AdminDashboard() {
       await handleSaveInventory(productId);
     }
     setSavingInventory((prev) => ({ ...prev, all: false }));
+  };
+
+  // Category handlers
+  const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', image: '', displayOrder: categories.length + 1 });
+    setCatImageFile(null);
+    setCatImagePreview(null);
+    setShowCategoryModal(true);
+  };
+
+  const handleEditCategory = (cat) => {
+    setEditingCategory(cat);
+    setCategoryForm({ name: cat.name, image: cat.image, displayOrder: cat.display_order });
+    setCatImageFile(null);
+    setCatImagePreview(cat.image);
+    setShowCategoryModal(true);
+  };
+
+  const handleCatImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCatImageFile(file);
+      setCatImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryForm.name) return alert('Category name is required');
+    setSaving(true);
+    let imageUrl = categoryForm.image;
+
+    if (catImageFile) {
+      const { url, error } = await uploadCategoryImage(catImageFile);
+      if (error) {
+        alert('Image upload failed');
+      } else {
+        imageUrl = url;
+      }
+    }
+
+    const catData = {
+      name: categoryForm.name,
+      image: imageUrl,
+      display_order: parseInt(categoryForm.displayOrder) || 0
+    };
+
+    if (editingCategory) {
+      const { data, error } = await updateCategory(editingCategory.id, catData);
+      if (!error) {
+        setCategories(categories.map(c => c.id === editingCategory.id ? data : c));
+        showToast('Category updated');
+      }
+    } else {
+      const { data, error } = await createCategory(catData);
+      if (!error) {
+        setCategories([...categories, data]);
+        showToast('Category created');
+      }
+    }
+    setShowCategoryModal(false);
+    setSaving(false);
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!confirm('Delete this category?')) return;
+    const { error } = await deleteCategory(id);
+    if (!error) {
+      setCategories(categories.filter(c => c.id !== id));
+      showToast('Category deleted');
+    }
   };
 
   // Toast notification helper
@@ -2459,6 +2554,116 @@ export default function AdminDashboard() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Top Categories Management */}
+        {activeTab === 'top-categories' && (
+          <div className="space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-playfair text-2xl text-purple-primary uppercase tracking-tight">Top Categories</h1>
+                <p className="font-inter text-xs text-gray-500 mt-1 uppercase tracking-widest">Manage your home page featured categories</p>
+              </div>
+              <button
+                onClick={handleAddCategory}
+                className="bg-purple-primary text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-purple-secondary transition-all flex items-center gap-2 shadow-lg shadow-purple-primary/20"
+              >
+                <Plus size={16} /> Add New Category
+              </button>
+            </div>
+
+            {loadingCategories ? (
+              <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-primary/10 border-t-purple-primary rounded-full animate-spin" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-gray-100">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Grid3X3 size={32} className="text-gray-200" />
+                </div>
+                <h3 className="text-lg font-black text-gray-900 mb-2 uppercase tracking-tight">No Categories Found</h3>
+                <p className="text-gray-400 text-sm font-medium mb-8">Add categories to showcase them on your home page.</p>
+                <button onClick={handleAddCategory} className="bg-purple-primary text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-purple-primary/20">
+                  Create First Category
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                    <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-6 bg-gray-50 border border-gray-100">
+                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
+                      <div className="absolute top-4 right-4 flex gap-2 translate-y-[-10px] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                        <button onClick={() => handleEditCategory(cat)} className="p-2.5 bg-white/90 backdrop-blur-md rounded-xl text-gray-700 hover:text-purple-primary shadow-sm hover:scale-110 transition-all">
+                          <Edit3 size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteCategory(cat.id)} className="p-2.5 bg-white/90 backdrop-blur-md rounded-xl text-gray-700 hover:text-red-500 shadow-sm hover:scale-110 transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md text-purple-primary text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-sm">
+                        Display Order: {cat.display_order}
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-black text-gray-900 uppercase tracking-widest leading-tight">{cat.name}</h3>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add/Edit Category Modal */}
+            <AnimatePresence>
+              {showCategoryModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCategoryModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                  <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl">
+                    <div className="p-8 md:p-10">
+                      <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{editingCategory ? 'Edit' : 'Add'} Category</h3>
+                        <button onClick={() => setShowCategoryModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Category Name</label>
+                          <input type="text" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} placeholder="e.g. Silk Sarees" className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all" />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Display Order (Sorting)</label>
+                          <input type="number" value={categoryForm.displayOrder} onChange={(e) => setCategoryForm({ ...categoryForm, displayOrder: e.target.value })} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all" />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Category Image</label>
+                          <div className="grid grid-cols-1 gap-4">
+                            {catImagePreview && (
+                              <div className="relative aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+                                <img src={catImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-8 hover:border-purple-primary hover:bg-purple-light transition-all cursor-pointer group">
+                              <Upload size={32} className="text-gray-300 group-hover:text-purple-primary mb-2" />
+                              <span className="text-xs font-bold text-gray-400 group-hover:text-purple-primary">Click to upload image</span>
+                              <input type="file" onChange={handleCatImageSelect} className="hidden" accept="image/*" />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 flex gap-4">
+                          <button onClick={() => setShowCategoryModal(false)} className="flex-1 py-4 rounded-2xl border-2 border-gray-100 text-sm font-black text-gray-400 hover:bg-gray-50 transition-all uppercase tracking-widest">Cancel</button>
+                          <button onClick={handleSaveCategory} disabled={saving} className="flex-1 py-4 rounded-2xl bg-purple-primary text-white text-sm font-black hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20 uppercase tracking-widest">
+                            {saving ? 'Saving...' : 'Save Category'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

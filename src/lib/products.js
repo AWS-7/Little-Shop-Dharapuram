@@ -221,6 +221,80 @@ export async function deleteProduct(productId) {
   }
 }
 
+// ── Categories Management ──
+export async function getAllCategories() {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('display_order', { ascending: true });
+    return { data, error };
+  } catch (e) {
+    return { data: [], error: e };
+  }
+}
+
+export async function createCategory(catData) {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([catData])
+      .select()
+      .single();
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+export async function updateCategory(id, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+export async function deleteCategory(id) {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    return { error };
+  } catch (e) {
+    return { error: e };
+  }
+}
+
+export async function uploadCategoryImage(file) {
+  try {
+    const ext = file.name.split('.').pop();
+    const fileName = `cat-${Date.now()}.${ext}`;
+    const filePath = `categories/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (error) return { url: null, error };
+
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return { url: urlData.publicUrl, error: null };
+  } catch (e) {
+    return { url: null, error: e };
+  }
+}
+
 // ── Subscribe to real-time product updates ──
 export function subscribeToProducts(callback) {
   return supabase
