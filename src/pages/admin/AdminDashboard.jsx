@@ -1559,8 +1559,8 @@ export default function AdminDashboard() {
                   {products
                     .filter((p) =>
                       productSearch === '' ||
-                      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                      p.category.toLowerCase().includes(productSearch.toLowerCase())
+                      (p.name?.toLowerCase() || '').includes(productSearch.toLowerCase()) ||
+                      (p.category?.toLowerCase() || '').includes(productSearch.toLowerCase())
                     )
                     .map((p) => (
                     <tr key={p.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.id) ? 'bg-purple-primary/5' : ''}`}>
@@ -1603,6 +1603,11 @@ export default function AdminDashboard() {
                       <td className="px-5 py-3">
                         <button
                           onClick={async () => {
+                            // Check if demo product (numeric ID)
+                            if (typeof p.id === 'string' && /^\d+$/.test(p.id)) {
+                              showToast('Demo products cannot be updated. Create a real product first.', 'error');
+                              return;
+                            }
                             const newStatus = !(p.is_active !== false); // default to true if undefined
                             const { error } = await updateProduct(p.id, { is_active: newStatus });
                             if (!error) {
@@ -1611,7 +1616,7 @@ export default function AdminDashboard() {
                               ));
                               showToast(`Product ${newStatus ? 'activated' : 'deactivated'}!`, 'success');
                             } else {
-                              showToast('Failed to update status', 'error');
+                              showToast(`Failed to update: ${error.message || 'Check if is_active column exists in Supabase'}`, 'error');
                             }
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-inter text-[10px] font-semibold tracking-wider uppercase transition-colors ${
