@@ -92,31 +92,19 @@ export async function loginAdmin(username, password) {
     if (username !== ADMIN_CREDENTIALS.username) {
       return { success: false, error: 'Invalid username or password' };
     }
-    
+
     if (password !== ADMIN_CREDENTIALS.password) {
       return { success: false, error: 'Invalid username or password' };
     }
-    
-    // Check if admin exists in Supabase (optional: for audit logging)
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('username', username)
-      .single();
-    
-    // If admin doesn't exist in DB, create session anyway (fallback)
-    if (adminError && adminError.code !== 'PGRST116') {
-      console.warn('Admin lookup error:', adminError);
-    }
-    
-    // Create session
+
+    // Create session - skip Supabase table checks (tables may not exist)
     const session = createAdminSession();
-    
-    // Log admin login (optional audit)
-    await logAdminAction('login', { username, timestamp: new Date().toISOString() });
-    
-    return { 
-      success: true, 
+
+    // Log admin login (optional - don't await, don't block on error)
+    logAdminAction('login', { username, timestamp: new Date().toISOString() }).catch(() => {});
+
+    return {
+      success: true,
       session,
       admin: {
         username: ADMIN_CREDENTIALS.username,
@@ -124,7 +112,7 @@ export async function loginAdmin(username, password) {
         adminId: ADMIN_CREDENTIALS.adminId
       }
     };
-    
+
   } catch (error) {
     console.error('Admin login error:', error);
     return { success: false, error: 'Login failed. Please try again.' };
