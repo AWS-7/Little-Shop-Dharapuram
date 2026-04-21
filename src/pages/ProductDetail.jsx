@@ -293,13 +293,20 @@ export default function ProductDetail() {
                 <button
                   key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`flex-shrink-0 w-16 h-20 md:w-20 md:h-24 overflow-hidden rounded-xl transition-all duration-300 border-2 ${
+                  className={`flex-shrink-0 w-16 h-20 md:w-20 md:h-24 overflow-hidden rounded-xl transition-all duration-200 border-2 bg-gray-50 ${
                     activeImage === idx
                       ? 'border-purple-primary shadow-md opacity-100'
                       : 'border-transparent opacity-60 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt={`${product.name} view ${idx + 1}`} onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }} className="w-full h-full object-cover" />
+                  <img
+                    src={img}
+                    alt={`${product.name} view ${idx + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }}
+                    className="w-full h-full object-cover object-center"
+                  />
                 </button>
               ))}
             </div>

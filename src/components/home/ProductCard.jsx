@@ -51,13 +51,14 @@ export default function ProductCard({ product, index = 0 }) {
       onMouseLeave={() => setHovered(false)}
     >
       {/* Image Container - Uses LazyImage for optimization */}
-      <div className="relative">
+      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '3/4' }}>
         <LazyImage
           src={product.image}
           alt={product.name}
           aspectRatio="3/4"
-          className={hovered ? 'scale-105' : 'scale-100'}
+          className={`transition-transform duration-300 ${hovered ? 'scale-105' : 'scale-100'}`}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          priority={index < 4}  // Priority loading for above-fold products
         />
 
         {/* Wishlist Button */}

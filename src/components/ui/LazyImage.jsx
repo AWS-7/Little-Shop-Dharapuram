@@ -27,9 +27,12 @@ export default function LazyImage({
   const [inView, setInView] = useState(priority);
   const imgRef = useRef(null);
 
-  // Intersection Observer for lazy loading
+  // Intersection Observer for lazy loading - optimized for faster perceived load
   useEffect(() => {
-    if (priority) return;  // Don't lazy load if priority
+    if (priority) {
+      setInView(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -39,7 +42,7 @@ export default function LazyImage({
         }
       },
       {
-        rootMargin: '100px',  // Start loading 100px before visible
+        rootMargin: '300px',  // Increased: Start loading 300px before visible
         threshold: 0
       }
     );
@@ -93,26 +96,36 @@ export default function LazyImage({
     onError?.();
   };
 
+  // Parse aspect ratio for contain-intrinsic-size
+  const [w, h] = aspectRatio.split('/').map(Number);
+  const intrinsicHeight = w && h ? `${(h / w) * 100}%` : '75%';
+
   return (
     <div
       ref={imgRef}
-      className={`relative overflow-hidden bg-gray-100 ${containerClassName}`}
-      style={{ aspectRatio }}
+      className={`relative overflow-hidden bg-gray-100 contain-paint ${containerClassName}`}
+      style={{
+        aspectRatio,
+        containIntrinsicSize: `300px ${intrinsicHeight}`,
+        contentVisibility: 'auto'
+      }}
     >
-      {/* Shimmer loading effect */}
+      {/* Shimmer loading effect - faster animation */}
       {!loaded && !error && (
-        <div className="absolute inset-0 animate-pulse bg-gray-200">
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+        <div className="absolute inset-0 animate-pulse bg-gray-100">
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_1s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         </div>
       )}
 
-      {/* Blurred placeholder (shows while loading) */}
+      {/* Tiny blurred placeholder for progressive loading feel */}
       {!loaded && !error && inView && (
         <img
           src={placeholderUrl}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-70"
+          className="absolute inset-0 w-full h-full object-cover object-center blur-md opacity-60"
           aria-hidden="true"
+          loading="eager"
+          decoding="sync"
         />
       )}
 
@@ -137,9 +150,9 @@ export default function LazyImage({
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding={priority ? 'sync' : 'async'}
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
-            loaded ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-105 blur-sm'
-          } ${className}`}
+          className={`absolute inset-0 w-full h-full object-cover object-center will-change-transform ${
+            loaded ? 'opacity-100' : 'opacity-0'
+          } transition-opacity duration-300 ${className}`}
           onLoad={handleLoad}
           onError={handleError}
         />

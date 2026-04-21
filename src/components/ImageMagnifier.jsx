@@ -21,22 +21,22 @@ export default function ImageMagnifier({ src, alt, zoom = 2.5 }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden cursor-crosshair group"
+      className="relative w-full h-full overflow-hidden cursor-crosshair group bg-gray-50"
       onMouseEnter={() => setShowZoom(true)}
       onMouseLeave={() => setShowZoom(false)}
       onMouseMove={handleMouseMove}
     >
-      {/* Loading skeleton */}
+      {/* Loading skeleton - faster pulse */}
       {!loaded && !error && (
-        <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+        <div className="absolute inset-0 bg-gray-100 animate-pulse" style={{ animationDuration: '0.8s' }} />
       )}
-      
+
       <img
         src={imageSrc}
         alt={alt}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full object-cover object-center will-change-transform ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}
         loading="eager"
-        decoding="async"
+        decoding="sync"
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
       />

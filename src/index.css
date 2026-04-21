@@ -141,3 +141,27 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Image performance optimizations */
+.contain-paint {
+  contain: paint layout;
+}
+
+/* Smooth image rendering */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* GPU acceleration for smooth transitions */
+.will-change-transform {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Prevent layout shift during image load */
+.aspect-container {
+  position: relative;
+  width: 100%;
+  background-color: #f9fafb;
+}
