@@ -3,7 +3,7 @@ import { useParams, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Package, Truck, CheckCircle, Clock, MapPin, CreditCard,
-  User, Phone, PackageCheck, Check, ChevronDown,
+  User, Phone, PackageCheck, Check, ChevronDown, Mail,
 } from 'lucide-react';
 import { getOrderById, updateOrderStatus, updateOrderTrackingId, subscribeToOrder } from '../../lib/orders';
 import { CURRENCY, ORDER_STATUSES } from '../../lib/constants';

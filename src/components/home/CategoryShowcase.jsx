@@ -63,8 +63,8 @@ export default function CategoryShowcase() {
             ))}
           </div>
           
-          {/* Desktop: Grid Layout */}
-          <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Desktop: Grid Layout - Equal Size Cards */}
+          <div className="hidden md:grid grid-cols-3 gap-6 lg:gap-8">
             {categories.map((cat, idx) => (
               <motion.div
                 key={cat.id || cat.name}
@@ -72,9 +72,8 @@ export default function CategoryShowcase() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className={`${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
               >
-                <CategoryCard cat={cat} isLarge={idx === 0} />
+                <CategoryCard cat={cat} isLarge={false} />
               </motion.div>
             ))}
           </div>

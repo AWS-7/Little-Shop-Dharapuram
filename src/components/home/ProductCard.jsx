@@ -45,75 +45,101 @@ export default function ProductCard({ product, index = 0 }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.3, delay: index * 0.02 }}
-      className="group bg-white border border-gray-100 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col h-full"
+      className="group bg-white rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(106,13,173,0.12)] hover:-translate-y-1 transition-all duration-400 flex flex-col h-full border border-gray-100/50"
       onClick={() => navigate(`/product/${product.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Image Container - Uses LazyImage for optimization */}
-      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '3/4' }}>
+      {/* Image Container - Premium Design */}
+      <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden" style={{ aspectRatio: '3/4' }}>
         <LazyImage
           src={product.image}
           alt={product.name}
           aspectRatio="3/4"
-          className={`transition-transform duration-300 ${hovered ? 'scale-105' : 'scale-100'}`}
+          className={`transition-all duration-500 ease-out ${hovered ? 'scale-110' : 'scale-100'}`}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          priority={index < 4}  // Priority loading for above-fold products
+          priority={index < 4}
         />
+        
+        {/* Premium Overlay on Hover */}
+        <div className={`absolute inset-0 bg-gradient-to-t from-purple-900/20 via-transparent to-transparent transition-opacity duration-300 ${hovered ? 'opacity-100' : 'opacity-0'}`} />
 
-        {/* Wishlist Button */}
+        {/* Wishlist Button - Enhanced */}
         <button
           onClick={handleWishlist}
-          className={`absolute top-2 right-2 p-2 rounded-full shadow-sm transition-all duration-200 z-10 ${
-            wishlisted ? 'bg-red-50 text-red-500' : 'bg-white/90 text-gray-400 hover:text-red-500'
+          className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md shadow-lg transition-all duration-300 transform hover:scale-110 z-10 ${
+            wishlisted 
+              ? 'bg-red-500 text-white shadow-red-500/30' 
+              : 'bg-white/95 text-gray-400 hover:text-red-500 hover:bg-white'
           }`}
         >
-          <Heart size={16} fill={wishlisted ? 'currentColor' : 'none'} />
+          <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} strokeWidth={2} />
         </button>
 
-        {/* Badge - Positioned bottom left */}
-        {!isInStock ? (
-          <div className="absolute bottom-2 left-2 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-sm z-10 uppercase tracking-wide">
-            SOLD OUT
-          </div>
-        ) : isLowStock ? (
-          <div className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm z-10">
-            Only {stockCount} left
-          </div>
-        ) : discount > 20 && (
-          <div className="absolute bottom-2 left-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-sm z-10">
-            {discount}% OFF
-          </div>
-        )}
+        {/* Premium Badges */}
+        <div className="absolute bottom-3 left-3 flex flex-col gap-1.5">
+          {!isInStock ? (
+            <div className="bg-red-500/95 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wide">
+              Sold Out
+            </div>
+          ) : isLowStock ? (
+            <div className="bg-amber-500/95 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+              Only {stockCount} left
+            </div>
+          ) : discount > 20 && (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+              {discount}% OFF
+            </div>
+          )}
+        </div>
+        
+        {/* Quick View Button on Hover */}
+        <div className={`absolute bottom-3 right-3 transition-all duration-300 ${hovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <span className="bg-white/95 backdrop-blur-sm text-purple-700 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+            View
+          </span>
+        </div>
       </div>
 
-      {/* Info Section */}
-      <div className="p-3 md:p-4 flex flex-col flex-1 border-t border-gray-50">
-        <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-primary transition-colors">
+      {/* Info Section - Premium Styling */}
+      <div className="p-4 flex flex-col flex-1 bg-white">
+        {/* Category Tag */}
+        <span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider mb-1.5">
+          {product.category || 'Collection'}
+        </span>
+        
+        {/* Product Name */}
+        <h3 className="text-sm font-semibold text-gray-800 mb-2 line-clamp-2 group-hover:text-purple-700 transition-colors leading-snug">
           {product.name}
         </h3>
         
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center gap-1 bg-green-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-sm">
+        {/* Rating & Reviews */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
             <span>{product.rating || '4.5'}</span>
             <Star size={10} fill="currentColor" />
           </div>
-          <span className="text-[10px] font-bold text-gray-400">({(product.reviewCount || 120).toLocaleString()})</span>
+          <span className="text-[11px] font-medium text-gray-400">
+            ({(product.reviewCount || 120).toLocaleString()} reviews)
+          </span>
         </div>
 
-        {/* Price Row */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-base md:text-lg font-black text-gray-900">
-            {CURRENCY}{product.price.toLocaleString()}
-          </span>
+        {/* Price Row - Enhanced with Discount Display */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {/* Original Price - Strikethrough */}
           {product.originalPrice && (
-            <span className="text-xs text-gray-400 line-through">
+            <span className="text-sm text-gray-400 line-through decoration-red-400 decoration-2">
               {CURRENCY}{product.originalPrice.toLocaleString()}
             </span>
           )}
+          {/* Discounted Price - Bold & Prominent */}
+          <span className="text-xl font-bold text-purple-700">
+            {CURRENCY}{product.price.toLocaleString()}
+          </span>
+          {/* Discount % Badge */}
           {discount > 0 && (
-            <span className="text-xs font-black text-green-600">
-              {discount}% off
+            <span className="text-[10px] font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 px-2 py-1 rounded-full shadow-sm">
+              {discount}% OFF
             </span>
           )}
         </div>
@@ -123,26 +149,26 @@ export default function ProductCard({ product, index = 0 }) {
           <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-2 p-2 bg-red-50 border border-red-100 rounded-sm flex items-start gap-1.5"
+            className="mb-3 p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-start gap-2"
           >
-            <AlertCircle size={12} className="text-red-500 shrink-0 mt-0.5" />
-            <span className="text-[10px] text-red-600 leading-tight">{cartError}</span>
+            <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+            <span className="text-[11px] text-red-600 leading-tight font-medium">{cartError}</span>
           </motion.div>
         )}
 
-        {/* Flipkart Style Buttons — Bottom of card */}
-        <div className="mt-auto grid grid-cols-1 gap-2">
+        {/* Premium Add to Cart Button */}
+        <div className="mt-auto">
           <button
             onClick={handleAddToCart}
             disabled={!isInStock}
-            className={`w-full py-2 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-wider shadow-sm transition-colors flex items-center justify-center gap-2 ${
+            className={`w-full py-3 rounded-xl font-semibold text-xs uppercase tracking-wide shadow-sm transition-all duration-300 flex items-center justify-center gap-2 ${
               isInStock
-                ? 'bg-purple-primary text-white hover:bg-purple-secondary'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
-            <ShoppingBag size={14} />
-            {isInStock ? 'Add to Cart' : 'Sold Out'}
+            <ShoppingBag size={16} strokeWidth={2} />
+            {isInStock ? 'Add to Cart' : 'Out of Stock'}
           </button>
         </div>
       </div>

@@ -4,26 +4,45 @@ import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard';
 import { getLatestProducts, getHandpickedProducts } from '../../lib/products';
 import { CATEGORIES } from '../../lib/constants';
+import { supabase } from '../../lib/supabase';
 
 export default function FeaturedGrid() {
   const [featured, setFeatured] = useState([]);
   const [handpicked, setHandpicked] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchProducts = async () => {
+    setLoading(true);
+    // Fetch latest 4 products for Featured Collection
+    const { data: latest } = await getLatestProducts(4);
+    if (latest) setFeatured(latest);
+
+    // Fetch one product from each category for Handpicked
+    const { data: handpickedData } = await getHandpickedProducts(CATEGORIES);
+    if (handpickedData) setHandpicked(handpickedData);
+
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      // Fetch latest 4 products for Featured Collection
-      const { data: latest } = await getLatestProducts(4);
-      if (latest) setFeatured(latest);
-
-      // Fetch one product from each category for Handpicked
-      const { data: handpickedData } = await getHandpickedProducts(CATEGORIES);
-      if (handpickedData) setHandpicked(handpickedData);
-
-      setLoading(false);
-    };
     fetchProducts();
+
+    // Real-time subscription to products table
+    const channel = supabase
+      .channel('products-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'products'
+      }, () => {
+        // Refetch products when any change happens
+        fetchProducts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

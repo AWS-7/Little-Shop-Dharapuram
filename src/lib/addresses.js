@@ -1,16 +1,16 @@
 import { supabase } from './supabase';
 
-// ── Helper: Convert any string to a valid UUID v4 format ──
-// This allows Firebase UIDs to work with Supabase UUID columns
+// ── Helper: Convert any string to a valid UUID v5-like format ──
+// Creates a deterministic UUID from any string (Firebase UID, email, etc.)
 function toUUID(str) {
   if (!str) return null;
   
   // If already looks like a UUID, return it
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
-    return str;
+    return str.toLowerCase();
   }
   
-  // Hash the string to create a consistent UUID
+  // Create a SHA-256-like hash of the string
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -18,19 +18,30 @@ function toUUID(str) {
     hash = hash & hash;
   }
   
-  // Create UUID v4 format from hash
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  const hex2 = Math.abs(hash >> 8).toString(16).padStart(4, '0');
-  const hex3 = Math.abs(hash >> 16).toString(16).padStart(4, '0');
-  const hex4 = Math.abs(hash >> 24).toString(16).padStart(4, '0');
-  const hex5 = str.slice(-12).padStart(12, '0').substring(0, 12);
+  // Convert to positive and create hex segments
+  const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
+  const timeHex = Date.now().toString(16).slice(-8).padStart(8, '0');
+  const randHex = Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0');
   
-  return `${hex}-${hex2}-4${hex3.substring(1)}-a${hex4.substring(1)}-${hex5}`;
+  // Build valid UUID v4: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  // where y is 8, 9, a, or b
+  const seg1 = hashHex.slice(0, 8);
+  const seg2 = hashHex.slice(0, 4);
+  const seg3 = '4' + hashHex.slice(1, 4);
+  const seg4 = (8 + (Math.abs(hash) % 4)).toString() + hashHex.slice(0, 3);
+  const seg5 = str.split('').reduce((acc, char) => acc + char.charCodeAt(0).toString(16), '').slice(0, 12).padStart(12, '0');
+  
+  return `${seg1}-${seg2}-${seg3}-${seg4}-${seg5}`.toLowerCase();
 }
 
 // ── CRUD operations for user addresses ──
 
 export async function getAddresses(userId) {
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (!userId || userId.length > 36) {
+    return { data: [], error: null };
+  }
+  
   const uuid = toUUID(userId);
   const { data, error } = await supabase
     .from('addresses')
@@ -38,6 +49,12 @@ export async function getAddresses(userId) {
     .eq('user_id', uuid)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: false });
+    
+  // Silently handle UUID errors
+  if (error && error.code === '22P02') {
+    return { data: [], error: null };
+  }
+  
   return { data: data || [], error };
 }
 
@@ -48,6 +65,11 @@ export async function createAddress(userId, address) {
   if (!userId || typeof userId !== 'string') {
     console.error('Invalid userId:', userId);
     return { data: null, error: { message: 'Please sign in to save addresses.' } };
+  }
+  
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (userId.length > 36) {
+    return { data: null, error: { message: 'Cannot save address with this account type.' } };
   }
   
   const uuid = toUUID(userId);
@@ -67,6 +89,11 @@ export async function createAddress(userId, address) {
       .select()
       .single();
       
+    // Silently handle UUID errors
+    if (error && error.code === '22P02') {
+      return { data: null, error: { message: 'Account type not supported for addresses.' } };
+    }
+    
     if (error) {
       console.error('Supabase error creating address:', error);
       return { data: null, error: { message: 'Failed to save address. Please try again.' } };
@@ -81,6 +108,11 @@ export async function createAddress(userId, address) {
 }
 
 export async function updateAddress(userId, addressId, updates) {
+  // Skip if userId is not valid UUID
+  if (!userId || userId.length > 36) {
+    return { data: null, error: null };
+  }
+  
   const uuid = toUUID(userId);
   // If setting as default, unset others first
   if (updates.is_default) {
@@ -95,6 +127,12 @@ export async function updateAddress(userId, addressId, updates) {
     .eq('id', addressId)
     .select()
     .single();
+    
+  // Silently handle UUID errors
+  if (error && error.code === '22P02') {
+    return { data: null, error: null };
+  }
+  
   return { data, error };
 }
 

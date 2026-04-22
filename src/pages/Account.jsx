@@ -14,7 +14,7 @@ import { getUserCoupons } from '../lib/coupons';
 
 // ── Empty address template ──
 const EMPTY_ADDRESS = {
-  full_name: '', address: '', city: '', state: '', pincode: '',
+  full_name: '', phone: '', address: '', city: '', state: '', pincode: '',
   relationship_tag: 'self', delivery_notes: '', is_default: false,
 };
 
@@ -34,6 +34,12 @@ function AddressForm({ initial = EMPTY_ADDRESS, onSave, onCancel, saving }) {
         <div className="md:col-span-2">
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Full Name (Receiver)</label>
           <input name="full_name" value={form.full_name} onChange={handleChange} required placeholder="e.g. Priya Sharma"
+            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all placeholder:text-gray-300" />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
+          <input name="phone" value={form.phone} onChange={handleChange} required placeholder="e.g. 9876543210" type="tel"
             className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all placeholder:text-gray-300" />
         </div>
         
@@ -115,10 +121,29 @@ function ProfileView({ user, onSignOut }) {
   const [loadingReferral, setLoadingReferral] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  // Helper to check if UID is valid UUID format
+  const isValidUUID = (id) => {
+    if (!id) return false;
+    // UUID v4 format: 8-4-4-4-12 hex characters
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  };
+
   useEffect(() => {
     if (user?.uid) {
-      getAddresses(user.uid).then(({ data }) => {
-        setAddresses(data || []);
+      // Skip API calls if UID is not valid UUID (Firebase Auth ID issue)
+      if (!isValidUUID(user.uid)) {
+        setAddresses([]);
+        setLoadingAddresses(false);
+        setLoadingReferral(false);
+        return;
+      }
+      
+      getAddresses(user.uid).then(({ data, error }) => {
+        if (error && error.code === '22P02') {
+          setAddresses([]);
+        } else {
+          setAddresses(data || []);
+        }
         setLoadingAddresses(false);
       });
       loadReferralData();
@@ -126,6 +151,12 @@ function ProfileView({ user, onSignOut }) {
   }, [user?.uid]);
 
   const loadReferralData = async () => {
+    // Skip if UID is not valid UUID
+    if (!isValidUUID(user?.uid)) {
+      setLoadingReferral(false);
+      return;
+    }
+    
     setLoadingReferral(true);
     try {
       const { code } = await getOrCreateReferralCode(user.uid);
@@ -135,7 +166,10 @@ function ProfileView({ user, onSignOut }) {
       const { data: userCoupons } = await getUserCoupons(user.uid, { onlyActive: true });
       setCoupons(userCoupons?.filter(c => c.type === 'referral_reward') || []);
     } catch (err) {
-      console.error('Error loading referral data:', err);
+      // Silently ignore UUID errors
+      if (err?.code !== '22P02') {
+        console.error('Error loading referral data:', err);
+      }
     } finally {
       setLoadingReferral(false);
     }

@@ -7,7 +7,7 @@ import {
   Truck, CheckCircle, LogOut, ChevronDown, Timer, Bell, Search,
   AlertCircle, BarChart3, Boxes, Image, Send, Mail, FileText,
   MapPin, CheckSquare, Percent, Download, X, RefreshCw, Upload,
-  Grid3X3, RotateCcw, Zap, Calendar, Sparkles,
+  Grid3X3, RotateCcw, Zap, Calendar, Sparkles, Star, Quote, User,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { jsPDF } from 'jspdf';
@@ -33,6 +33,22 @@ import {
   toggleFlashSale,
   subscribeToFlashSales
 } from '../../lib/flashSales';
+import {
+  getAllHeroBanners,
+  createHeroBanner,
+  updateHeroBanner,
+  deleteHeroBanner,
+  toggleHeroBanner,
+  uploadHeroBannerImage
+} from '../../lib/heroBanners';
+import {
+  getAllTestimonials,
+  createTestimonial,
+  updateTestimonial,
+  deleteTestimonial,
+  toggleTestimonialStatus,
+  uploadTestimonialAvatar
+} from '../../lib/testimonials';
 import BulkImportModal from '../../components/admin/BulkImportModal';
 
 // Session Timer Component
@@ -82,6 +98,8 @@ const TABS = [
   { key: 'inventory', label: 'Inventory', icon: Boxes },
   { key: 'restock', label: 'Restock', icon: RotateCcw },
   { key: 'flashsale', label: 'Flash Sale', icon: Zap },
+  { key: 'hero-banners', label: 'Hero Banners', icon: Image },
+  { key: 'testimonials', label: 'Testimonials', icon: Star },
   { key: 'top-categories', label: 'Top Categories', icon: Grid3X3 },
   { key: 'analytics', label: 'Analytics', icon: BarChart3 },
   { key: 'customers', label: 'Customers', icon: Users },
@@ -267,6 +285,48 @@ export default function AdminDashboard() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [savingFlashSale, setSavingFlashSale] = useState(false);
 
+  // Hero banners state
+  const [heroBanners, setHeroBanners] = useState([]);
+  const [heroBannerLoading, setHeroBannerLoading] = useState(false);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [editingBanner, setEditingBanner] = useState(null);
+  const [bannerForm, setBannerForm] = useState({
+    image: '',
+    title: '',
+    subtitle: '',
+    cta: 'Shop Now',
+    link: '/shop',
+    color: 'bg-purple-primary',
+    sortOrder: 0,
+    isActive: true
+  });
+  const [bannerImageFile, setBannerImageFile] = useState(null);
+  const [bannerImagePreview, setBannerImagePreview] = useState(null);
+  const [uploadingBannerImage, setUploadingBannerImage] = useState(false);
+  const [savingBanner, setSavingBanner] = useState(false);
+
+  // Testimonials state
+  const [testimonials, setTestimonials] = useState([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(false);
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState(null);
+  const [testimonialForm, setTestimonialForm] = useState({
+    name: '',
+    location: '',
+    avatar: '',
+    rating: 5,
+    title: '',
+    review: '',
+    product: '',
+    is_active: true,
+    sort_order: 0,
+    verified: true
+  });
+  const [testimonialAvatarFile, setTestimonialAvatarFile] = useState(null);
+  const [testimonialAvatarPreview, setTestimonialAvatarPreview] = useState(null);
+  const [uploadingTestimonialAvatar, setUploadingTestimonialAvatar] = useState(false);
+  const [savingTestimonial, setSavingTestimonial] = useState(false);
+
   // Categories management state
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -286,7 +346,7 @@ export default function AdminDashboard() {
     customer: o.customer?.name || 'Unknown',
     email: o.customer?.email || '',
     total: o.total || 0,
-    status: o.status || 'Ordered',
+    status: o.status || 'confirmed',
     date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
     items: o.items?.length || 0,
     user_id: o.user_id || null,
@@ -301,10 +361,8 @@ export default function AdminDashboard() {
       console.error('Failed to fetch orders:', error);
       return;
     }
-    // Replace state with real data (or keep demo if no real orders)
-    if (data && data.length > 0) {
-      setOrders(data.map(mapOrder));
-    }
+    // Always update orders state (even if empty)
+    setOrders(data ? data.map(mapOrder) : []);
   }, []);
 
   // Manual refresh handler
@@ -372,10 +430,20 @@ export default function AdminDashboard() {
       showToast('Please fill all required fields', 'error');
       return;
     }
+    
+    // Debug logging
+    console.log('🔥 Creating Flash Sale with product:', {
+      id: selectedProduct.id,
+      name: selectedProduct.name,
+      image: selectedProduct.image,
+      price: selectedProduct.price
+    });
+    
     setSavingFlashSale(true);
     const { data, error } = await createFlashSale({
       productId: selectedProduct.id,
       productName: selectedProduct.name,
+      productImage: selectedProduct.image,
       originalPrice: selectedProduct.price,
       discountedPrice: parseInt(flashSaleForm.discountedPrice),
       endTime: new Date(flashSaleForm.endTime).toISOString(),
@@ -408,6 +476,277 @@ export default function AdminDashboard() {
       await fetchFlashSales();
     } else {
       showToast('Failed to delete flash sale', 'error');
+    }
+  };
+
+  // Hero Banner handlers
+  const fetchHeroBanners = async () => {
+    setHeroBannerLoading(true);
+    const { data, error } = await getAllHeroBanners();
+    if (!error && data) {
+      setHeroBanners(data);
+    }
+    setHeroBannerLoading(false);
+  };
+
+  const handleBannerImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setBannerImageFile(file);
+      setBannerImagePreview(URL.createObjectURL(file));
+      // Auto-upload when file selected
+      handleUploadBannerImage(file);
+    }
+  };
+
+  const handleUploadBannerImage = async (file) => {
+    if (!file) return;
+    setUploadingBannerImage(true);
+    const { url, error } = await uploadHeroBannerImage(file);
+    if (url) {
+      setBannerForm(prev => ({ ...prev, image: url }));
+      showToast('Image uploaded successfully!', 'success');
+    } else {
+      showToast(`Upload failed: ${error?.message || 'Unknown error'}`, 'error');
+    }
+    setUploadingBannerImage(false);
+  };
+
+  const handleSaveBanner = async (e) => {
+    e.preventDefault();
+    if (!bannerForm.title || !bannerForm.image) {
+      showToast('Please fill title and image URL', 'error');
+      return;
+    }
+    
+    setSavingBanner(true);
+    
+    if (editingBanner) {
+      const { data, error } = await updateHeroBanner(editingBanner.id, {
+        ...bannerForm,
+        sort_order: parseInt(bannerForm.sortOrder) || 0
+      });
+      if (!error) {
+        showToast('Banner updated!');
+        await fetchHeroBanners();
+        setShowBannerModal(false);
+        resetBannerForm();
+      } else {
+        showToast('Failed to update banner', 'error');
+      }
+    } else {
+      const { data, error } = await createHeroBanner({
+        image: bannerForm.image,
+        title: bannerForm.title,
+        subtitle: bannerForm.subtitle,
+        cta: bannerForm.cta,
+        link: bannerForm.link,
+        color: bannerForm.color,
+        sortOrder: parseInt(bannerForm.sortOrder) || 0,
+        isActive: bannerForm.isActive
+      });
+      if (!error && data) {
+        showToast('Banner created!');
+        await fetchHeroBanners();
+        setShowBannerModal(false);
+        resetBannerForm();
+      } else {
+        showToast('Failed to create banner', 'error');
+      }
+    }
+    setSavingBanner(false);
+  };
+
+  const resetBannerForm = () => {
+    setEditingBanner(null);
+    setBannerForm({
+      image: '',
+      title: '',
+      subtitle: '',
+      cta: 'Shop Now',
+      link: '/shop',
+      color: 'bg-purple-primary',
+      sortOrder: 0,
+      isActive: true
+    });
+    setBannerImageFile(null);
+    setBannerImagePreview(null);
+    setUploadingBannerImage(false);
+  };
+
+  const handleEditBanner = (banner) => {
+    setEditingBanner(banner);
+    setBannerForm({
+      image: banner.image || '',
+      title: banner.title || '',
+      subtitle: banner.subtitle || '',
+      cta: banner.cta || 'Shop Now',
+      link: banner.link || '/shop',
+      color: banner.color || 'bg-purple-primary',
+      sortOrder: banner.sort_order || 0,
+      isActive: banner.is_active !== false
+    });
+    setShowBannerModal(true);
+  };
+
+  const handleDeleteBanner = async (bannerId) => {
+    if (!confirm('Delete this banner?')) return;
+    const { success, error } = await deleteHeroBanner(bannerId);
+    if (success) {
+      showToast('Banner deleted');
+      await fetchHeroBanners();
+    } else {
+      showToast('Failed to delete banner', 'error');
+    }
+  };
+
+  const handleToggleBanner = async (bannerId, currentStatus) => {
+    const { data, error } = await toggleHeroBanner(bannerId, !currentStatus);
+    if (!error) {
+      showToast(`Banner ${!currentStatus ? 'activated' : 'deactivated'}!`);
+      await fetchHeroBanners();
+    }
+  };
+
+  // Testimonials handlers
+  const fetchTestimonials = async () => {
+    setTestimonialsLoading(true);
+    const { data, error } = await getAllTestimonials();
+    if (!error && data) {
+      setTestimonials(data);
+    }
+    setTestimonialsLoading(false);
+  };
+
+  const handleTestimonialAvatarSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setTestimonialAvatarFile(file);
+      setTestimonialAvatarPreview(URL.createObjectURL(file));
+      handleUploadTestimonialAvatarImage(file);
+    }
+  };
+
+  const handleUploadTestimonialAvatarImage = async (file) => {
+    if (!file) return;
+    setUploadingTestimonialAvatar(true);
+    const { url, error } = await uploadTestimonialAvatar(file, editingTestimonial?.id || 'new');
+    if (url) {
+      setTestimonialForm(prev => ({ ...prev, avatar: url }));
+      showToast('Avatar uploaded successfully!', 'success');
+    } else {
+      showToast(`Upload failed: ${error?.message || 'Unknown error'}`, 'error');
+    }
+    setUploadingTestimonialAvatar(false);
+  };
+
+  const handleSaveTestimonial = async (e) => {
+    e.preventDefault();
+    if (!testimonialForm.name || !testimonialForm.review || !testimonialForm.title) {
+      showToast('Please fill name, title and review', 'error');
+      return;
+    }
+    
+    setSavingTestimonial(true);
+    
+    if (editingTestimonial) {
+      const { data, error } = await updateTestimonial(editingTestimonial.id, {
+        name: testimonialForm.name,
+        location: testimonialForm.location,
+        avatar: testimonialForm.avatar,
+        rating: parseInt(testimonialForm.rating) || 5,
+        title: testimonialForm.title,
+        review: testimonialForm.review,
+        product: testimonialForm.product,
+        is_active: testimonialForm.is_active,
+        sort_order: parseInt(testimonialForm.sort_order) || 0,
+        verified: testimonialForm.verified
+      });
+      if (!error) {
+        showToast('Testimonial updated!');
+        await fetchTestimonials();
+        setShowTestimonialModal(false);
+        resetTestimonialForm();
+      } else {
+        showToast('Failed to update testimonial', 'error');
+      }
+    } else {
+      const { data, error } = await createTestimonial({
+        name: testimonialForm.name,
+        location: testimonialForm.location,
+        avatar: testimonialForm.avatar,
+        rating: parseInt(testimonialForm.rating) || 5,
+        title: testimonialForm.title,
+        review: testimonialForm.review,
+        product: testimonialForm.product,
+        is_active: testimonialForm.is_active,
+        sort_order: parseInt(testimonialForm.sort_order) || 0,
+        verified: testimonialForm.verified
+      });
+      if (!error && data) {
+        showToast('Testimonial created!');
+        await fetchTestimonials();
+        setShowTestimonialModal(false);
+        resetTestimonialForm();
+      } else {
+        showToast('Failed to create testimonial', 'error');
+      }
+    }
+    setSavingTestimonial(false);
+  };
+
+  const resetTestimonialForm = () => {
+    setEditingTestimonial(null);
+    setTestimonialForm({
+      name: '',
+      location: '',
+      avatar: '',
+      rating: 5,
+      title: '',
+      review: '',
+      product: '',
+      is_active: true,
+      sort_order: 0,
+      verified: true
+    });
+    setTestimonialAvatarFile(null);
+    setTestimonialAvatarPreview(null);
+    setUploadingTestimonialAvatar(false);
+  };
+
+  const handleEditTestimonial = (testimonial) => {
+    setEditingTestimonial(testimonial);
+    setTestimonialForm({
+      name: testimonial.name || '',
+      location: testimonial.location || '',
+      avatar: testimonial.avatar || '',
+      rating: testimonial.rating || 5,
+      title: testimonial.title || '',
+      review: testimonial.review || '',
+      product: testimonial.product || '',
+      is_active: testimonial.is_active !== false,
+      sort_order: testimonial.sort_order || 0,
+      verified: testimonial.verified !== false
+    });
+    setShowTestimonialModal(true);
+  };
+
+  const handleDeleteTestimonial = async (testimonialId) => {
+    if (!confirm('Delete this testimonial?')) return;
+    const { error } = await deleteTestimonial(testimonialId);
+    if (!error) {
+      showToast('Testimonial deleted');
+      await fetchTestimonials();
+    } else {
+      showToast('Failed to delete testimonial', 'error');
+    }
+  };
+
+  const handleToggleTestimonial = async (testimonialId, currentStatus) => {
+    const { data, error } = await toggleTestimonialStatus(testimonialId, !currentStatus);
+    if (!error) {
+      showToast(`Testimonial ${!currentStatus ? 'activated' : 'deactivated'}!`);
+      await fetchTestimonials();
     }
   };
 
@@ -455,7 +794,27 @@ export default function AdminDashboard() {
         ));
       }
     });
-    return () => channel.unsubscribe();
+
+    // Fallback: Refresh orders every 30 seconds
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing orders...');
+      fetchOrders();
+    }, 30000);
+
+    // Refresh when tab becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab visible - refreshing orders');
+        fetchOrders();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      channel.unsubscribe();
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [fetchOrders, playNotificationSound]);
 
   // Start order push notifications for admin
@@ -537,6 +896,16 @@ export default function AdminDashboard() {
     return () => {
       channel.unsubscribe();
     };
+  }, []);
+
+  // Fetch hero banners on mount
+  useEffect(() => {
+    fetchHeroBanners();
+  }, []);
+
+  // Fetch testimonials on mount
+  useEffect(() => {
+    fetchTestimonials();
   }, []);
 
   // Fetch products on mount
@@ -1097,75 +1466,171 @@ export default function AdminDashboard() {
     setShowOrderDetail(true);
   };
 
-  // PDF Invoice Generator
+  // HTML Print Invoice Generator
   const generateInvoice = (order) => {
-    const doc = new jsPDF();
     const raw = order._raw || {};
-    const customer = raw.customer || {};
-    const items = raw.items || [];
+    const customer = raw.customer || order.customer_data || {};
+    const items = raw.items || order.items || [];
+    
+    // Extract shipping address from multiple possible locations
+    const shipping = raw.shipping || {};
+    const shippingAddress = shipping.address || 
+                           customer.address || 
+                           order.address || 
+                           order.shipping_address ||
+                           (order.delivery_details?.address) ||
+                           'No address available';
+    
+    const shippingCity = shipping.city || customer.city || order.city || order.shipping_city || (order.delivery_details?.city) || '';
+    const shippingState = shipping.state || customer.state || order.state || order.shipping_state || (order.delivery_details?.state) || '';
+    const shippingPincode = shipping.pincode || customer.pincode || order.pincode || order.shipping_pincode || (order.delivery_details?.pincode) || '';
+    
+    const invoiceHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice - ${order.id}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+    .header { background: #111; color: white; padding: 20px; display: flex; justify-content: space-between; }
+    .header-left h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+    .header-left p { margin: 5px 0 0; font-size: 12px; color: #aaa; }
+    .header-right { text-align: right; }
+    .header-right .badge { background: rgba(255,255,255,0.1); padding: 8px 15px; display: inline-block; }
+    .header-right .badge-label { font-size: 10px; color: #888; text-transform: uppercase; }
+    .header-right .badge-value { font-size: 16px; font-weight: bold; }
+    .header-right .gst { font-size: 11px; color: #888; margin-top: 5px; }
+    
+    .info-section { display: flex; gap: 30px; margin: 25px 0; }
+    .info-box { flex: 1; border-left: 3px solid #111; padding-left: 15px; }
+    .info-box.ship { border-color: #ccc; }
+    .info-label { font-size: 10px; font-weight: bold; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+    .info-value { font-size: 14px; font-weight: 600; color: #111; }
+    .info-sub { font-size: 12px; color: #666; margin-top: 4px; }
+    
+    .meta-bar { display: flex; gap: 30px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 12px 0; margin: 20px 0; font-size: 12px; }
+    .meta-item span:first-child { color: #888; }
+    .meta-item span:last-child { font-weight: 600; margin-left: 5px; }
+    .status-badge { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 3px; font-size: 10px; }
+    
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+    th { background: #f5f5f5; border-bottom: 2px solid #ddd; padding: 10px; text-align: left; font-weight: 600; }
+    td { padding: 12px 10px; border-bottom: 1px solid #eee; }
+    td.price, th.price { text-align: right; }
+    td.qty, th.qty { text-align: center; }
+    .item-icon { width: 30px; height: 30px; background: #f5f5f5; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; }
+    
+    .totals { width: 280px; margin-left: auto; margin-top: 20px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 12px; }
+    .totals-row.total { border-top: 2px solid #111; padding-top: 12px; margin-top: 8px; font-size: 16px; font-weight: bold; }
+    .totals-row span:first-child { color: #666; }
+    .free { color: #2e7d32; font-weight: 600; }
+    
+    .footer { background: #f9f9f9; padding: 15px; text-align: center; font-size: 11px; color: #888; margin-top: 30px; }
+    .footer p { margin: 3px 0; }
+    
+    .print-btn { position: fixed; top: 20px; right: 20px; background: #111; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+    @media print { .print-btn { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+  
+  <div class="header">
+    <div class="header-left">
+      <h1>LITTLE SHOP</h1>
+      <p>Premium Fashion & Accessories</p>
+      <p>Dharapuram, Tamil Nadu</p>
+    </div>
+    <div class="header-right">
+      <div class="badge">
+        <div class="badge-label">Tax Invoice</div>
+        <div class="badge-value">${order.id}</div>
+      </div>
+      <div class="gst">GST: 33EJJPA8233H1ZD</div>
+    </div>
+  </div>
+  
+  <div class="info-section">
+    <div class="info-box">
+      <div class="info-label">Bill To</div>
+      <div class="info-value">${customer.name || order.customer || 'N/A'}</div>
+      <div class="info-sub">${customer.email || order.email || 'N/A'}</div>
+      <div class="info-sub">${customer.phone || order.phone || ''}</div>
+    </div>
+    <div class="info-box ship">
+      <div class="info-label">Ship To</div>
+      <div class="info-value">${shippingAddress}</div>
+      <div class="info-sub">${shippingCity}${shippingCity ? ', ' : ''}${shippingState}${shippingPincode ? ' - ' : ''}${shippingPincode}</div>
+    </div>
+  </div>
+  
+  <div class="meta-bar">
+    <div class="meta-item">
+      <span>Order Date:</span>
+      <span>${order.date}</span>
+    </div>
+    <div class="meta-item">
+      <span>Status:</span>
+      <span class="status-badge">${order.status}</span>
+    </div>
+    <div class="meta-item">
+      <span>Payment:</span>
+      <span>${raw.payment?.razorpay_payment_id ? 'Paid' : 'Pending'}</span>
+    </div>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="qty">Qty</th>
+        <th class="price">Price</th>
+        <th class="price">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map(item => `
+      <tr>
+        <td>
+          <span class="item-icon">📦</span>
+          ${item.name}
+        </td>
+        <td class="qty">${item.quantity}</td>
+        <td class="price">₹${item.price.toLocaleString()}</td>
+        <td class="price">₹${(item.price * item.quantity).toLocaleString()}</td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  
+  <div class="totals">
+    <div class="totals-row">
+      <span>Subtotal</span>
+      <span>₹${(raw.subtotal || 0).toLocaleString()}</span>
+    </div>
+    <div class="totals-row">
+      <span>Shipping</span>
+      <span class="${raw.shipping === 0 ? 'free' : ''}">${raw.shipping === 0 ? 'FREE' : '₹' + (raw.shipping || 0)}</span>
+    </div>
+    <div class="totals-row total">
+      <span>Total</span>
+      <span>₹${(order.total || 0).toLocaleString()}</span>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>No Returns / No Exchanges — All Sales Final</p>
+    <p>Thank you for shopping with Little Shop!</p>
+  </div>
+</body>
+</html>`;
 
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(6, 78, 59); // purple-primary
-    doc.text('Little Shop', 20, 20);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Luxury Saree Boutique', 20, 28);
-    doc.text('Invoice', 160, 20);
-
-    // Order Details
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Order ID: ${order.id}`, 20, 45);
-    doc.text(`Date: ${order.date}`, 20, 52);
-    doc.text(`Status: ${order.status}`, 20, 59);
-
-    // Customer Details
-    doc.text('Bill To:', 130, 45);
-    doc.setFontSize(10);
-    doc.setTextColor(80, 80, 80);
-    doc.text(customer.name || order.customer || 'N/A', 130, 52);
-    doc.text(customer.email || order.email || '', 130, 59);
-    // Removed per "No phone number required" rule
-    // doc.text(customer.phone || order.phone || '', 130, 66);
-
-    // Items Table
-    const tableData = items.map((item) => [
-      item.name,
-      item.quantity.toString(),
-      `₹${(item.price || 0).toLocaleString()}`,
-      `₹${((item.price || 0) * (item.quantity || 1)).toLocaleString()}`,
-    ]);
-
-    autoTable(doc, {
-      startY: 80,
-      head: [['Item', 'Qty', 'Price', 'Total']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [6, 78, 59], textColor: 255 },
-      columnStyles: { 0: { cellWidth: 80 }, 3: { halign: 'right' } },
-    });
-
-    // Totals
-    const finalY = (doc.lastAutoTable?.finalY || 120) + 10;
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Subtotal: ₹${(raw.subtotal || 0).toLocaleString()}`, 140, finalY);
-    doc.text(`Shipping: ${raw.shipping === 0 ? 'FREE' : `₹${raw.shipping}`}`, 140, finalY + 7);
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(6, 78, 59);
-    doc.text(`Total: ₹${(raw.total || 0).toLocaleString()}`, 140, finalY + 18);
-
-    // Footer
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text('Thank you for shopping with Little Shop!', 20, 280);
-    doc.text('No Returns / No Exchanges — All Sales Final', 20, 286);
-
-    doc.save(`Invoice-${order.id}.pdf`);
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.close();
   };
 
   // Bulk Actions Handlers
@@ -1207,8 +1672,8 @@ export default function AdminDashboard() {
   const todayStr = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const todayOrders = orders.filter((o) => o.date === todayStr);
   const todayRevenue = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const pendingOrders = orders.filter((o) => ['Ordered', 'Packed', 'pending', 'paid', 'Shipped', 'Out for Delivery'].includes(o.status));
-  const newUnaccepted = orders.filter((o) => ['Ordered', 'pending', 'paid'].includes(o.status)).length;
+  const pendingOrders = orders.filter((o) => ['confirmed', 'pending', 'paid', 'Packed', 'Shipped', 'Out for Delivery'].includes(o.status));
+  const newUnaccepted = orders.filter((o) => ['confirmed', 'pending', 'paid'].includes(o.status)).length;
 
   const lowStockProducts = products.filter((p) => p.stockCount > 0 && p.stockCount < 5);
   const alertCount = newUnaccepted + abandonedCarts.filter((c) => !c.reminder_sent).length;
@@ -1737,6 +2202,7 @@ export default function AdminDashboard() {
                             order.status === 'Delivered' ? 'bg-purple-primary/10 text-purple-primary' :
                             order.status === 'Shipped' || order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
                             order.status === 'Packed' ? 'bg-purple-50 text-purple-600' :
+                            order.status === 'pending' ? 'bg-orange-50 text-orange-600' :
                             'bg-amber-50 text-amber-600'
                           }`}
                         >
@@ -2548,7 +3014,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="space-y-3 mb-8">
-                {orders.filter((o) => ['Ordered', 'pending', 'paid'].includes(o.status)).map((order) => (
+                {orders.filter((o) => ['confirmed', 'pending', 'paid'].includes(o.status)).map((order) => (
                   <div key={order.id} className="bg-white rounded-lg border border-amber-200 p-5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
@@ -2647,6 +3113,115 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Hero Banner Manager */}
+        {activeTab === 'hero-banners' && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+              <div>
+                <h1 className="font-playfair text-2xl text-purple-primary">Hero Banner Manager</h1>
+                <p className="font-inter text-sm text-gray-500 mt-1">
+                  Manage home page carousel banners
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchHeroBanners}
+                  disabled={heroBannerLoading}
+                  className="flex items-center gap-2 bg-purple-primary text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-purple-primary/90 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={14} className={heroBannerLoading ? 'animate-spin' : ''} />
+                  {heroBannerLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button
+                  onClick={() => {
+                    resetBannerForm();
+                    setShowBannerModal(true);
+                  }}
+                  className="flex items-center gap-2 bg-green-600 text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-green-700 transition-colors"
+                >
+                  <Plus size={14} />
+                  Add Banner
+                </button>
+              </div>
+            </div>
+
+            {/* Banner Grid */}
+            {heroBanners.length === 0 ? (
+              <div className="bg-white rounded-lg border border-gray-100 p-12 text-center">
+                <Plus size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="font-inter text-gray-500">No banners found</p>
+                <p className="font-inter text-xs text-gray-400 mt-2">Create your first hero banner</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {heroBanners.map((banner, index) => (
+                  <div key={banner.id} className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+                    {/* Banner Preview */}
+                    <div className="relative h-40 bg-gray-100">
+                      <img
+                        src={banner.image}
+                        alt={banner.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://placehold.co/600x400/f3f4f6/9ca3af?text=No+Image';
+                        }}
+                      />
+                      <div className="absolute top-2 left-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-sm ${banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}>
+                          {banner.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <span className="text-xs font-bold bg-black/50 text-white px-2 py-1 rounded-sm">
+                          #{banner.sort_order || index + 1}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Banner Info */}
+                    <div className="p-4">
+                      <h3 className="font-inter text-sm font-semibold text-gray-800 mb-1 line-clamp-1">
+                        {banner.title}
+                      </h3>
+                      <p className="font-inter text-xs text-gray-500 mb-3 line-clamp-1">
+                        {banner.subtitle}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+                        <span>CTA: {banner.cta}</span>
+                        <span className={`w-3 h-3 rounded-full ${banner.color}`}></span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => handleEditBanner(banner)}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs text-blue-600 hover:bg-blue-50 py-2 rounded-sm transition-colors"
+                        >
+                          <Edit3 size={12} />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleToggleBanner(banner.id, banner.is_active)}
+                          className={`flex-1 flex items-center justify-center gap-1 text-xs py-2 rounded-sm transition-colors ${banner.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+                        >
+                          {banner.is_active ? <><Eye size={12} /> Hide</> : <><Eye size={12} /> Show</>}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBanner(banner.id)}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs text-red-600 hover:bg-red-50 py-2 rounded-sm transition-colors"
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -2753,6 +3328,325 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       </div>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Testimonials Management */}
+        {activeTab === 'testimonials' && (
+          <div className="space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-playfair text-2xl text-purple-primary">Customer Testimonials</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage customer reviews and ratings</p>
+              </div>
+              <button
+                onClick={() => {
+                  resetTestimonialForm();
+                  setShowTestimonialModal(true);
+                }}
+                className="flex items-center gap-2 bg-purple-primary text-white px-6 py-3 rounded-xl hover:bg-purple-secondary transition-all"
+              >
+                <Plus size={18} />
+                <span className="font-medium">Add Testimonial</span>
+              </button>
+            </div>
+
+            {testimonialsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="animate-spin text-purple-primary" size={24} />
+                <span className="ml-3 text-gray-500">Loading testimonials...</span>
+              </div>
+            ) : testimonials.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+                <Star size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500 mb-4">No testimonials yet</p>
+                <button
+                  onClick={() => {
+                    resetTestimonialForm();
+                    setShowTestimonialModal(true);
+                  }}
+                  className="text-purple-primary font-medium hover:underline"
+                >
+                  Add your first testimonial
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {testimonials.map((testimonial) => (
+                  <div key={testimonial.id} className={`bg-white rounded-3xl p-6 border shadow-sm transition-all ${testimonial.is_active ? 'border-gray-100' : 'border-gray-200 opacity-60'}`}>
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      <div className="shrink-0">
+                        {testimonial.avatar ? (
+                          <img 
+                            src={testimonial.avatar} 
+                            alt={testimonial.name} 
+                            className="w-16 h-16 rounded-full object-cover border-2 border-purple-primary/20"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-primary to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                            {testimonial.name?.charAt(0)?.toUpperCase() || <User size={24} />}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-gray-900">{testimonial.name}</h3>
+                          {testimonial.verified && (
+                            <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Verified</span>
+                          )}
+                          {!testimonial.is_active && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mb-2">{testimonial.location || 'Customer'}</p>
+                        
+                        {/* Rating */}
+                        <div className="flex items-center gap-1 mb-3">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star 
+                              key={star} 
+                              size={14} 
+                              className={star <= testimonial.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}
+                            />
+                          ))}
+                          <span className="ml-2 text-xs text-gray-500">({testimonial.rating}/5)</span>
+                        </div>
+                        
+                        <h4 className="font-semibold text-gray-800 mb-2 line-clamp-1">{testimonial.title}</h4>
+                        <p className="text-sm text-gray-600 line-clamp-3 mb-3">{testimonial.review}</p>
+                        {testimonial.product && (
+                          <p className="text-xs text-purple-primary mb-3">Purchased: {testimonial.product}</p>
+                        )}
+                        
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditTestimonial(testimonial)}
+                            className="p-2 hover:bg-purple-light rounded-lg transition-colors"
+                          >
+                            <Edit3 size={16} className="text-purple-primary" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTestimonial(testimonial.id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} className="text-red-500" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleTestimonial(testimonial.id, testimonial.is_active)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${testimonial.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}
+                          >
+                            {testimonial.is_active ? 'Active' : 'Inactive'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add/Edit Testimonial Modal */}
+            <AnimatePresence>
+              {showTestimonialModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }} 
+                    onClick={() => setShowTestimonialModal(false)} 
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+                    animate={{ opacity: 1, scale: 1, y: 0 }} 
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+                    className="relative bg-white w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto"
+                  >
+                    <div className="p-8 md:p-10">
+                      <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
+                          {editingTestimonial ? 'Edit' : 'Add'} Testimonial
+                        </h3>
+                        <button onClick={() => setShowTestimonialModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                          <X size={24} />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSaveTestimonial} className="space-y-6">
+                        {/* Avatar Upload */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Customer Photo</label>
+                          <div className="flex items-center gap-4">
+                            <div className="shrink-0">
+                              {testimonialAvatarPreview ? (
+                                <img src={testimonialAvatarPreview} alt="Preview" className="w-20 h-20 rounded-full object-cover border-2 border-purple-primary" />
+                              ) : testimonialForm.avatar ? (
+                                <img src={testimonialForm.avatar} alt="Current" className="w-20 h-20 rounded-full object-cover border-2 border-purple-primary" />
+                              ) : (
+                                <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                  <User size={32} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-purple-primary hover:bg-purple-light transition-all cursor-pointer group">
+                                <Upload size={20} className="text-gray-300 group-hover:text-purple-primary mb-1" />
+                                <span className="text-xs font-bold text-gray-400 group-hover:text-purple-primary">Upload Photo</span>
+                                <input type="file" onChange={handleTestimonialAvatarSelect} className="hidden" accept="image/*" />
+                              </label>
+                              {uploadingTestimonialAvatar && (
+                                <p className="text-xs text-purple-primary mt-2 flex items-center gap-1">
+                                  <RefreshCw size={12} className="animate-spin" /> Uploading...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Name */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Customer Name *</label>
+                          <input 
+                            type="text" 
+                            value={testimonialForm.name} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, name: e.target.value })} 
+                            placeholder="e.g. Priya Sharma"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all"
+                            required
+                          />
+                        </div>
+
+                        {/* Location */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Location</label>
+                          <input 
+                            type="text" 
+                            value={testimonialForm.location} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, location: e.target.value })} 
+                            placeholder="e.g. Mumbai, India"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all"
+                          />
+                        </div>
+
+                        {/* Rating */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Rating (1-5) *</label>
+                          <div className="flex items-center gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setTestimonialForm({ ...testimonialForm, rating: star })}
+                                className="focus:outline-none"
+                              >
+                                <Star 
+                                  size={28} 
+                                  className={star <= testimonialForm.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}
+                                />
+                              </button>
+                            ))}
+                            <span className="ml-2 text-sm font-bold text-gray-700">{testimonialForm.rating} / 5</span>
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Review Title *</label>
+                          <input 
+                            type="text" 
+                            value={testimonialForm.title} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, title: e.target.value })} 
+                            placeholder="e.g. Amazing quality saree!"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all"
+                            required
+                          />
+                        </div>
+
+                        {/* Review */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Review Text *</label>
+                          <textarea 
+                            value={testimonialForm.review} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, review: e.target.value })} 
+                            placeholder="Write the customer review here..."
+                            rows={4}
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all resize-none"
+                            required
+                          />
+                        </div>
+
+                        {/* Product */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Product Purchased</label>
+                          <input 
+                            type="text" 
+                            value={testimonialForm.product} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, product: e.target.value })} 
+                            placeholder="e.g. Banarasi Silk Saree"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all"
+                          />
+                        </div>
+
+                        {/* Sort Order */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Display Order</label>
+                          <input 
+                            type="number" 
+                            value={testimonialForm.sort_order} 
+                            onChange={(e) => setTestimonialForm({ ...testimonialForm, sort_order: parseInt(e.target.value) || 0 })} 
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all"
+                          />
+                        </div>
+
+                        {/* Status Toggles */}
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={testimonialForm.is_active}
+                              onChange={(e) => setTestimonialForm({ ...testimonialForm, is_active: e.target.checked })}
+                              className="w-5 h-5 accent-purple-primary"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Active</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={testimonialForm.verified}
+                              onChange={(e) => setTestimonialForm({ ...testimonialForm, verified: e.target.checked })}
+                              className="w-5 h-5 accent-purple-primary"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Verified Purchase</span>
+                          </label>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-4 flex gap-4">
+                          <button 
+                            type="button"
+                            onClick={() => setShowTestimonialModal(false)} 
+                            className="flex-1 py-4 rounded-2xl border-2 border-gray-100 text-sm font-black text-gray-400 hover:bg-gray-50 transition-all uppercase tracking-widest"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="submit"
+                            disabled={savingTestimonial} 
+                            className="flex-1 py-4 rounded-2xl bg-purple-primary text-white text-sm font-black hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20 uppercase tracking-widest"
+                          >
+                            {savingTestimonial ? 'Saving...' : (editingTestimonial ? 'Update' : 'Create')}
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   </motion.div>
                 </div>
@@ -3140,131 +4034,163 @@ export default function AdminDashboard() {
           }}
         />
 
-        {/* Order Detail Modal */}
+        {/* Order Detail Modal - Professional Invoice Style */}
         <AnimatePresence>
           {showOrderDetail && selectedOrder && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
               onClick={() => setShowOrderDetail(false)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-none max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
+                {/* Invoice Header */}
+                <div className="bg-gray-900 text-white p-6">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <h2 className="font-playfair text-xl text-purple-primary">Order Details</h2>
-                      <p className="font-inter text-sm text-gray-400 mt-1">{selectedOrder.id}</p>
+                      <h1 className="text-2xl font-bold tracking-tight">LITTLE SHOP</h1>
+                      <p className="text-gray-400 text-sm mt-1">Premium Fashion & Accessories</p>
+                      <p className="text-gray-500 text-xs mt-0.5">Dharapuram, Tamil Nadu</p>
                     </div>
-                    <button
-                      onClick={() => setShowOrderDetail(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X size={20} />
-                    </button>
+                    <div className="text-right">
+                      <div className="bg-white/10 px-4 py-2">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Tax Invoice</p>
+                        <p className="text-lg font-bold">{selectedOrder.id}</p>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-2">GST: 33EJJPA8233H1ZD</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowOrderDetail(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+
                 <div className="p-6 space-y-6">
-                  {/* Customer Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-cream p-4 rounded-sm">
-                      <p className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-1">Customer</p>
-                      <p className="font-inter text-sm font-medium text-gray-800">{selectedOrder._raw?.customer?.name || selectedOrder.customer}</p>
-                      <p className="font-inter text-xs text-gray-500">{selectedOrder._raw?.customer?.email || 'N/A'}</p>
+                  {/* Bill To / Ship To */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="border-l-4 border-gray-900 pl-4">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Bill To</p>
+                      <p className="font-semibold text-gray-900">{selectedOrder._raw?.customer?.name || selectedOrder.customer}</p>
+                      <p className="text-sm text-gray-600 mt-1">{selectedOrder._raw?.customer?.email || 'N/A'}</p>
+                      <p className="text-sm text-gray-600">{selectedOrder._raw?.customer?.phone || selectedOrder.phone}</p>
                     </div>
-                    <div className="bg-cream p-4 rounded-sm">
-                      <p className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-1">Phone</p>
-                      <p className="font-inter text-sm font-medium text-gray-800">{selectedOrder._raw?.customer?.phone || selectedOrder.phone}</p>
+                    <div className="border-l-4 border-gray-300 pl-4">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ship To</p>
+                      <p className="text-sm text-gray-700">{selectedOrder._raw?.shipping?.address || 'No address available'}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {selectedOrder._raw?.shipping?.city}, {selectedOrder._raw?.shipping?.state} - {selectedOrder._raw?.shipping?.pincode}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Address */}
-                  <div className="bg-cream p-4 rounded-sm">
-                    <p className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-2">Shipping Address</p>
-                    <p className="font-inter text-sm text-gray-700">
-                      {selectedOrder._raw?.shipping?.address || 'No address available'}
-                    </p>
-                    <p className="font-inter text-sm text-gray-700 mt-1">
-                      {selectedOrder._raw?.shipping?.city}, {selectedOrder._raw?.shipping?.state} {selectedOrder._raw?.shipping?.pincode}
-                    </p>
-                  </div>
-
-                  {/* Payment Status */}
-                  <div className="flex items-center justify-between bg-purple-primary/5 p-4 rounded-sm">
+                  {/* Order Meta */}
+                  <div className="flex gap-6 text-sm border-y border-gray-200 py-3">
                     <div>
-                      <p className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-1">Payment Status</p>
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedOrder._raw?.payment?.razorpay_payment_id ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                        <p className="font-inter text-sm font-medium text-gray-800">
-                          {selectedOrder._raw?.payment?.razorpay_payment_id ? 'Paid via Razorpay' : 'Payment Pending'}
-                        </p>
+                      <span className="text-gray-500">Order Date:</span>
+                      <span className="ml-2 font-medium">{selectedOrder.date}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Status:</span>
+                      <span className={`ml-2 px-2 py-0.5 text-xs font-medium ${
+                        selectedOrder.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        selectedOrder.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                        selectedOrder.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>{selectedOrder.status}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Payment:</span>
+                      <span className={`ml-2 ${selectedOrder._raw?.payment?.razorpay_payment_id ? 'text-green-600' : 'text-orange-600'}`}>
+                        {selectedOrder._raw?.payment?.razorpay_payment_id ? 'Paid' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <div>
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b-2 border-gray-200">
+                        <tr>
+                          <th className="text-left py-3 px-3 font-semibold text-gray-700">Item</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-700 w-20">Qty</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-700 w-28">Price</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-700 w-28">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedOrder._raw?.items || []).map((item, idx) => (
+                          <tr key={idx} className="border-b border-gray-100">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center">
+                                  <Package size={16} className="text-gray-400" />
+                                </div>
+                                <span className="font-medium text-gray-800">{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center">{item.quantity}</td>
+                            <td className="py-3 px-3 text-right">{CURRENCY}{item.price.toLocaleString()}</td>
+                            <td className="py-3 px-3 text-right font-medium">{CURRENCY}{(item.price * item.quantity).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="flex justify-end">
+                    <div className="w-64 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal</span>
+                        <span>{CURRENCY}{(selectedOrder._raw?.subtotal || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Shipping</span>
+                        <span className={selectedOrder._raw?.shipping === 0 ? 'text-green-600 font-medium' : ''}>
+                          {selectedOrder._raw?.shipping === 0 ? 'FREE' : CURRENCY + (selectedOrder._raw?.shipping || 0)}
+                        </span>
+                      </div>
+                      <div className="border-t-2 border-gray-900 pt-2 mt-2">
+                        <div className="flex justify-between">
+                          <span className="font-bold text-gray-900 text-lg">Total</span>
+                          <span className="font-bold text-gray-900 text-lg">{CURRENCY}{selectedOrder.total.toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
-                    {selectedOrder._raw?.payment?.razorpay_payment_id && (
-                      <p className="font-inter text-xs text-gray-400">
-                        ID: {selectedOrder._raw.payment.razorpay_payment_id.slice(0, 16)}...
-                      </p>
-                    )}
                   </div>
 
-                  {/* Order Items */}
-                  <div>
-                    <p className="font-inter text-xs tracking-wider uppercase text-gray-400 mb-3">Order Items</p>
-                    <div className="space-y-3">
-                      {(selectedOrder._raw?.items || []).map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gray-100 rounded-sm flex items-center justify-center">
-                              <Package size={20} className="text-gray-400" />
-                            </div>
-                            <div>
-                              <p className="font-inter text-sm text-gray-800">{item.name}</p>
-                              <p className="font-inter text-xs text-gray-400">Qty: {item.quantity}</p>
-                            </div>
-                          </div>
-                          <p className="font-inter text-sm font-medium text-purple-primary">
-                            {CURRENCY}{(item.price * item.quantity).toLocaleString()}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Order Summary */}
-                  <div className="bg-purple-primary text-white p-4 rounded-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-inter text-sm">Subtotal</p>
-                      <p className="font-inter text-sm">{CURRENCY}{(selectedOrder._raw?.subtotal || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-inter text-sm">Shipping</p>
-                      <p className="font-inter text-sm">{selectedOrder._raw?.shipping === 0 ? 'FREE' : CURRENCY + (selectedOrder._raw?.shipping || 0)}</p>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                      <p className="font-inter text-base font-medium">Total</p>
-                      <p className="font-inter text-lg font-bold">{CURRENCY}{selectedOrder.total.toLocaleString()}</p>
-                    </div>
+                  {/* Footer Note */}
+                  <div className="bg-gray-50 p-4 text-center text-xs text-gray-500">
+                    <p>No Returns / No Exchanges — All Sales Final</p>
+                    <p className="mt-1">Thank you for shopping with Little Shop!</p>
                   </div>
                 </div>
-                <div className="p-6 border-t border-gray-100 flex gap-3">
+
+                {/* Action Buttons */}
+                <div className="p-4 border-t border-gray-200 flex gap-3 bg-gray-50">
                   <button
                     onClick={() => generateInvoice(selectedOrder)}
-                    className="flex-1 py-3 border border-gray-200 font-inter text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gray-900 text-white font-medium text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                   >
-                    <Download size={16} /> Download Invoice
+                    <Download size={16} /> Download PDF Invoice
                   </button>
                   <button
-                    onClick={() => setShowOrderDetail(false)}
-                    className="flex-1 py-3 bg-purple-primary text-white font-inter text-sm hover:bg-emerald-900 transition-colors"
+                    onClick={() => window.print()}
+                    className="px-6 py-3 border border-gray-300 text-gray-700 font-medium text-sm hover:bg-white transition-colors"
                   >
-                    Close
+                    Print
                   </button>
                 </div>
               </motion.div>
@@ -3449,6 +4375,248 @@ export default function AdminDashboard() {
                     Delete
                   </button>
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hero Banner Modal */}
+        <AnimatePresence>
+          {showBannerModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+              onClick={() => setShowBannerModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-playfair text-xl text-purple-primary">
+                      {editingBanner ? 'Edit Banner' : 'Add Banner'}
+                    </h2>
+                    <button
+                      onClick={() => setShowBannerModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSaveBanner} className="p-6 space-y-4">
+                  {/* Image Upload */}
+                  <div>
+                    <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                      Banner Image *
+                    </label>
+                    
+                    {/* File Upload Area */}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerImageSelect}
+                        className="hidden"
+                        id="banner-image-upload"
+                      />
+                      <label
+                        htmlFor="banner-image-upload"
+                        className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                          bannerImagePreview || bannerForm.image
+                            ? 'border-green-400 bg-green-50'
+                            : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-purple-primary'
+                        }`}
+                      >
+                        {uploadingBannerImage ? (
+                          <div className="flex flex-col items-center">
+                            <div className="w-8 h-8 border-2 border-purple-primary border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <span className="text-xs text-gray-500">Uploading...</span>
+                          </div>
+                        ) : bannerImagePreview || bannerForm.image ? (
+                          <div className="flex flex-col items-center">
+                            <img
+                              src={bannerImagePreview || bannerForm.image}
+                              alt="Preview"
+                              className="w-full h-20 object-cover rounded-lg mb-2"
+                            />
+                            <span className="text-xs text-green-600 font-medium">✓ Image ready</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload size={24} className="text-gray-400 mb-2" />
+                            <span className="text-xs text-gray-500">Click to upload image</span>
+                            <span className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP (max 5MB)</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                    
+                    {/* Or URL Input */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="flex-1 h-px bg-gray-200"></div>
+                      <span className="text-xs text-gray-400">OR</span>
+                      <div className="flex-1 h-px bg-gray-200"></div>
+                    </div>
+                    
+                    <input
+                      type="url"
+                      value={bannerForm.image}
+                      onChange={(e) => setBannerForm({ ...bannerForm, image: e.target.value })}
+                      placeholder="Enter image URL directly"
+                      className="w-full mt-3 px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                    />
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={bannerForm.title}
+                      onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                      placeholder="Summer Sale"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                      required
+                    />
+                  </div>
+
+                  {/* Subtitle */}
+                  <div>
+                    <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                      Subtitle
+                    </label>
+                    <input
+                      type="text"
+                      value={bannerForm.subtitle}
+                      onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                      placeholder="Up to 50% off on all products"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                    />
+                  </div>
+
+                  {/* CTA & Link */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                        Button Text
+                      </label>
+                      <input
+                        type="text"
+                        value={bannerForm.cta}
+                        onChange={(e) => setBannerForm({ ...bannerForm, cta: e.target.value })}
+                        placeholder="Shop Now"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                        Link
+                      </label>
+                      <input
+                        type="text"
+                        value={bannerForm.link}
+                        onChange={(e) => setBannerForm({ ...bannerForm, link: e.target.value })}
+                        placeholder="/shop"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Color & Sort Order */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                        Color Theme
+                      </label>
+                      <select
+                        value={bannerForm.color}
+                        onChange={(e) => setBannerForm({ ...bannerForm, color: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                      >
+                        <option value="bg-purple-primary">Purple</option>
+                        <option value="bg-indigo-600">Indigo</option>
+                        <option value="bg-pink-600">Pink</option>
+                        <option value="bg-blue-600">Blue</option>
+                        <option value="bg-green-600">Green</option>
+                        <option value="bg-red-600">Red</option>
+                        <option value="bg-amber-500">Amber</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                        Display Order
+                      </label>
+                      <input
+                        type="number"
+                        value={bannerForm.sortOrder}
+                        onChange={(e) => setBannerForm({ ...bannerForm, sortOrder: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl font-inter text-sm focus:outline-none focus:border-purple-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Toggle */}
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={bannerForm.isActive}
+                      onChange={(e) => setBannerForm({ ...bannerForm, isActive: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-purple-primary focus:ring-purple-primary"
+                    />
+                    <label htmlFor="isActive" className="font-inter text-sm text-gray-700">
+                      Active (visible on home page)
+                    </label>
+                  </div>
+
+                  {/* Preview */}
+                  {bannerForm.image && (
+                    <div className="mt-4">
+                      <p className="font-inter text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Preview</p>
+                      <div className="h-32 bg-gray-100 rounded-lg overflow-hidden">
+                        <img
+                          src={bannerForm.image}
+                          alt="Banner preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = 'https://placehold.co/600x200/f3f4f6/9ca3af?text=Invalid+Image+URL';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowBannerModal(false)}
+                      className="flex-1 py-3 border border-gray-200 font-inter text-sm text-gray-600 hover:bg-gray-50 transition-colors rounded-xl"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingBanner}
+                      className="flex-1 py-3 bg-purple-primary text-white font-inter text-sm hover:bg-purple-primary/90 transition-colors rounded-xl disabled:opacity-50"
+                    >
+                      {savingBanner ? 'Saving...' : editingBanner ? 'Update Banner' : 'Create Banner'}
+                    </button>
+                  </div>
+                </form>
               </motion.div>
             </motion.div>
           )}

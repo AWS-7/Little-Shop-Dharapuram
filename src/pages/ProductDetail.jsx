@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, SHIPPING_THRESHOLD } from '../lib/constants';
-import { getProductById, resolveImageUrl, PLACEHOLDER_IMG } from '../lib/products';
+import { getProductById, getProductsByCategory, resolveImageUrl, PLACEHOLDER_IMG } from '../lib/products';
 import ProductCard from '../components/home/ProductCard';
 import ImageMagnifier from '../components/ImageMagnifier';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
@@ -132,6 +132,8 @@ export default function ProductDetail() {
   const [notifySuccess, setNotifySuccess] = useState(false);
   const [notifyError, setNotifyError] = useState('');
   const [restockRequestCount, setRestockRequestCount] = useState(0);
+  const [cartErrorLocal, setCartErrorLocal] = useState('');  // MOVED: must be before early returns
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   // Try placeholder first, then fetch from Supabase
   useEffect(() => {
@@ -163,6 +165,15 @@ export default function ProductDetail() {
       });
     }
   }, [product?.id, product?.stockCount]);
+
+  // Fetch related products from same category
+  useEffect(() => {
+    if (product?.category && product?.id) {
+      getProductsByCategory(product.category, product.id, 4).then(({ data }) => {
+        setRelatedProducts(data || []);
+      });
+    }
+  }, [product?.category, product?.id]);
 
   // Handle Notify Me form submission
   const handleNotifySubmit = async (e) => {
@@ -224,7 +235,7 @@ export default function ProductDetail() {
     ? PLACEHOLDER_PRODUCTS.filter((p) => p.id !== id).slice(0, 5)
     : related;
 
-  const [cartErrorLocal, setCartErrorLocal] = useState('');
+  // cartErrorLocal useState moved to top (line 135) - must be before early returns
 
   const handleAddToCart = () => {
     clearCartError();
@@ -278,7 +289,7 @@ export default function ProductDetail() {
         </nav>
 
         {/* ═══ Main 2-Column Layout ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12">
 
           {/* ── LEFT: Image Gallery ── */}
           <motion.div
@@ -363,9 +374,9 @@ export default function ProductDetail() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col space-y-8"
+            className="flex flex-col space-y-4"
           >
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* Category */}
               <p className="text-purple-primary text-xs font-bold uppercase tracking-[0.2em]">
                 {product.category}
@@ -376,9 +387,9 @@ export default function ProductDetail() {
                 {product.name}
               </h1>
 
-              {/* Star Ratings */}
-              {product.rating && (
-                <StarRating rating={product.rating} reviewCount={product.reviewCount} size="lg" />
+              {/* Star Ratings - Only show if rating > 0 */}
+              {Number(product.rating) > 0 && Number(product.reviewCount) > 0 && (
+                <StarRating rating={Number(product.rating)} reviewCount={Number(product.reviewCount)} size="lg" />
               )}
             </div>
 
@@ -399,10 +410,10 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <p className="text-gray-400 text-xs font-medium -mt-4">Inclusive of all taxes</p>
+            <p className="text-gray-400 text-xs font-medium">Inclusive of all taxes</p>
 
             {/* Product Highlights */}
-            <div className="grid grid-cols-2 gap-6 py-8 border-y border-gray-100">
+            <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
                   <Sparkles size={20} className="text-purple-primary" />
@@ -424,7 +435,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Delivery Info */}
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
                   <Truck size={20} className="text-purple-primary" />
@@ -439,8 +450,8 @@ export default function ProductDetail() {
             {/* Policies */}
             <div className="flex flex-wrap gap-8">
               <div className="flex items-center gap-3">
-                <RotateCcw size={18} className="text-purple-primary" />
-                <span className="text-xs font-bold text-gray-600">7 Day Returns</span>
+                <Ban size={18} className="text-purple-primary" />
+                <span className="text-xs font-bold text-gray-600">No Returns</span>
               </div>
               <div className="flex items-center gap-3">
                 <Award size={18} className="text-purple-primary" />
@@ -748,6 +759,31 @@ export default function ProductDetail() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+
+        {/* Related Products - Same Category */}
+        {relatedProducts.length > 0 && (
+          <section className="py-12 bg-gray-50">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="h-px flex-1 bg-gray-200" />
+                <h2 className="text-xl font-bold text-gray-900 text-center">
+                  More {product?.category || 'Products'}
+                </h2>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {relatedProducts.map((item, idx) => (
+                  <ProductCard 
+                    key={item.id} 
+                    product={item} 
+                    index={idx}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
         )}
       </AnimatePresence>
     </>

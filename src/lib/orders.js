@@ -142,13 +142,23 @@ async function processReferralReward(userId, orderData) {
 // ── Get Orders for logged-in user ──
 export async function getUserOrders(userId) {
   try {
+    console.log('🔍 Fetching orders for userId:', userId);
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Error fetching orders:', error);
+    } else {
+      console.log('✅ Orders fetched:', data?.length || 0, 'orders found');
+      console.log('📋 Orders data:', data);
+    }
+    
     return { data: data || [], error };
   } catch (e) {
+    console.error('❌ Exception fetching orders:', e);
     return { data: [], error: e };
   }
 }
@@ -286,13 +296,15 @@ async function sendWhatsAppNotification(order, status) {
 
 // ── Subscribe to order changes (realtime) ──
 export function subscribeToOrders(callback) {
+  const channelName = `orders-${Math.random().toString(36).substring(7)}`;
   const channel = supabase
-    .channel('orders-realtime')
+    .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+      console.log('Realtime order event:', payload);
       callback(payload);
     })
     .subscribe((status) => {
-      console.log('Orders realtime channel:', status);
+      console.log('Orders subscription status:', status);
     });
   return channel;
 }

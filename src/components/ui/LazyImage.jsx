@@ -27,32 +27,10 @@ export default function LazyImage({
   const [inView, setInView] = useState(priority);
   const imgRef = useRef(null);
 
-  // Intersection Observer for lazy loading - optimized for faster perceived load
+  // Always load image immediately (fix for ProductDetail related products)
   useEffect(() => {
-    if (priority) {
-      setInView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      {
-        rootMargin: '300px',  // Increased: Start loading 300px before visible
-        threshold: 0
-      }
-    );
-
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [priority]);
+    setInView(true);
+  }, []);
 
   // Generate optimized image URLs
   const getOptimizedUrl = (url, width) => {

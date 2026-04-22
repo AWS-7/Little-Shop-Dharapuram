@@ -53,7 +53,12 @@ export default function Checkout() {
 
   useEffect(() => {
     if (user?.uid) {
-      getAddresses(user.uid).then(({ data }) => {
+      getAddresses(user.uid).then(({ data, error }) => {
+        if (error) {
+          // Addresses table may not exist - silently ignore
+          console.log('Addresses fetch skipped:', error.message);
+          return;
+        }
         if (data && data.length > 0) {
           setSavedAddresses(data);
           const defaultAddr = data.find((a) => a.is_default) || data[0];
@@ -106,17 +111,21 @@ export default function Checkout() {
     return id;
   };
 
-  const buildOrderPayload = (paymentId) => {
+  const buildOrderPayload = (paymentId, paymentMethod = null) => {
     const payload = {
       order_id: generateTrackingId(),
       payment_id: paymentId,
-      status: 'Ordered',
+      // Try 'pending' for COD, 'confirmed' for online. If fails, run SQL:
+      // ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+      // ALTER TABLE orders ADD CONSTRAINT orders_status_check CHECK (status IN ('pending','confirmed','Packed','Shipped','Out for Delivery','Delivered'));
+      status: paymentMethod === 'cod' ? 'pending' : 'confirmed',
       total,
       subtotal,
       shipping,
       gift_wrap: isGiftWrap,
       gift_wrap_amount: giftWrapAmount,
       gift_message: isGiftWrap ? giftMessage : null,
+      user_id: user?.uid || null, // Add user_id to link order to user
       items: cart.map((item) => ({
         id: item.id,
         name: item.name,
@@ -129,13 +138,12 @@ export default function Checkout() {
         email: form.email || user?.email || '',
       },
     };
-    if (user?.uid) payload.user_id = user.uid;
     return payload;
   };
 
-  const processOrder = async (paymentId) => {
+  const processOrder = async (paymentId, paymentMethod = null) => {
     paymentInProgress.current = true;
-    const payload = buildOrderPayload(paymentId);
+    const payload = buildOrderPayload(paymentId, paymentMethod);
     const { data: saved, error: orderError } = await createOrder(payload);
     
     if (orderError) {
@@ -143,7 +151,13 @@ export default function Checkout() {
       alert(`Order save failed: ${orderError.message}`);
     }
 
-    if (user) await markCartConverted(user.uid);
+    if (user) {
+      try {
+        await markCartConverted(user.uid);
+      } catch {
+        // Ignore cart conversion errors
+      }
+    }
 
     const orderData = {
       paymentId,
@@ -185,6 +199,14 @@ export default function Checkout() {
     }
     setStockErrors([]);
 
+    // Handle Cash on Delivery
+    if (selectedPaymentMethod === 'cod') {
+      const codOrderId = `COD-${Date.now().toString(36).toUpperCase()}`;
+      await processOrder(codOrderId, 'cod');
+      setLoading(false);
+      return;
+    }
+
     if (rzpModalOpen.current) return;
     setPaymentError(null);
 
@@ -216,7 +238,7 @@ export default function Checkout() {
       },
     };
 
-    if (window.Razorpay) {
+    if (window.Razorpay && options.key && !options.key.includes('placeholder')) {
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (resp) => {
         rzpModalOpen.current = false;
@@ -226,6 +248,7 @@ export default function Checkout() {
       rzpModalOpen.current = true;
       rzp.open();
     } else {
+      // Fallback to demo mode if Razorpay not configured
       setTimeout(async () => {
         const demoPaymentId = `pay_demo_${Date.now().toString(36).toUpperCase()}`;
         await processOrder(demoPaymentId);
@@ -332,11 +355,16 @@ export default function Checkout() {
                 </div>
                 
                 <div className="grid gap-4">
-                  {['upi', 'card', 'netbanking'].map(method => (
-                    <button key={method} type="button" onClick={() => setSelectedPaymentMethod(method)} className={`flex items-center justify-between p-6 rounded-2xl border transition-all ${selectedPaymentMethod === method ? 'border-purple-primary bg-purple-light shadow-lg shadow-purple-primary/5' : 'border-gray-100 hover:border-purple-200'}`}>
-                      <span className="font-black text-gray-900 uppercase tracking-widest text-sm">{method}</span>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === method ? 'border-purple-primary' : 'border-gray-200'}`}>
-                        {selectedPaymentMethod === method && <div className="w-3 h-3 rounded-full bg-purple-primary" />}
+                  {[
+                    { id: 'upi', label: 'UPI / QR Code' },
+                    { id: 'card', label: 'Credit / Debit Card' },
+                    { id: 'netbanking', label: 'Net Banking' },
+                    { id: 'cod', label: 'Cash on Delivery (COD)' }
+                  ].map(method => (
+                    <button key={method.id} type="button" onClick={() => setSelectedPaymentMethod(method.id)} className={`flex items-center justify-between p-6 rounded-2xl border transition-all ${selectedPaymentMethod === method.id ? 'border-purple-primary bg-purple-light shadow-lg shadow-purple-primary/5' : 'border-gray-100 hover:border-purple-200'}`}>
+                      <span className="font-black text-gray-900 uppercase tracking-widest text-sm">{method.label}</span>
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === method.id ? 'border-purple-primary' : 'border-gray-200'}`}>
+                        {selectedPaymentMethod === method.id && <div className="w-3 h-3 rounded-full bg-purple-primary" />}
                       </div>
                     </button>
                   ))}
@@ -451,7 +479,7 @@ export default function Checkout() {
                 disabled={loading}
                 className="w-full bg-purple-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-3"
               >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : `PAY ${CURRENCY}${total.toLocaleString()}`}
+                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : `PAY ${CURRENCY}${total.toLocaleString()}`}
               </button>
               
               <div className="mt-8 pt-8 border-t border-gray-50 space-y-4">
@@ -484,7 +512,7 @@ export default function Checkout() {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-black text-sm uppercase tracking-widest py-4 rounded-full hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20"
               >
-                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : `PAY ${CURRENCY}${total.toLocaleString()}`}
+                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : `PAY ${CURRENCY}${total.toLocaleString()}`}
               </button>
             </div>
           </div>

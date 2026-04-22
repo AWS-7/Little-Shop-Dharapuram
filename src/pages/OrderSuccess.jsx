@@ -91,7 +91,7 @@ export default function OrderSuccess() {
   const total = order.total || subtotal + shipping;
 
   return (
-    <div className="container-luxury section-spacing min-h-screen">
+    <div className="container-luxury section-spacing min-h-screen mt-8 md:mt-0">
       {/* Hero Success */}
       <div className="text-center mb-12">
         <div className="relative inline-block mb-8">
@@ -136,7 +136,7 @@ export default function OrderSuccess() {
             Order Confirmed!
           </h1>
           <p className="font-inter text-sm text-gray-500 max-w-lg mx-auto">
-            Vetti Vedikkanum! Your order has been placed successfully. 
+            Your order has been placed successfully. 
             We're preparing your luxury items with love.
           </p>
         </motion.div>

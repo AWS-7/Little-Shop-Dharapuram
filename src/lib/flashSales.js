@@ -11,31 +11,47 @@ import { supabase } from './supabase';
  */
 export async function getActiveFlashSale() {
   try {
+    console.log('🔍 Fetching active flash sale...');
+    // Simple query first - just get active sales
     const { data, error } = await supabase
       .from('flash_sales')
       .select('*')
       .eq('is_active', true)
-      .gt('end_time', new Date().toISOString())
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching active flash sale:', error);
+    if (error) {
+      // PGRST116 = no rows returned (OK - no active sale)
+      // 406 = table/column issue (OK - flash sales not set up)
+      if (error.code === 'PGRST116' || error.status === 406 || error.status === 400) {
+        console.log('ℹ️ No flash sale found or table not set up');
+        return { data: null, error: null };
+      }
+      console.error('❌ Error fetching active flash sale:', error);
       return { data: null, error };
     }
 
-    // Check if sale has expired
-    if (data && new Date(data.end_time) <= new Date()) {
-      // Auto-deactivate
-      await deactivateFlashSale(data.id);
+    // No active sale
+    if (!data || data.length === 0) {
+      console.log('ℹ️ No active flash sale found');
       return { data: null, error: null };
     }
 
-    return { data, error: null };
+    const sale = data[0];
+    console.log('✅ Flash sale found:', sale.product_name, 'Ends:', sale.end_time);
+
+    // Check if sale has expired
+    if (sale.end_time && new Date(sale.end_time) <= new Date()) {
+      console.log('⏰ Flash sale expired, deactivating...');
+      // Auto-deactivate
+      await deactivateFlashSale(sale.id);
+      return { data: null, error: null };
+    }
+
+    return { data: sale, error: null };
   } catch (e) {
-    console.error('Exception fetching flash sale:', e);
-    return { data: null, error: e };
+    console.error('❌ Exception fetching flash sale:', e);
+    return { data: null, error: null };
   }
 }
 
@@ -44,6 +60,7 @@ export async function getActiveFlashSale() {
  * @param {Object} flashSale - Flash sale data
  * @param {string} flashSale.productId - Product ID
  * @param {string} flashSale.productName - Product name
+ * @param {string} flashSale.productImage - Product image URL
  * @param {number} flashSale.originalPrice - Original price
  * @param {number} flashSale.discountedPrice - Discounted price
  * @param {string} flashSale.endTime - ISO timestamp for end time
@@ -53,12 +70,22 @@ export async function getActiveFlashSale() {
 export async function createFlashSale({
   productId,
   productName,
+  productImage,
   originalPrice,
   discountedPrice,
   endTime,
   bannerText = 'Flash Sale! Limited Time Offer'
 }) {
   try {
+    // Debug logging
+    console.log('💾 Saving Flash Sale to DB:', {
+      productId,
+      productName,
+      productImage,
+      originalPrice,
+      discountedPrice
+    });
+    
     // First, deactivate any existing active sales
     await supabase
       .from('flash_sales')
@@ -71,6 +98,7 @@ export async function createFlashSale({
       .insert([{
         product_id: productId,
         product_name: productName,
+        product_image: productImage,
         original_price: originalPrice,
         discounted_price: discountedPrice,
         end_time: endTime,
@@ -81,9 +109,11 @@ export async function createFlashSale({
       .single();
 
     if (error) {
-      console.error('Error creating flash sale:', error);
+      console.error('❌ Error creating flash sale:', error);
       return { data: null, error };
     }
+    
+    console.log('✅ Flash Sale saved:', data);
 
     return { data, error: null };
   } catch (e) {
@@ -270,6 +300,11 @@ export function subscribeToFlashSales(callback) {
       callback(payload);
     })
     .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR') {
+        // Table doesn't exist - silently ignore
+        console.log('Flash sales real-time not available (table may not exist)');
+        return;
+      }
       console.log('Flash sales subscription:', status);
     });
 

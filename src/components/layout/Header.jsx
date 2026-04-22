@@ -266,8 +266,8 @@ export default function Header() {
       </div>
 
       {/* Category Bar — Flipkart Style */}
-      <div className="bg-white border-b border-gray-200 hidden lg:block shadow-sm">
-        <div className="container-clean flex items-center justify-center gap-12 py-3">
+      <div className="bg-white border-b border-gray-200 hidden lg:block">
+        <div className="container-clean flex items-center justify-center gap-12 py-2">
           {['Shop', 'Collections', 'New Arrivals', 'Offers'].map((item) => (
             <Link
               key={item}

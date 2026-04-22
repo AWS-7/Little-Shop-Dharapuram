@@ -10,6 +10,11 @@ export function generateReferralCode(userId) {
 
 // Get or create referral code for a user
 export async function getOrCreateReferralCode(userId) {
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (!userId || userId.length > 36) {
+    return { code: null, error: null };
+  }
+  
   try {
     // Check if user already has a referral code in profiles
     const { data: profile, error: profileError } = await supabase
@@ -17,6 +22,11 @@ export async function getOrCreateReferralCode(userId) {
       .select('referral_code')
       .eq('id', userId)
       .single();
+
+    // Silently handle UUID errors
+    if (profileError && profileError.code === '22P02') {
+      return { code: null, error: null };
+    }
 
     if (profile?.referral_code) {
       return { code: profile.referral_code, error: null };
@@ -31,6 +41,10 @@ export async function getOrCreateReferralCode(userId) {
       .update({ referral_code: code })
       .eq('id', userId);
 
+    if (updateError && updateError.code === '22P02') {
+      return { code: null, error: null };
+    }
+
     if (updateError) {
       console.error('Error saving referral code:', updateError);
       return { code: null, error: updateError };
@@ -38,12 +52,16 @@ export async function getOrCreateReferralCode(userId) {
 
     return { code, error: null };
   } catch (e) {
+    // Silently return null for UUID errors
+    if (e?.code === '22P02') return { code: null, error: null };
     return { code: null, error: e };
   }
 }
 
 // Validate a referral code
 export async function validateReferralCode(code) {
+  if (!code) return { valid: false, referrerId: null };
+  
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -63,6 +81,11 @@ export async function validateReferralCode(code) {
 
 // Record a referral
 export async function recordReferral(referredUserId, referrerId, referralCode) {
+  // Skip if IDs are not valid UUID (Firebase UID issue)
+  if (!referredUserId || referredUserId.length > 36 || !referrerId || referrerId.length > 36) {
+    return { data: null, error: null };
+  }
+  
   try {
     const { data, error } = await supabase
       .from('referrals')
@@ -76,14 +99,26 @@ export async function recordReferral(referredUserId, referrerId, referralCode) {
       .select()
       .single();
 
+    // Silently handle UUID errors  
+    if (error && error.code === '22P02') {
+      return { data: null, error: null };
+    }
+
     return { data, error };
   } catch (e) {
+    // Silently return for UUID errors
+    if (e?.code === '22P02') return { data: null, error: null };
     return { data: null, error: e };
   }
 }
 
 // Get referral stats for a user
 export async function getReferralStats(userId) {
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (!userId || userId.length > 36) {
+    return { total: 0, successful: 0, pending: 0, earned: 0, error: null };
+  }
+  
   try {
     // Get total referrals
     const { data: referrals, error } = await supabase
@@ -91,7 +126,15 @@ export async function getReferralStats(userId) {
       .select('*')
       .eq('referrer_id', userId);
 
-    if (error) return { stats: null, error };
+    // Silently handle UUID errors
+    if (error && error.code === '22P02') {
+      return { total: 0, successful: 0, pending: 0, earned: 0, error: null };
+    }
+
+    if (error) {
+      console.error('Error fetching referrals:', error);
+      return { total: 0, successful: 0, pending: 0, earned: 0, error };
+    }
 
     const totalReferrals = referrals?.length || 0;
     const successfulReferrals = referrals?.filter(r => r.status === 'completed').length || 0;

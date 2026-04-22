@@ -5,7 +5,7 @@ import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { LogoPulse } from '../components/layout/PageTransition';
 import { PLACEHOLDER_PRODUCTS } from '../lib/constants';
-import { getAllProducts, subscribeToProducts } from '../lib/products';
+import { getAllProducts, subscribeToProducts, resolveImageUrl } from '../lib/products';
 
 const OCCASIONS = ['All', 'Wedding', 'Party', 'Daily Wear', 'Festive'];
 const COLORS = ['All', 'Red', 'Pink', 'Blue', 'Green', 'Gold', 'Black', 'White', 'Purple'];
@@ -49,9 +49,17 @@ export default function Shop() {
     // Set up real-time subscription
     const subscription = subscribeToProducts((payload) => {
       if (payload.eventType === 'INSERT') {
-        setAllProducts(prev => [payload.new, ...prev]);
+        const productWithImage = {
+          ...payload.new,
+          image: resolveImageUrl(payload.new.image_url || payload.new.image)
+        };
+        setAllProducts(prev => [productWithImage, ...prev]);
       } else if (payload.eventType === 'UPDATE') {
-        setAllProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        const productWithImage = {
+          ...payload.new,
+          image: resolveImageUrl(payload.new.image_url || payload.new.image)
+        };
+        setAllProducts(prev => prev.map(p => p.id === payload.new.id ? productWithImage : p));
       } else if (payload.eventType === 'DELETE') {
         setAllProducts(prev => prev.filter(p => p.id !== payload.old.id));
       }

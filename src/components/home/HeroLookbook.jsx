@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { getHeroBanners, subscribeToHeroBanners } from '../../lib/heroBanners';
 
-const BANNERS = [
+// Default fallback banners
+const DEFAULT_BANNERS = [
   {
     id: 1,
     image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop',
     title: 'Huge Summer Sale',
     subtitle: 'Up to 50% Off on All Collections',
     cta: 'Shop Now',
-    color: 'bg-purple-primary'
+    color: 'bg-purple-primary',
+    link: '/shop'
   },
   {
     id: 2,
@@ -18,7 +21,8 @@ const BANNERS = [
     title: 'New Arrivals 2026',
     subtitle: 'Premium Lifestyle Essentials',
     cta: 'Explore More',
-    color: 'bg-indigo-600'
+    color: 'bg-indigo-600',
+    link: '/shop'
   },
   {
     id: 3,
@@ -26,20 +30,56 @@ const BANNERS = [
     title: 'Exclusive Jewellery',
     subtitle: 'Timeless Elegance in Every Piece',
     cta: 'View Collection',
-    color: 'bg-pink-600'
+    color: 'bg-pink-600',
+    link: '/shop'
   }
 ];
 
 const HeroLookbook = () => {
+  const [banners, setBanners] = useState(DEFAULT_BANNERS);
   const [current, setCurrent] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const next = () => setCurrent((prev) => (prev + 1) % BANNERS.length);
-  const prev = () => setCurrent((prev) => (prev - 1 + BANNERS.length) % BANNERS.length);
+  // Fetch banners from database
+  useEffect(() => {
+    const fetchBanners = async () => {
+      const { data, error } = await getHeroBanners();
+      if (data && data.length > 0) {
+        setBanners(data);
+      }
+      setLoading(false);
+    };
+
+    fetchBanners();
+
+    // Subscribe to real-time changes
+    const channel = subscribeToHeroBanners(() => {
+      fetchBanners();
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
+
+  const next = () => setCurrent((prev) => (prev + 1) % banners.length);
+  const prev = () => setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
 
   useEffect(() => {
+    if (banners.length === 0) return;
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [banners.length]);
+
+  if (loading) {
+    return (
+      <section className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-gray-100 flex items-center justify-center">
+        <Loader2 size={40} className="text-purple-primary animate-spin" />
+      </section>
+    );
+  }
+
+  if (banners.length === 0) return null;
 
   return (
     <section className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] overflow-hidden bg-gray-100">
@@ -54,8 +94,8 @@ const HeroLookbook = () => {
         >
           <div className="relative h-full w-full">
             <img 
-              src={BANNERS[current].image} 
-              alt={BANNERS[current].title}
+              src={banners[current].image} 
+              alt={banners[current].title}
               className="w-full h-full object-cover"
             />
             {/* Gradient Overlay for Text Visibility */}
@@ -69,16 +109,16 @@ const HeroLookbook = () => {
                 transition={{ delay: 0.2, duration: 0.5 }}
               >
                 <h2 className="text-3xl md:text-5xl lg:text-6xl font-black mb-4 tracking-tight drop-shadow-lg">
-                  {BANNERS[current].title}
+                  {banners[current].title}
                 </h2>
                 <p className="text-lg md:text-xl lg:text-2xl font-medium mb-8 text-white/90 drop-shadow-md">
-                  {BANNERS[current].subtitle}
+                  {banners[current].subtitle}
                 </p>
                 <Link 
-                  to="/shop" 
+                  to={banners[current].link || '/shop'}
                   className="inline-block bg-white text-gray-900 px-8 md:px-12 py-3 md:py-4 rounded-sm font-black text-sm uppercase tracking-wider hover:bg-gray-100 transition-all shadow-xl active:scale-95"
                 >
-                  {BANNERS[current].cta}
+                  {banners[current].cta}
                 </Link>
               </motion.div>
             </div>
@@ -102,7 +142,7 @@ const HeroLookbook = () => {
 
       {/* Slide Indicators */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-        {BANNERS.map((_, idx) => (
+        {banners.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrent(idx)}

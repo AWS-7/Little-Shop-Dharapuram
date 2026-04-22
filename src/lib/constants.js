@@ -17,7 +17,7 @@ export const POLICIES = {
   cod: 'Cash on Delivery not available',
 };
 
-export const ORDER_STATUSES = ['Ordered', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered'];
+export const ORDER_STATUSES = ['pending', 'confirmed', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered'];
 
 export const PLACEHOLDER_PRODUCTS = [
   {

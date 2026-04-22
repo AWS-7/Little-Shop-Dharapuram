@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isValidImage, optimizeImage } from './imageOptimizer';
 
 // ── Category definitions with category-specific fields ──
 export const PRODUCT_CATEGORIES = [
@@ -377,8 +378,9 @@ export async function uploadCategoryImage(file) {
 
 // ── Subscribe to real-time product updates ──
 export function subscribeToProducts(callback) {
+  const channelName = `products-${Math.random().toString(36).substring(7)}`;
   return supabase
-    .channel('products-realtime')
+    .channel(channelName)
     .on(
       'postgres_changes',
       { event: '*', table: 'products' },
@@ -388,4 +390,35 @@ export function subscribeToProducts(callback) {
       }
     )
     .subscribe();
+}
+
+// ── Get related products by category (for product detail page) ──
+export async function getProductsByCategory(category, excludeId = null, limit = 4) {
+  try {
+    let query = supabase
+      .from('products')
+      .select('*')
+      .eq('category', category)
+      .eq('is_active', true)
+      .limit(limit);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    
+    // Map image_url to image for client-side compatibility
+    const mappedData = (data || []).map(p => ({
+      ...p,
+      image: resolveImageUrl(p.image_url || p.image)
+    }));
+    
+    return { data: mappedData, error: null };
+  } catch (err) {
+    console.error('Failed to fetch products by category:', err);
+    return { data: [], error: err };
+  }
 }

@@ -16,7 +16,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 pt-14 md:pt-[88px] pb-24 lg:pb-0">
+      <main className="flex-1 pt-16 md:pt-20 lg:pt-24 pb-24 lg:pb-0">
         <Outlet />
         {/* Only show Recently Viewed on Product Detail pages */}
         {isProductPage && <RecentlyViewed />}

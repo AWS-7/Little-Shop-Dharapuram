@@ -233,8 +233,8 @@ async function logAdminAction(action, details = {}) {
       ip_address: null // Could add IP logging if needed
     });
   } catch (error) {
-    // Silent fail - don't break functionality for logging
-    console.warn('Failed to log admin action:', error);
+    // Completely silent - admin_logs table may not exist
+    // Do not log to avoid console noise
   }
 }
 

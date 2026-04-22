@@ -2,6 +2,11 @@ import { supabase } from './supabase';
 
 // Create a reward coupon for referrer
 export async function createReferralRewardCoupon(userId, referredUserName) {
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (!userId || userId.length > 36) {
+    return { data: null, error: null };
+  }
+  
   try {
     // Generate unique coupon code
     const couponCode = `REF${Date.now().toString(36).toUpperCase().slice(-6)}`;
@@ -26,6 +31,15 @@ export async function createReferralRewardCoupon(userId, referredUserName) {
       .select()
       .single();
 
+    if (error && error.code === '22P02') {
+      return { data: [], error: null };
+    }
+
+    if (error) {
+      console.error('Error creating coupon:', error);
+      return { data: [], error };
+    }
+
     return { data, error };
   } catch (e) {
     return { data: null, error: e };
@@ -34,6 +48,11 @@ export async function createReferralRewardCoupon(userId, referredUserName) {
 
 // Get user's coupons
 export async function getUserCoupons(userId, options = {}) {
+  // Skip if userId is not valid UUID (Firebase UID issue)
+  if (!userId || userId.length > 36) {
+    return { data: [], error: null };
+  }
+  
   try {
     const { onlyActive = true } = options;
     
