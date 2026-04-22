@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Lock, ShieldCheck, Truck, Ban, ArrowLeft, XCircle, MapPin, Check, ChevronDown, Star, User, Mail, Package, RefreshCw, Gift, Sparkles, Shield } from 'lucide-react';
+import { CreditCard, Lock, ShieldCheck, Truck, Ban, ArrowLeft, XCircle, MapPin, Check, ChevronDown, Star, User, Mail, Package, RefreshCw, Gift, Sparkles, Shield, Ticket, Tag } from 'lucide-react';
 import useStore from '../store/useStore';
 import { getCurrentUser } from '../lib/firebaseAuth';
 import { createOrder } from '../lib/orders';
@@ -9,6 +9,7 @@ import { markCartConverted } from '../lib/carts';
 import { CURRENCY, POLICIES } from '../lib/constants';
 import { getAddresses } from '../lib/addresses';
 import { getProductByIdAdmin } from '../lib/products';
+import { validateCheckoutCoupon, calculateDiscount, applyCouponAndIncrement } from '../lib/coupons';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -33,6 +34,13 @@ export default function Checkout() {
   const [giftMessage, setGiftMessage] = useState('');
   const GIFT_WRAP_PRICE = 50;
   const [stockErrors, setStockErrors] = useState([]);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   // Validate stock availability before payment
   const validateCartStock = async () => {
@@ -98,7 +106,42 @@ export default function Checkout() {
   const subtotal = getCartTotal();
   const shipping = getShipping();
   const giftWrapAmount = isGiftWrap ? GIFT_WRAP_PRICE : 0;
-  const total = subtotal + shipping + giftWrapAmount;
+  const totalBeforeDiscount = subtotal + shipping + giftWrapAmount;
+  const total = Math.max(0, totalBeforeDiscount - couponDiscount);
+
+  // Coupon handlers
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+    
+    setCouponLoading(true);
+    setCouponError('');
+    
+    const result = await validateCheckoutCoupon(couponCode);
+    
+    if (result.valid) {
+      const discount = calculateDiscount(subtotal, result.discount_percent);
+      setCouponDiscount(discount);
+      setAppliedCoupon(result);
+      setCouponCode('');
+      setCouponError('');
+    } else {
+      setCouponError(result.message);
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+    }
+    
+    setCouponLoading(false);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    setCouponError('');
+    setCouponCode('');
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -122,6 +165,9 @@ export default function Checkout() {
       total,
       subtotal,
       shipping,
+      discount: couponDiscount,
+      coupon_code: appliedCoupon?.code || null,
+      coupon_discount_percent: appliedCoupon?.discount_percent || null,
       gift_wrap: isGiftWrap,
       gift_wrap_amount: giftWrapAmount,
       gift_message: isGiftWrap ? giftMessage : null,
@@ -151,6 +197,16 @@ export default function Checkout() {
       alert(`Order save failed: ${orderError.message}`);
     }
 
+    // Apply coupon - increment usage count if coupon was used
+    if (appliedCoupon && appliedCoupon.code) {
+      try {
+        await applyCouponAndIncrement(appliedCoupon.code);
+      } catch (e) {
+        console.error('Failed to apply coupon usage:', e);
+        // Don't block order completion if coupon update fails
+      }
+    }
+
     if (user) {
       try {
         await markCartConverted(user.uid);
@@ -165,6 +221,9 @@ export default function Checkout() {
       total,
       subtotal,
       shipping,
+      discount: couponDiscount,
+      coupon_code: appliedCoupon?.code || null,
+      coupon_discount_percent: appliedCoupon?.discount_percent || null,
       items: payload.items,
       customer: payload.customer,
       date: saved?.created_at || new Date().toISOString(),
@@ -432,13 +491,81 @@ export default function Checkout() {
                 {isGiftWrap && (
                   <div className="flex justify-between text-sm">
                     <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Gift Wrap</span>
-                    <span className="font-black text-gray-900">{CURRENCY}{GIFT_WRAP_PRICE}</span>
+                    <span className="font-black text-gray-900">{CURRENCY}{giftWrapAmount}</span>
+                  </div>
+                )}
+                
+                {/* Coupon Section */}
+                <div className="pt-4 border-t border-gray-100">
+                  {!appliedCoupon ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Ticket size={16} className="text-purple-primary" />
+                        <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Apply Coupon</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value.toUpperCase());
+                            setCouponError('');
+                          }}
+                          placeholder="Enter code (e.g. LITTLE10)"
+                          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all uppercase"
+                          onKeyPress={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                          disabled={couponLoading}
+                        />
+                        <button
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponCode.trim()}
+                          className="bg-purple-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-purple-primary/90 transition-all disabled:opacity-50"
+                        >
+                          {couponLoading ? '...' : 'Apply'}
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                          <XCircle size={12} /> {couponError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <Check size={16} className="text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{appliedCoupon.code}</p>
+                            <p className="text-xs text-green-600 font-medium">{appliedCoupon.discount_percent}% OFF applied</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleRemoveCoupon}
+                          className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Discount Display */}
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="font-bold text-green-600 uppercase tracking-widest text-[10px] flex items-center gap-1">
+                      <Tag size={12} /> Discount
+                    </span>
+                    <span className="font-black text-green-600">-{CURRENCY}{couponDiscount.toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
               <div className="bg-purple-light rounded-2xl p-6 mb-10 border border-purple-100">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-purple-primary uppercase tracking-widest">Total Amount</span>
                   <span className="text-2xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
                 </div>
@@ -479,7 +606,7 @@ export default function Checkout() {
                 disabled={loading}
                 className="w-full bg-purple-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-3"
               >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : `PAY ${CURRENCY}${total.toLocaleString()}`}
+                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : couponDiscount > 0 ? `PAY ${CURRENCY}${total.toLocaleString()} (-${CURRENCY}${couponDiscount})` : `PAY ${CURRENCY}${total.toLocaleString()}`}
               </button>
               
               <div className="mt-8 pt-8 border-t border-gray-50 space-y-4">
@@ -512,7 +639,7 @@ export default function Checkout() {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-black text-sm uppercase tracking-widest py-4 rounded-full hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20"
               >
-                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : `PAY ${CURRENCY}${total.toLocaleString()}`}
+                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : couponDiscount > 0 ? `PAY ${CURRENCY}${total.toLocaleString()}` : `PAY ${CURRENCY}${total.toLocaleString()}`}
               </button>
             </div>
           </div>

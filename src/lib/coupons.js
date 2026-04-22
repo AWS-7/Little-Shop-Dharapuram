@@ -178,3 +178,195 @@ export async function getCouponStats(userId) {
     return { stats: null, error: e };
   }
 }
+
+// ============================================
+// ADMIN COUPON MANAGEMENT FUNCTIONS
+// ============================================
+
+// Get all coupons (for admin)
+export async function getAllCoupons() {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    return { data: data || [], error };
+  } catch (e) {
+    return { data: [], error: e };
+  }
+}
+
+// Create new coupon (admin only)
+export async function createCoupon(couponData) {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .insert([{
+        code: couponData.code.toUpperCase(),
+        discount_percent: couponData.discount_percent,
+        usage_limit: couponData.usage_limit,
+        used_count: 0,
+        expiry_date: couponData.expiry_date,
+        is_active: couponData.is_active ?? true,
+      }])
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+// Update coupon (admin only)
+export async function updateCoupon(couponId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', couponId)
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+// Delete coupon (admin only)
+export async function deleteCoupon(couponId) {
+  try {
+    const { error } = await supabase
+      .from('coupons')
+      .delete()
+      .eq('id', couponId);
+
+    return { success: !error, error };
+  } catch (e) {
+    return { success: false, error: e };
+  }
+}
+
+// Toggle coupon active status
+export async function toggleCouponStatus(couponId, isActive) {
+  return updateCoupon(couponId, { is_active: isActive });
+}
+
+// ============================================
+// CHECKOUT COUPON VALIDATION
+// ============================================
+
+// Validate coupon for checkout (public - no user restriction)
+export async function validateCheckoutCoupon(code) {
+  try {
+    // Check if code exists and is valid
+    const { data: coupon, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .single();
+
+    if (error || !coupon) {
+      return { 
+        valid: false, 
+        message: 'Invalid coupon code',
+        discount_percent: 0 
+      };
+    }
+
+    // Check if active
+    if (!coupon.is_active) {
+      return { 
+        valid: false, 
+        message: 'Coupon is not active',
+        discount_percent: 0 
+      };
+    }
+
+    // Check expiry
+    if (new Date(coupon.expiry_date) < new Date()) {
+      return { 
+        valid: false, 
+        message: 'Coupon has expired',
+        discount_percent: 0 
+      };
+    }
+
+    // Check usage limit
+    if (coupon.used_count >= coupon.usage_limit) {
+      return { 
+        valid: false, 
+        message: 'Usage limit reached',
+        discount_percent: 0 
+      };
+    }
+
+    return { 
+      valid: true, 
+      message: 'Coupon applied successfully!',
+      discount_percent: coupon.discount_percent,
+      coupon_id: coupon.id,
+      code: coupon.code
+    };
+  } catch (e) {
+    return { 
+      valid: false, 
+      message: 'Error validating coupon',
+      discount_percent: 0 
+    };
+  }
+}
+
+// Apply coupon and increment usage count (call this after successful order)
+export async function applyCouponAndIncrement(code) {
+  try {
+    // Use the database function for atomic operation
+    const { data, error } = await supabase.rpc('validate_and_use_coupon', {
+      coupon_code: code.toUpperCase()
+    });
+
+    if (error) {
+      // Fallback: manual validation and update
+      const validation = await validateCheckoutCoupon(code);
+      if (!validation.valid) {
+        return { success: false, ...validation };
+      }
+
+      // Increment usage count
+      const { error: updateError } = await supabase
+        .from('coupons')
+        .update({ 
+          used_count: supabase.raw('used_count + 1'),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', validation.coupon_id);
+
+      if (updateError) {
+        return { success: false, message: 'Failed to apply coupon' };
+      }
+
+      return { success: true, ...validation };
+    }
+
+    return { 
+      success: data.valid, 
+      ...data 
+    };
+  } catch (e) {
+    return { 
+      success: false, 
+      message: 'Error applying coupon',
+      discount_percent: 0 
+    };
+  }
+}
+
+// Calculate discount amount
+export function calculateDiscount(totalAmount, discountPercent) {
+  return Math.round((totalAmount * discountPercent) / 100);
+}

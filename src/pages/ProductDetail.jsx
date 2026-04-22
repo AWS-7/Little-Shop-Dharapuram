@@ -15,6 +15,114 @@ import ImageMagnifier from '../components/ImageMagnifier';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import { createRestockRequest, checkProductRestockRequests } from '../lib/restock';
 
+// Category-based fabric/material and care details
+const CATEGORY_DETAILS = {
+  'Sarees': {
+    material: 'Premium Silk',
+    care: 'Dry Clean Only',
+    origin: 'Kanchipuram, India'
+  },
+  'Silk Sarees': {
+    material: 'Pure Kanchipuram Silk',
+    care: 'Dry Clean Only',
+    origin: 'Kanchipuram, India'
+  },
+  'Cotton Sarees': {
+    material: '100% Pure Cotton',
+    care: 'Hand Wash Cold',
+    origin: 'Coimbatore, India'
+  },
+  'Designer Sarees': {
+    material: 'Premium Georgette/Chiffon',
+    care: 'Dry Clean Recommended',
+    origin: 'Mumbai, India'
+  },
+  'Bridal Sarees': {
+    material: 'Pure Silk with Zari Work',
+    care: 'Professional Dry Clean Only',
+    origin: 'Kanchipuram, India'
+  },
+  'Jewellery': {
+    material: '22k Gold Plated',
+    care: 'Avoid Perfumes & Water',
+    origin: 'Jaipur, India'
+  },
+  'Bangles': {
+    material: '22k Gold Plated/Imitation',
+    care: 'Keep away from moisture',
+    origin: 'Hyderabad, India'
+  },
+  'Handbags': {
+    material: 'Premium Vegan Leather',
+    care: 'Wipe with damp cloth',
+    origin: 'Delhi, India'
+  },
+  'Accessories': {
+    material: 'Mixed Materials',
+    care: 'Handle with care',
+    origin: 'India'
+  },
+  'Kurtas': {
+    material: 'Premium Cotton/Linen',
+    care: 'Machine wash cold',
+    origin: 'Lucknow, India'
+  },
+  'Lehengas': {
+    material: 'Silk/Net with Embroidery',
+    care: 'Dry Clean Only',
+    origin: 'Delhi, India'
+  },
+  'Gowns': {
+    material: 'Premium Georgette/Velvet',
+    care: 'Dry Clean Only',
+    origin: 'Mumbai, India'
+  },
+  'Co-ords': {
+    material: 'Premium Cotton Blend',
+    care: 'Machine wash cold',
+    origin: 'Bangalore, India'
+  },
+  'Festive Sarees': {
+    material: 'Silk Blend with Embellishments',
+    care: 'Dry Clean Only',
+    origin: 'Surat, India'
+  }
+};
+
+// Get category details for a product
+function getCategoryDetails(category) {
+  // Try exact match first
+  if (CATEGORY_DETAILS[category]) {
+    return CATEGORY_DETAILS[category];
+  }
+  
+  // Try partial match
+  for (const [key, details] of Object.entries(CATEGORY_DETAILS)) {
+    if (category?.toLowerCase().includes(key.toLowerCase()) || 
+        key.toLowerCase().includes(category?.toLowerCase())) {
+      return details;
+    }
+  }
+  
+  // Default fallback
+  return {
+    material: 'Premium Quality Material',
+    care: 'Handle with care',
+    origin: 'India'
+  };
+}
+
+// Calculate delivery date (current date + 2 days)
+function getDeliveryDate() {
+  const today = new Date();
+  const deliveryDate = new Date(today);
+  deliveryDate.setDate(today.getDate() + 2);
+  
+  // Format: 'Expected by Wed, 22 Apr'
+  const options = { weekday: 'short', day: 'numeric', month: 'short' };
+  return deliveryDate.toLocaleDateString('en-IN', options);
+}
+
 function StarRating({ rating, reviewCount, size = 'sm' }) {
   const starSize = size === 'lg' ? 16 : 12;
   return (
@@ -40,13 +148,20 @@ function StarRating({ rating, reviewCount, size = 'sm' }) {
   );
 }
 
-function FabricCareAccordion({ fabric }) {
+function FabricCareAccordion({ fabric, category }) {
   const [open, setOpen] = useState(false);
+  
+  // Get dynamic category details
+  const categoryDetails = getCategoryDetails(category);
 
   const items = [
-    { icon: Sparkles, label: 'Material', value: fabric.material },
-    { icon: Scissors, label: 'Care', value: fabric.care },
-    { icon: MapPin, label: 'Origin', value: fabric.origin },
+    { 
+      icon: Sparkles, 
+      label: ['Jewellery', 'Bangles', 'Handbags', 'Accessories'].includes(category) ? 'Material' : 'Fabric', 
+      value: fabric?.material || categoryDetails.material 
+    },
+    { icon: Scissors, label: 'Care', value: fabric?.care || categoryDetails.care },
+    { icon: MapPin, label: 'Origin', value: fabric?.origin || categoryDetails.origin },
   ];
 
   return (
@@ -276,7 +391,7 @@ export default function ProductDetail() {
 
   return (
     <>
-      <div className="container-clean pt-36 md:pt-48 pb-32 md:pb-24">
+      <div className="container-clean mt-10 pt-4 md:pt-6 pb-32 md:pb-24">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs font-inter text-gray-400 mb-8 px-1">
           <Link to="/" className="hover:text-purple-primary transition-colors">Home</Link>
@@ -412,15 +527,19 @@ export default function ProductDetail() {
 
             <p className="text-gray-400 text-xs font-medium">Inclusive of all taxes</p>
 
-            {/* Product Highlights */}
+            {/* Product Highlights - Dynamic based on category */}
             <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-purple-light flex items-center justify-center shrink-0">
                   <Sparkles size={20} className="text-purple-primary" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Fabric</p>
-                  <p className="text-sm font-bold text-gray-900">{product.fabric?.material || 'Premium Silk'}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                    {['Jewellery', 'Bangles', 'Handbags', 'Accessories'].includes(product.category) ? 'Material' : 'Fabric'}
+                  </p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {product.fabric?.material || getCategoryDetails(product.category).material}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -429,12 +548,14 @@ export default function ProductDetail() {
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Care</p>
-                  <p className="text-sm font-bold text-gray-900">{product.fabric?.care || 'Dry Clean Only'}</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {product.fabric?.care || getCategoryDetails(product.category).care}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Delivery Info */}
+            {/* Delivery Info - Dynamic Date */}
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
@@ -443,7 +564,7 @@ export default function ProductDetail() {
                 <p className="text-sm font-bold text-gray-900">Delivery Details</p>
               </div>
               <p className="text-sm text-gray-600 pl-14">
-                Expected by <span className="font-bold text-purple-primary">Wed, 22 Apr</span>
+                Expected by <span className="font-bold text-purple-primary">{getDeliveryDate()}</span>
               </p>
             </div>
 
@@ -514,9 +635,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Fabric & Care */}
-            {product.fabric && (
-              <FabricCareAccordion fabric={product.fabric} />
-            )}
+            <FabricCareAccordion fabric={product.fabric} category={product.category} />
 
             {/* Desktop Actions */}
             <div className="hidden md:flex flex-col gap-4 pt-8 border-t border-gray-100">

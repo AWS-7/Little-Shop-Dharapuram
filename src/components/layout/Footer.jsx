@@ -4,7 +4,7 @@ import { BRAND, POLICIES } from '../../lib/constants';
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
+    <footer className="bg-white border-t border-gray-100 pt-10 pb-8">
       <div className="container-clean">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}

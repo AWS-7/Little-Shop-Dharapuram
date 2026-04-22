@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { SlidersHorizontal, X, Palette, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SlidersHorizontal, X, LayoutGrid, List, Columns2, Columns3, Columns4 } from 'lucide-react';
 import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { LogoPulse } from '../components/layout/PageTransition';
@@ -23,6 +23,8 @@ export default function Shop() {
   const [selectedColor, setSelectedColor] = useState('All');
   const [priceRange, setPriceRange] = useState('All');
   const [sortBy, setSortBy] = useState('default');
+  const [gridCols, setGridCols] = useState('auto'); // 'auto', '2', '3', '4'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'compact', 'list'
 
   // Show LogoPulse if loading takes more than 500ms
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function Shop() {
     <>
       <LogoPulse show={showSlowLoading} />
       
-      <div className="container-clean pt-36 md:pt-48 pb-20">
+      <div className="container-clean pt-4 md:pt-6 pb-10">
         {/* Page Header — Standard eCommerce */}
         <div className="bg-white p-6 md:p-8 rounded-sm shadow-sm border border-gray-100 mb-6">
           <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
@@ -159,15 +161,99 @@ export default function Shop() {
           </div>
         </div>
 
-        {/* Product Grid - Increased gaps for breathing room */}
+        {/* Grid View Controls */}
+        <div className="flex items-center justify-between mb-4 px-1">
+          <span className="text-sm font-semibold text-gray-700">
+            {filtered.length} Products
+          </span>
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('compact')}
+                className={`p-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                title="Compact View"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                title="Grid View"
+              >
+                <Columns2 size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                title="List View"
+              >
+                <List size={16} />
+              </button>
+            </div>
+            
+            {/* Column Count (Grid mode only) */}
+            {viewMode === 'grid' && (
+              <div className="hidden md:flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setGridCols('2')}
+                  className={`p-2 rounded-md transition-all ${gridCols === '2' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'}`}
+                >
+                  <Columns2 size={16} />
+                </button>
+                <button
+                  onClick={() => setGridCols('3')}
+                  className={`p-2 rounded-md transition-all ${gridCols === '3' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'}`}
+                >
+                  <Columns3 size={16} />
+                </button>
+                <button
+                  onClick={() => setGridCols('4')}
+                  className={`p-2 rounded-md transition-all ${gridCols === '4' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'}`}
+                >
+                  <Columns4 size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Product Grid - Modern Layouts */}
         {loadingProducts && showSlowLoading ? (
           <ProductGridSkeleton count={8} />
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5 lg:gap-6">
-            {filtered.map((product, idx) => (
-              <ProductCard key={product.id} product={product} index={idx} />
-            ))}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={viewMode + gridCols}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className={`
+                ${viewMode === 'list' 
+                  ? 'flex flex-col gap-4' 
+                  : viewMode === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+                    : gridCols === '2'
+                      ? 'grid grid-cols-2 gap-4 md:gap-6'
+                      : gridCols === '3'
+                        ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5'
+                        : gridCols === '4'
+                          ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4'
+                          : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5'
+                }
+              `}
+            >
+              {filtered.map((product, idx) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  index={idx} 
+                  variant={viewMode}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         )}
 
         {filtered.length === 0 && (

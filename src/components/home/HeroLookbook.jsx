@@ -73,7 +73,10 @@ const HeroLookbook = () => {
 
   if (loading) {
     return (
-      <section className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-gray-100 flex items-center justify-center">
+      <section 
+        className="relative w-full bg-gray-100 flex items-center justify-center overflow-hidden"
+        style={{ aspectRatio: '2048/818' }}
+      >
         <Loader2 size={40} className="text-purple-primary animate-spin" />
       </section>
     );
@@ -82,7 +85,10 @@ const HeroLookbook = () => {
   if (banners.length === 0) return null;
 
   return (
-    <section className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] overflow-hidden bg-gray-100">
+    <section 
+      className="relative w-full overflow-hidden bg-gray-100"
+      style={{ aspectRatio: '2048/818' }}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -96,7 +102,10 @@ const HeroLookbook = () => {
             <img 
               src={banners[current].image} 
               alt={banners[current].title}
-              className="w-full h-full object-cover"
+              loading={current === 0 ? 'eager' : 'lazy'}
+              fetchPriority={current === 0 ? 'high' : 'low'}
+              decoding="async"
+              className="w-full h-full object-cover object-center"
             />
             {/* Gradient Overlay for Text Visibility */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />

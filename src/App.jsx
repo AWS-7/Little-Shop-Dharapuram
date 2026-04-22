@@ -1,30 +1,34 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout';
 import PageTransition from './components/layout/PageTransition';
 
-// Firebase Auth Pages
-import Login from './pages/Login';
-
-// Storefront Pages
-import Home from './pages/Home';
-import Shop from './pages/Shop';
-import ProductDetail from './pages/ProductDetail';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import OrderSuccess from './pages/OrderSuccess';
-import Wishlist from './pages/Wishlist';
-import TrackOrder from './pages/TrackOrder';
-import Account from './pages/Account';
-import MyOrders from './pages/MyOrders';
-
-// Admin Pages
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminOrderDetail from './pages/admin/AdminOrderDetail';
-
-// Protected Route Components
+// Eager load critical components
 import { ClientProtectedRoute, AdminProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute';
+
+// Lazy load all pages for better performance
+const Login = lazy(() => import('./pages/Login'));
+const Home = lazy(() => import('./pages/Home'));
+const Shop = lazy(() => import('./pages/Shop'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const Account = lazy(() => import('./pages/Account'));
+const MyOrders = lazy(() => import('./pages/MyOrders'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
+
+// Loading fallback
+const PageLoader = () => (
+  <div className="min-h-screen bg-white flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin"></div>
+  </div>
+);
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -38,7 +42,9 @@ function AnimatedRoutes() {
           path="/login" 
           element={
             <PublicOnlyRoute>
-              <Login />
+              <Suspense fallback={<PageLoader />}>
+                <Login />
+              </Suspense>
             </PublicOnlyRoute>
           } 
         />
@@ -46,21 +52,21 @@ function AnimatedRoutes() {
         {/* STOREFRONT — uses shared Layout (Header + Footer + Mobile Nav) */}
         <Route element={<Layout />}>
           {/* Public Routes */}
-          <Route path="/" element={<PageTransition><Home /></PageTransition>} />
-          <Route path="/shop" element={<PageTransition><Shop /></PageTransition>} />
-          <Route path="/product/:id" element={<PageTransition><ProductDetail /></PageTransition>} />
-          <Route path="/collections" element={<PageTransition><Shop /></PageTransition>} />
-          <Route path="/new-arrivals" element={<PageTransition><Shop /></PageTransition>} />
-          <Route path="/track-order" element={<PageTransition><TrackOrder /></PageTransition>} />
+          <Route path="/" element={<PageTransition><Suspense fallback={<PageLoader />}><Home /></Suspense></PageTransition>} />
+          <Route path="/shop" element={<PageTransition><Suspense fallback={<PageLoader />}><Shop /></Suspense></PageTransition>} />
+          <Route path="/product/:id" element={<PageTransition><Suspense fallback={<PageLoader />}><ProductDetail /></Suspense></PageTransition>} />
+          <Route path="/collections" element={<PageTransition><Suspense fallback={<PageLoader />}><Shop /></Suspense></PageTransition>} />
+          <Route path="/new-arrivals" element={<PageTransition><Suspense fallback={<PageLoader />}><Shop /></Suspense></PageTransition>} />
+          <Route path="/track-order" element={<PageTransition><Suspense fallback={<PageLoader />}><TrackOrder /></Suspense></PageTransition>} />
 
-          <Route path="/cart" element={<PageTransition><Cart /></PageTransition>} />
+          <Route path="/cart" element={<PageTransition><Suspense fallback={<PageLoader />}><Cart /></Suspense></PageTransition>} />
 
           {/* Protected Client Routes - Require Google Auth */}
           <Route 
             path="/checkout" 
             element={
               <ClientProtectedRoute>
-                <PageTransition><Checkout /></PageTransition>
+                <PageTransition><Suspense fallback={<PageLoader />}><Checkout /></Suspense></PageTransition>
               </ClientProtectedRoute>
             } 
           />
@@ -68,7 +74,7 @@ function AnimatedRoutes() {
             path="/order-success" 
             element={
               <ClientProtectedRoute>
-                <PageTransition><OrderSuccess /></PageTransition>
+                <PageTransition><Suspense fallback={<PageLoader />}><OrderSuccess /></Suspense></PageTransition>
               </ClientProtectedRoute>
             } 
           />
@@ -76,7 +82,7 @@ function AnimatedRoutes() {
             path="/wishlist" 
             element={
               <ClientProtectedRoute>
-                <PageTransition><Wishlist /></PageTransition>
+                <PageTransition><Suspense fallback={<PageLoader />}><Wishlist /></Suspense></PageTransition>
               </ClientProtectedRoute>
             } 
           />
@@ -84,7 +90,7 @@ function AnimatedRoutes() {
             path="/account" 
             element={
               <ClientProtectedRoute>
-                <PageTransition><Account /></PageTransition>
+                <PageTransition><Suspense fallback={<PageLoader />}><Account /></Suspense></PageTransition>
               </ClientProtectedRoute>
             } 
           />
@@ -92,7 +98,7 @@ function AnimatedRoutes() {
             path="/my-orders" 
             element={
               <ClientProtectedRoute>
-                <PageTransition><MyOrders /></PageTransition>
+                <PageTransition><Suspense fallback={<PageLoader />}><MyOrders /></Suspense></PageTransition>
               </ClientProtectedRoute>
             } 
           />
@@ -107,7 +113,9 @@ function AnimatedRoutes() {
           path="/admin/login" 
           element={
             <PublicOnlyRoute>
-              <AdminLogin />
+              <Suspense fallback={<PageLoader />}>
+                <AdminLogin />
+              </Suspense>
             </PublicOnlyRoute>
           } 
         />
@@ -115,7 +123,9 @@ function AnimatedRoutes() {
           path="/admin/dashboard" 
           element={
             <AdminProtectedRoute>
-              <AdminDashboard />
+              <Suspense fallback={<PageLoader />}>
+                <AdminDashboard />
+              </Suspense>
             </AdminProtectedRoute>
           } 
         />
@@ -123,7 +133,9 @@ function AnimatedRoutes() {
           path="/admin/order/:id" 
           element={
             <AdminProtectedRoute>
-              <AdminOrderDetail />
+              <Suspense fallback={<PageLoader />}>
+                <AdminOrderDetail />
+              </Suspense>
             </AdminProtectedRoute>
           } 
         />
