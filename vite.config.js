@@ -20,14 +20,6 @@ export default defineConfig({
         },
       },
     },
-    // Minimize bundle
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-    },
     // Enable compression
     brotliSize: true,
   },
