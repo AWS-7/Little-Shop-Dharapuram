@@ -206,15 +206,20 @@ export async function createCoupon(couponData) {
         code: couponData.code.toUpperCase(),
         discount_percent: couponData.discount_percent,
         usage_limit: couponData.usage_limit,
-        used_count: 0,
+        usage_count: 0,
         expiry_date: couponData.expiry_date,
         is_active: couponData.is_active ?? true,
       }])
-      .select()
-      .single();
+      .select();
 
-    return { data, error };
+    if (error) {
+      console.error('Error creating coupon:', error);
+      return { data: null, error };
+    }
+
+    return { data: data?.[0] || null, error: null };
   } catch (e) {
+    console.error('Exception creating coupon:', e);
     return { data: null, error: e };
   }
 }
@@ -222,6 +227,8 @@ export async function createCoupon(couponData) {
 // Update coupon (admin only)
 export async function updateCoupon(couponId, updates) {
   try {
+    console.log('Updating coupon:', couponId, updates);
+    
     const { data, error } = await supabase
       .from('coupons')
       .update({
@@ -229,11 +236,22 @@ export async function updateCoupon(couponId, updates) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', couponId)
-      .select()
-      .single();
+      .select();
 
-    return { data, error };
+    if (error) {
+      console.error('Error updating coupon:', error);
+      return { data: null, error };
+    }
+
+    // Check if any rows were updated
+    if (!data || data.length === 0) {
+      console.warn('No rows updated for coupon:', couponId);
+      return { data: null, error: { message: 'Coupon not found or no changes made' } };
+    }
+
+    return { data: data[0], error: null };
   } catch (e) {
+    console.error('Exception updating coupon:', e);
     return { data: null, error: e };
   }
 }
@@ -241,13 +259,22 @@ export async function updateCoupon(couponId, updates) {
 // Delete coupon (admin only)
 export async function deleteCoupon(couponId) {
   try {
+    console.log('Deleting coupon:', couponId);
+    
     const { error } = await supabase
       .from('coupons')
       .delete()
       .eq('id', couponId);
 
-    return { success: !error, error };
+    if (error) {
+      console.error('Error deleting coupon:', error);
+      return { success: false, error };
+    }
+
+    console.log('Coupon deleted successfully:', couponId);
+    return { success: true, error: null };
   } catch (e) {
+    console.error('Exception deleting coupon:', e);
     return { success: false, error: e };
   }
 }

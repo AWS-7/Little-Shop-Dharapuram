@@ -10,6 +10,7 @@ import {
 import useStore from '../store/useStore';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, SHIPPING_THRESHOLD } from '../lib/constants';
 import { getProductById, getProductsByCategory, resolveImageUrl, PLACEHOLDER_IMG } from '../lib/products';
+import { getActiveFlashSale } from '../lib/flashSales';
 import ProductCard from '../components/home/ProductCard';
 import ImageMagnifier from '../components/ImageMagnifier';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
@@ -249,6 +250,7 @@ export default function ProductDetail() {
   const [restockRequestCount, setRestockRequestCount] = useState(0);
   const [cartErrorLocal, setCartErrorLocal] = useState('');  // MOVED: must be before early returns
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [flashSale, setFlashSale] = useState(null);
 
   // Try placeholder first, then fetch from Supabase
   useEffect(() => {
@@ -286,6 +288,19 @@ export default function ProductDetail() {
     if (product?.category && product?.id) {
       getProductsByCategory(product.category, product.id, 4).then(({ data }) => {
         setRelatedProducts(data || []);
+      });
+    }
+  }, [product?.category, product?.id]);
+
+  // Fetch active flash sale for this product
+  useEffect(() => {
+    if (product?.id) {
+      getActiveFlashSale().then(({ data }) => {
+        if (data && data.product_id === product.id) {
+          setFlashSale(data);
+        } else {
+          setFlashSale(null);
+        }
       });
     }
   }, [product?.category, product?.id]);
@@ -355,7 +370,11 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     clearCartError();
     setCartErrorLocal('');
-    const result = addToCart(product, quantity);
+    // Use flash sale price if available
+    const productWithFlashPrice = flashSale 
+      ? { ...product, price: flashSale.discounted_price, originalPrice: flashSale.original_price, isFlashSale: true }
+      : product;
+    const result = addToCart(productWithFlashPrice, quantity);
     if (result.success) {
       setAddedToCart(true);
       setFlyIn(true);
@@ -508,20 +527,43 @@ export default function ProductDetail() {
               )}
             </div>
 
-            {/* Price Block */}
+            {/* Price Block - Shows Flash Sale Price if Active */}
             <div className="flex items-center gap-4">
-              <span className="text-4xl font-bold text-gray-900">
-                {CURRENCY}{product.price.toLocaleString()}
-              </span>
-              {product.originalPrice && (
-                <div className="flex flex-col">
-                  <span className="text-lg text-gray-400 line-through">
-                    {CURRENCY}{product.originalPrice.toLocaleString()}
+              {flashSale ? (
+                <>
+                  <span className="text-4xl font-bold text-red-600">
+                    {CURRENCY}{flashSale.discounted_price?.toLocaleString()}
                   </span>
-                  <span className="text-red-500 text-xs font-bold">
-                    {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                  <div className="flex flex-col">
+                    <span className="text-lg text-gray-400 line-through">
+                      {CURRENCY}{flashSale.original_price?.toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-500 text-xs font-bold">
+                        {Math.round((1 - flashSale.discounted_price / flashSale.original_price) * 100)}% OFF
+                      </span>
+                      <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        FLASH SALE
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold text-gray-900">
+                    {CURRENCY}{product.price.toLocaleString()}
                   </span>
-                </div>
+                  {product.originalPrice && (
+                    <div className="flex flex-col">
+                      <span className="text-lg text-gray-400 line-through">
+                        {CURRENCY}{product.originalPrice.toLocaleString()}
+                      </span>
+                      <span className="text-red-500 text-xs font-bold">
+                        {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -782,7 +824,12 @@ export default function ProductDetail() {
                   />
                   <div>
                     <p className="font-inter text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                    <p className="font-inter text-sm text-purple-primary font-medium">{CURRENCY}{product.price.toLocaleString()}</p>
+                    <p className="font-inter text-sm text-purple-primary font-medium">
+                      {flashSale 
+                        ? <span className="text-red-600">{CURRENCY}{flashSale.discounted_price?.toLocaleString()}</span>
+                        : `${CURRENCY}${product.price.toLocaleString()}`
+                      }
+                    </p>
                   </div>
                 </div>
 

@@ -220,21 +220,30 @@ export function isSessionExpiringSoon() {
 
 /**
  * Log admin actions for audit (optional)
+ * Note: admin_logs table may not exist - errors are silently ignored
  */
 async function logAdminAction(action, details = {}) {
   try {
     const session = getAdminSession();
     
-    await supabase.from('admin_logs').insert({
+    const { error } = await supabase.from('admin_logs').insert({
       admin_id: session?.adminId || 'unknown',
       action,
       details,
       timestamp: new Date().toISOString(),
-      ip_address: null // Could add IP logging if needed
+      ip_address: null
     });
+    
+    // Silently ignore - table may not exist
+    if (error) {
+      // Only log in development, not in production
+      if (import.meta.env.DEV) {
+        console.log('[Admin Log] Table not available:', action);
+      }
+    }
   } catch (error) {
     // Completely silent - admin_logs table may not exist
-    // Do not log to avoid console noise
+    // Do not throw or log to avoid console noise
   }
 }
 

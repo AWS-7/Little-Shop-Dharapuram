@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Megaphone,
   Plus, Edit3, Trash2, Eye, TrendingUp, IndianRupee, Clock,
   Truck, CheckCircle, LogOut, ChevronDown, Timer, Bell, Search,
-  AlertCircle, BarChart3, Boxes, Image, Send, Mail, FileText,
+  AlertCircle, BarChart3, Boxes, Image, ImageIcon, Send, Mail, FileText,
   MapPin, CheckSquare, Percent, Download, X, RefreshCw, Upload,
   Grid3X3, RotateCcw, Zap, Calendar, Sparkles, Star, Quote, User, Ticket,
 } from 'lucide-react';
@@ -120,7 +120,7 @@ const demoOrders = [
   { id: 'LS-A3K7YM2P', customer: 'Priya Sharma', email: 'priya@example.com', total: 5300, status: 'Ordered', date: '2025-04-12', items: 2 },
   { id: 'LS-BF9HNWQ4', customer: 'Anita Verma', email: 'anita@example.com', total: 8500, status: 'Shipped', date: '2025-04-11', items: 1 },
   { id: 'LS-CK2DTPE6', customer: 'Meera Iyer', email: 'meera@example.com', total: 2800, status: 'Delivered', date: '2025-04-10', items: 3 },
-  { id: 'LS-DM5XRLJ8', customer: 'Kavya Nair', email: 'kavya@example.com', total: 1800, status: 'Packed', date: '2025-04-13', items: 1 },
+  { id: 'LS-DM5XRLJ8', customer: 'Kavya Nair', email: 'kavya@example.com', total: 1800, status: 'Packed', date: '2025-04-13', items : 1 },
 ];
 
 
@@ -288,8 +288,13 @@ export default function AdminDashboard() {
     productId: '',
     discountedPrice: '',
     endTime: '',
-    bannerText: 'Flash Sale! Limited Time Offer'
+    bannerText: 'Flash Sale! Limited Time Offer',
+    customImage: '',
+    useCustomImage: false
   });
+  const [flashSaleImageFile, setFlashSaleImageFile] = useState(null);
+  const [flashSaleImagePreview, setFlashSaleImagePreview] = useState(null);
+  const [uploadingFlashSaleImage, setUploadingFlashSaleImage] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [savingFlashSale, setSavingFlashSale] = useState(false);
 
@@ -457,26 +462,43 @@ export default function AdminDashboard() {
       return;
     }
     
+    setSavingFlashSale(true);
+    
+    // Upload custom image if selected
+    let finalImageUrl = selectedProduct.image;
+    if (flashSaleForm.useCustomImage && flashSaleImageFile) {
+      const uploadedUrl = await handleUploadFlashSaleImage();
+      if (uploadedUrl) {
+        finalImageUrl = uploadedUrl;
+      } else {
+        showToast('Failed to upload custom image, using product image instead', 'warning');
+      }
+    }
+    
     // Debug logging
     console.log('🔥 Creating Flash Sale with product:', {
       id: selectedProduct.id,
       name: selectedProduct.name,
-      image: selectedProduct.image,
-      price: selectedProduct.price
+      image: finalImageUrl,
+      price: selectedProduct.price,
+      useCustomImage: flashSaleForm.useCustomImage
     });
     
-    setSavingFlashSale(true);
     const { data, error } = await createFlashSale({
       productId: selectedProduct.id,
       productName: selectedProduct.name,
-      productImage: selectedProduct.image,
+      productImage: finalImageUrl,
       originalPrice: selectedProduct.price,
       discountedPrice: parseInt(flashSaleForm.discountedPrice),
       endTime: new Date(flashSaleForm.endTime).toISOString(),
-      bannerText: flashSaleForm.bannerText
+      bannerText: flashSaleForm.bannerText,
+      customImage: flashSaleForm.useCustomImage ? finalImageUrl : null
     });
     if (!error && data) {
       showToast('Flash sale created successfully!');
+      // Reset form and image state
+      setFlashSaleImageFile(null);
+      setFlashSaleImagePreview(null);
       await fetchFlashSales();
     } else {
       showToast('Failed to create flash sale', 'error');
@@ -502,6 +524,40 @@ export default function AdminDashboard() {
       await fetchFlashSales();
     } else {
       showToast('Failed to delete flash sale', 'error');
+    }
+  };
+
+  // Flash sale image upload handler
+  const handleFlashSaleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image too large. Max 5MB allowed', 'error');
+        return;
+      }
+      setFlashSaleImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setFlashSaleImagePreview(reader.result);
+      reader.readAsDataURL(file);
+      setFlashSaleForm({ ...flashSaleForm, useCustomImage: true });
+    }
+  };
+
+  const handleUploadFlashSaleImage = async () => {
+    if (!flashSaleImageFile) return null;
+    setUploadingFlashSaleImage(true);
+    try {
+      const { uploadProductImage } = await import('../../lib/products');
+      const { url, error } = await uploadProductImage(flashSaleImageFile);
+      if (error) throw error;
+      setFlashSaleForm({ ...flashSaleForm, customImage: url });
+      showToast('Image uploaded successfully!', 'success');
+      return url;
+    } catch (error) {
+      showToast(`Image upload failed: ${error.message}`, 'error');
+      return null;
+    } finally {
+      setUploadingFlashSaleImage(false);
     }
   };
 
@@ -676,6 +732,7 @@ export default function AdminDashboard() {
     setSavingTestimonial(true);
     
     if (editingTestimonial) {
+      console.log('Updating testimonial:', editingTestimonial.id, testimonialForm);
       const { data, error } = await updateTestimonial(editingTestimonial.id, {
         name: testimonialForm.name,
         location: testimonialForm.location,
@@ -694,7 +751,8 @@ export default function AdminDashboard() {
         setShowTestimonialModal(false);
         resetTestimonialForm();
       } else {
-        showToast('Failed to update testimonial', 'error');
+        console.error('Update testimonial error:', error);
+        showToast(`Failed to update: ${error.message || 'Unknown error'}`, 'error');
       }
     } else {
       const { data, error } = await createTestimonial({
@@ -828,7 +886,8 @@ export default function AdminDashboard() {
     setSavingCoupon(true);
 
     if (editingCoupon) {
-      const { error } = await updateCoupon(editingCoupon.id, {
+      console.log('Saving coupon update:', editingCoupon.id, couponForm);
+      const { data, error } = await updateCoupon(editingCoupon.id, {
         code: couponForm.code.toUpperCase(),
         discount_percent: parseInt(couponForm.discount_percent),
         usage_limit: parseInt(couponForm.usage_limit),
@@ -841,7 +900,8 @@ export default function AdminDashboard() {
         setShowCouponModal(false);
         resetCouponForm();
       } else {
-        showToast('Failed to update coupon', 'error');
+        console.error('Failed to update coupon:', error);
+        showToast(`Failed to update coupon: ${error.message || 'Unknown error'}`, 'error');
       }
     } else {
       const { data, error } = await createCoupon({
@@ -865,12 +925,14 @@ export default function AdminDashboard() {
 
   const handleDeleteCoupon = async (couponId) => {
     if (!confirm('Are you sure you want to delete this coupon?')) return;
+    console.log('Deleting coupon:', couponId);
     const { success, error } = await deleteCoupon(couponId);
     if (success) {
-      showToast('Coupon deleted');
+      showToast('Coupon deleted successfully');
       await fetchCoupons();
     } else {
-      showToast('Failed to delete coupon', 'error');
+      console.error('Failed to delete coupon:', error);
+      showToast(`Failed to delete coupon: ${error?.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -2933,6 +2995,97 @@ export default function AdminDashboard() {
                       className="w-full border border-gray-200 rounded-sm px-4 py-3 font-inter text-sm outline-none focus:border-purple-primary"
                     />
                   </div>
+                </div>
+
+                {/* Custom Image Upload */}
+                <div className="border-t border-gray-100 pt-4 mt-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <input
+                      type="checkbox"
+                      id="useCustomImage"
+                      checked={flashSaleForm.useCustomImage}
+                      onChange={(e) => {
+                        setFlashSaleForm({ ...flashSaleForm, useCustomImage: e.target.checked });
+                        if (!e.target.checked) {
+                          setFlashSaleImageFile(null);
+                          setFlashSaleImagePreview(null);
+                        }
+                      }}
+                      className="rounded border-gray-300 text-purple-primary focus:ring-purple-primary"
+                    />
+                    <label htmlFor="useCustomImage" className="font-inter text-sm text-gray-700 cursor-pointer">
+                      Use Custom Image (instead of product image)
+                    </label>
+                  </div>
+
+                  {flashSaleForm.useCustomImage && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">
+                        Upload Flash Sale Image
+                      </label>
+                      
+                      {/* Image Preview */}
+                      {flashSaleImagePreview && (
+                        <div className="mb-3">
+                          <img
+                            src={flashSaleImagePreview}
+                            alt="Flash sale preview"
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                        </div>
+                      )}
+
+                      {/* File Input */}
+                      <div className="flex items-center gap-3">
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFlashSaleImageSelect}
+                            className="hidden"
+                          />
+                          <div className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-purple-primary hover:bg-purple-50 transition-colors">
+                            <ImageIcon size={20} className="text-gray-400" />
+                            <span className="font-inter text-sm text-gray-600">
+                              {flashSaleImageFile ? flashSaleImageFile.name : 'Click to upload image'}
+                            </span>
+                          </div>
+                        </label>
+                        
+                        {flashSaleImageFile && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFlashSaleImageFile(null);
+                              setFlashSaleImagePreview(null);
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <X size={20} />
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="font-inter text-xs text-gray-500 mt-2">
+                        Recommended: 1200x800px, Max 5MB
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Show current product image for reference */}
+                  {selectedProduct && !flashSaleForm.useCustomImage && (
+                    <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                      <img
+                        src={selectedProduct.image}
+                        alt={selectedProduct.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div>
+                        <p className="font-inter text-sm text-gray-600">Using product image:</p>
+                        <p className="font-inter text-xs text-gray-500 truncate max-w-xs">{selectedProduct.name}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <motion.button

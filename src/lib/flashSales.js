@@ -74,16 +74,21 @@ export async function createFlashSale({
   originalPrice,
   discountedPrice,
   endTime,
-  bannerText = 'Flash Sale! Limited Time Offer'
+  bannerText = 'Flash Sale! Limited Time Offer',
+  customImage = null
 }) {
   try {
+    // Use custom image if provided, otherwise use product image
+    const finalImage = customImage || productImage;
+    
     // Debug logging
     console.log('💾 Saving Flash Sale to DB:', {
       productId,
       productName,
-      productImage,
+      productImage: finalImage,
       originalPrice,
-      discountedPrice
+      discountedPrice,
+      isCustomImage: !!customImage
     });
     
     // First, deactivate any existing active sales
@@ -98,24 +103,28 @@ export async function createFlashSale({
       .insert([{
         product_id: productId,
         product_name: productName,
-        product_image: productImage,
+        product_image: finalImage,
         original_price: originalPrice,
         discounted_price: discountedPrice,
         end_time: endTime,
         banner_text: bannerText,
         is_active: true
       }])
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('❌ Error creating flash sale:', error);
+      // Check for RLS policy error
+      if (error.code === '42501' || error.message?.includes('row-level security')) {
+        return { data: null, error: { message: 'Database permission denied. Please disable RLS for flash_sales table in Supabase.' } };
+      }
       return { data: null, error };
     }
     
     console.log('✅ Flash Sale saved:', data);
 
-    return { data, error: null };
+    // Return first item from array
+    return { data: data?.[0] || null, error: null };
   } catch (e) {
     console.error('Exception creating flash sale:', e);
     return { data: null, error: e };

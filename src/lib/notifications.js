@@ -245,6 +245,20 @@ const WHATSAPP_NUMBER = import.meta.env.VITE_ADMIN_WHATSAPP || '';
 // Send email notification using Supabase Edge Function
 export async function sendOrderEmailNotification(order) {
   try {
+    // Check if we're in development mode (localhost)
+    const isDev = window.location.hostname === 'localhost';
+    
+    // For now, just log the email in development
+    if (isDev) {
+      console.log('📧 [DEV] Order email would be sent:', {
+        to: ADMIN_EMAIL,
+        orderId: order.id,
+        customer: order.customer_name,
+        total: order.total
+      });
+      return { success: true, data: { dev: true, message: 'Email logged in dev mode' } };
+    }
+
     const { data, error } = await supabase.functions.invoke('send-email', {
       body: {
         type: 'order_notification',
@@ -254,14 +268,16 @@ export async function sendOrderEmailNotification(order) {
 
     if (error) {
       console.error('Edge function error:', error);
-      return { success: false, error: error.message };
+      // Silent fail - don't break the order flow
+      return { success: false, error: error.message, silent: true };
     }
 
     console.log('Order email notification sent');
     return { success: true, data };
   } catch (error) {
     console.error('Email notification error:', error);
-    return { success: false, error: error.message };
+    // Silent fail - notification is not critical
+    return { success: false, error: error.message, silent: true };
   }
 }
 

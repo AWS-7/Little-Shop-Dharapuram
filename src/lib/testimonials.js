@@ -49,19 +49,28 @@ export async function createTestimonial(testimonialData) {
 
 // Update testimonial
 export async function updateTestimonial(id, testimonialData) {
-  const { data, error } = await supabase
-    .from('testimonials')
-    .update(testimonialData)
-    .eq('id', id)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('testimonials')
+      .update(testimonialData)
+      .eq('id', id)
+      .select();
 
-  if (error) {
-    console.error('Error updating testimonial:', error);
-    return { data: null, error };
+    if (error) {
+      console.error('Error updating testimonial:', error);
+      return { data: null, error };
+    }
+
+    // Check if any rows were updated
+    if (!data || data.length === 0) {
+      return { data: null, error: { message: 'Testimonial not found or no changes made' } };
+    }
+
+    return { data: data[0], error: null };
+  } catch (e) {
+    console.error('Exception updating testimonial:', e);
+    return { data: null, error: e };
   }
-
-  return { data, error: null };
 }
 
 // Delete testimonial
