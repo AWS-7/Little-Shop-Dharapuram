@@ -10,22 +10,49 @@ export function isNotificationSupported() {
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
-// Request notification permission
+// Request notification permission with better UX
 export async function requestNotificationPermission() {
   if (!isNotificationSupported()) {
     console.log('Notifications not supported');
-    return false;
+    return { granted: false, error: 'Browser notifications not supported' };
   }
 
-  const permission = await Notification.requestPermission();
-  console.log('Notification permission:', permission);
+  // Check current permission status first
+  const currentPermission = Notification.permission;
+  console.log('Current notification permission:', currentPermission);
   
-  if (permission === 'granted') {
+  // If already granted, just register service worker
+  if (currentPermission === 'granted') {
     await registerServiceWorker();
-    return true;
+    return { granted: true, error: null };
   }
   
-  return false;
+  // If denied, we can't ask again - user must manually enable in browser settings
+  if (currentPermission === 'denied') {
+    return { 
+      granted: false, 
+      error: 'Notifications blocked. Please enable in browser settings (click lock icon in address bar).'
+    };
+  }
+  
+  // If default (not asked yet), request permission
+  try {
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission result:', permission);
+    
+    if (permission === 'granted') {
+      await registerServiceWorker();
+      return { granted: true, error: null };
+    } else {
+      return { 
+        granted: false, 
+        error: 'Notification permission denied. Click the notification bell to try again.'
+      };
+    }
+  } catch (err) {
+    console.error('Error requesting permission:', err);
+    return { granted: false, error: err.message };
+  }
 }
 
 // Register service worker
@@ -103,14 +130,37 @@ export function showLocalNotification(title, options = {}) {
   }
 }
 
-// Play notification sound
+// Play notification sound - with multiple fallback options
 function playNotificationSound() {
   try {
-    const audio = new Audio('/notification-sound.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(e => console.log('Audio play failed:', e));
+    // Try Web Audio API first (more reliable)
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const audioCtx = new AudioContext();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.5);
+      
+      // Also try the MP3 file
+      setTimeout(() => {
+        const audio = new Audio('/notification-sound.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(e => {});
+      }, 100);
+    }
   } catch (e) {
-    console.log('Sound playback not available');
+    console.log('Sound playback not available:', e);
   }
 }
 

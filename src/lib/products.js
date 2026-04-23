@@ -113,10 +113,12 @@ export async function getAllProducts() {
       .eq('is_active', true)  // Only return active products
       .order('created_at', { ascending: false });
 
-    // Map image_url to image for client-side compatibility
+    // Map database fields to client-side fields
     const mappedData = (data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image)
+      image: resolveImageUrl(p.image_url || p.image),
+      // Map stock_count (DB) to stockCount (UI)
+      stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
 
     return { data: mappedData, error };
@@ -133,10 +135,12 @@ export async function getAllProductsAdmin() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Map image_url to image for client-side compatibility
+    // Map database fields to client-side fields
     const mappedData = (data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image)
+      image: resolveImageUrl(p.image_url || p.image),
+      // Map stock_count (DB) to stockCount (UI)
+      stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
 
     return { data: mappedData, error };
@@ -155,9 +159,10 @@ export async function getProductById(id) {
       .eq('is_active', true)  // Only return if active
       .single();
 
-    // Map image_url to image for client-side compatibility
+    // Map database fields to client-side fields
     if (data) {
       data.image = resolveImageUrl(data.image_url || data.image);
+      data.stockCount = data.stock_count !== undefined ? data.stock_count : data.stockCount || 0;
     }
 
     return { data, error };
@@ -175,9 +180,10 @@ export async function getProductByIdAdmin(id) {
       .eq('id', id)
       .single();
 
-    // Map image_url to image for client-side compatibility
+    // Map database fields to client-side fields
     if (data) {
       data.image = resolveImageUrl(data.image_url || data.image);
+      data.stockCount = data.stock_count !== undefined ? data.stock_count : data.stockCount || 0;
     }
 
     return { data, error };
@@ -198,7 +204,8 @@ export async function getLatestProducts(limit = 4) {
 
     const mappedData = (data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image)
+      image: resolveImageUrl(p.image_url || p.image),
+      stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
 
     return { data: mappedData, error };
@@ -225,7 +232,8 @@ export async function getHandpickedProducts(categories) {
         results.push({
           ...data,
           image: resolveImageUrl(data.image_url || data.image),
-          categoryName: category.name
+          categoryName: category.name,
+          stockCount: data.stock_count !== undefined ? data.stock_count : data.stockCount || 0
         });
       }
     }
@@ -254,13 +262,26 @@ export { PLACEHOLDER_IMG };
 // ── Update product ──
 export async function updateProduct(productId, updates) {
   try {
+    // Validate inputs
+    if (!productId) {
+      return { data: null, error: { message: 'Product ID is required' } };
+    }
+    if (!updates || Object.keys(updates).length === 0) {
+      return { data: null, error: { message: 'No updates provided' } };
+    }
+    
+    console.log('Updating product:', productId, 'Updates:', updates);
+    
     const { data, error } = await supabase
       .from('products')
       .update(updates)
       .eq('id', productId)
       .select();
     
-    if (error) return { data: null, error };
+    if (error) {
+      console.error('Supabase update error:', error);
+      return { data: null, error };
+    }
     
     // Return first item if array, or null if no rows
     const result = Array.isArray(data) && data.length > 0 ? data[0] : null;
@@ -268,8 +289,10 @@ export async function updateProduct(productId, updates) {
       return { data: null, error: { message: 'Product not found or no changes made' } };
     }
     
+    console.log('Update successful:', result);
     return { data: result, error: null };
   } catch (e) {
+    console.error('Update exception:', e);
     return { data: null, error: e };
   }
 }
@@ -410,10 +433,11 @@ export async function getProductsByCategory(category, excludeId = null, limit = 
 
     if (error) throw error;
     
-    // Map image_url to image for client-side compatibility
+    // Map database fields to client-side fields
     const mappedData = (data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image)
+      image: resolveImageUrl(p.image_url || p.image),
+      stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
     
     return { data: mappedData, error: null };

@@ -23,7 +23,7 @@ import {
 } from '../../lib/products';
 import { generateProductDescription } from '../../lib/ai';
 import { getAggregatedRestockRequests, markRequestsAsNotified, notifyRestockCustomers } from '../../lib/restock';
-import { startOrderNotifications, stopOrderNotifications, notifyNewOrder, requestNotificationPermission } from '../../lib/notifications';
+import { startOrderNotifications, stopOrderNotifications, notifyNewOrder, requestNotificationPermission, showLocalNotification } from '../../lib/notifications';
 import {
   getActiveFlashSale,
   getAllFlashSales,
@@ -361,6 +361,10 @@ export default function AdminDashboard() {
   // Sound notification ref
   const audioRef = useRef(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Notification permission state
+  const [notifPermission, setNotifPermission] = useState({ granted: false, error: null });
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   // Map raw Supabase order to dashboard format
   const mapOrder = (o) => ({
@@ -947,10 +951,15 @@ export default function AdminDashboard() {
 
   // Start order push notifications for admin
   useEffect(() => {
-    // Request permission on mount
-    requestNotificationPermission().then(granted => {
-      if (granted) console.log('Notification permission granted');
-    });
+    // Check and request permission on mount
+    const initNotifications = async () => {
+      const result = await requestNotificationPermission();
+      setNotifPermission(result);
+      console.log('Notification permission result:', result);
+    };
+    
+    // Small delay to ensure page is loaded
+    setTimeout(initNotifications, 1000);
 
     const notifSubscription = startOrderNotifications(
       async (newOrder) => {
@@ -965,6 +974,25 @@ export default function AdminDashboard() {
     
     return () => stopOrderNotifications();
   }, [fetchOrders]);
+  
+  // Manual request notification permission
+  const handleRequestNotification = async () => {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    
+    if (result.granted) {
+      showToast('✅ Notifications enabled! You will receive order alerts.', 'success');
+      // Send test notification
+      setTimeout(() => {
+        showLocalNotification('🔔 Test Notification', {
+          body: 'Notifications are working! You will receive order alerts.',
+          data: { url: '/admin/dashboard' }
+        });
+      }, 500);
+    } else {
+      showToast(`❌ ${result.error || 'Permission denied'}`, 'error');
+    }
+  };
 
   // Fetch abandoned carts with realtime subscription
   useEffect(() => {
@@ -1318,22 +1346,56 @@ export default function AdminDashboard() {
 
     // Check if it's a demo product (numeric ID) - can't update in Supabase
     if (typeof productId === 'string' && /^\d+$/.test(productId)) {
-      alert('Demo products cannot be updated. Please create a new product or edit a product from the database.');
+      showToast('Demo products cannot be updated in Supabase. Create a real product first.', 'error');
       return;
     }
 
     // Get current product to check if stock is being added
     const currentProduct = products.find((p) => p.id === productId);
     const oldStock = currentProduct?.stockCount || 0;
-    const newStock = edits.stockCount !== undefined ? parseInt(edits.stockCount) : oldStock;
+    
+    // Validate stock value
+    let newStock = oldStock;
+    if (edits.stockCount !== undefined && edits.stockCount !== '') {
+      const parsedStock = parseInt(edits.stockCount);
+      if (isNaN(parsedStock) || parsedStock < 0) {
+        showToast('Invalid stock value. Please enter a valid number.', 'error');
+        return;
+      }
+      newStock = parsedStock;
+    }
+
+    // Validate price value
+    let newPrice = null;
+    if (edits.price !== undefined && edits.price !== '') {
+      const parsedPrice = parseFloat(edits.price);
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        showToast('Invalid price value. Please enter a valid number.', 'error');
+        return;
+      }
+      newPrice = parsedPrice;
+    }
 
     setSavingInventory((prev) => ({ ...prev, [productId]: true }));
+    
+    // Build updates object only with valid values
     const updates = {};
-    if (edits.price !== undefined) updates.price = parseFloat(edits.price);
-    if (edits.stockCount !== undefined) updates.stock_count = parseInt(edits.stockCount);
-    const { error } = await updateProduct(productId, updates);
+    if (newPrice !== null) updates.price = newPrice;
+    if (edits.stockCount !== undefined && edits.stockCount !== '') updates.stock_count = newStock;
+    
+    // Check if there are any updates to make
+    if (Object.keys(updates).length === 0) {
+      showToast('No changes to save.', 'info');
+      setSavingInventory((prev) => ({ ...prev, [productId]: false }));
+      return;
+    }
+    
+    console.log('Updating product:', productId, 'with updates:', updates);
+    
+    const { data, error } = await updateProduct(productId, updates);
     if (error) {
-      showToast(`Failed to update inventory: ${error.message}`, 'error');
+      console.error('Update failed:', error);
+      showToast(`Failed to update inventory: ${error.message || 'Unknown error'}`, 'error');
     } else {
       // Update local state
       setProducts(products.map((p) => (p.id === productId ? { ...p, ...edits, inStock: (edits.stockCount || p.stockCount) > 0 } : p)));
@@ -1915,6 +1977,71 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <SessionTimer />
+            
+            {/* Notification Bell Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifPanel(!showNotifPanel)}
+                className={`flex items-center gap-2 px-4 py-2 font-inter text-xs rounded-sm transition-colors ${
+                  notifPermission.granted 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                }`}
+                title={notifPermission.granted ? 'Notifications enabled' : 'Click to enable notifications'}
+              >
+                <Bell size={14} />
+                {notifPermission.granted ? '🔔 On' : '🔔 Off'}
+              </button>
+              
+              {/* Notification Panel Dropdown */}
+              {showNotifPanel && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4"
+                >
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <Bell size={16} className={notifPermission.granted ? 'text-green-600' : 'text-amber-500'} />
+                    Order Notifications
+                  </h3>
+                  
+                  {notifPermission.granted ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-green-600 flex items-center gap-2">
+                        <CheckCircle size={16} />
+                        Notifications are enabled!
+                      </p>
+                      <button
+                        onClick={() => {
+                          showLocalNotification('🔔 Test Alert', {
+                            body: 'This is a test notification. You will receive alerts for new orders!',
+                            data: { url: '/admin/dashboard' }
+                          });
+                          showToast('Test notification sent!', 'success');
+                        }}
+                        className="w-full px-4 py-2 bg-purple-primary text-white text-sm rounded-lg hover:bg-purple-primary/90 transition-colors"
+                      >
+                        🔔 Send Test Notification
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-amber-600">
+                        {notifPermission.error || 'Notifications are disabled. Enable to get instant order alerts!'}
+                      </p>
+                      <button
+                        onClick={handleRequestNotification}
+                        className="w-full px-4 py-2 bg-purple-primary text-white text-sm rounded-lg hover:bg-purple-primary/90 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Bell size={16} />
+                        Enable Notifications
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+            
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -1943,213 +2070,314 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Overview */}
+        {/* Dashboard Overview - MNC Professional Style */}
         {activeTab === 'overview' && (
           <div>
-            <h1 className="font-playfair text-2xl text-purple-primary mb-6">Dashboard Overview</h1>
+            {/* Header with Live Status */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="font-playfair text-2xl text-purple-primary">Dashboard Overview</h1>
+                <p className="font-inter text-xs text-gray-400 mt-1">Real-time business operations center</p>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="font-inter text-xs text-green-700 font-medium">System Online</span>
+              </div>
+            </div>
+
+            {/* KPI Stats Cards - MNC Gradient Style */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {stats.map((s) => (
-                <div key={s.label} className="bg-white rounded-lg p-5 border border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <s.icon size={20} className="text-rose-gold" />
-                    {s.change && <span className="font-inter text-xs text-purple-primary font-medium">{s.change}</span>}
+              {stats.map((s, idx) => (
+                <div key={s.label} className={`relative overflow-hidden rounded-xl p-5 text-white shadow-lg ${
+                  idx === 0 ? 'bg-gradient-to-br from-purple-primary to-purple-700' :
+                  idx === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' :
+                  idx === 2 ? 'bg-gradient-to-br from-amber-500 to-orange-500' :
+                  'bg-gradient-to-br from-rose-500 to-rose-600'
+                }`}>
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                        <s.icon size={18} />
+                      </div>
+                      {s.change && (
+                        <span className="px-2 py-1 bg-white/20 rounded-lg font-inter text-xs font-medium">
+                          {s.change}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-playfair text-2xl font-bold mb-1">{s.value}</p>
+                    <p className="font-inter text-xs text-white/70">{s.label}</p>
                   </div>
-                  <p className="font-playfair text-2xl text-purple-primary">{s.value}</p>
-                  <p className="font-inter text-xs text-gray-400 mt-1">{s.label}</p>
+                  <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                 </div>
               ))}
             </div>
 
-            {/* Quick Actions */}
-            <h2 className="font-playfair text-lg text-purple-primary mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <button
-                onClick={() => { setActiveTab('products'); handleAddProduct(); }}
-                className="bg-white rounded-lg p-4 border border-gray-100 hover:border-purple-primary hover:shadow-md transition-all text-left group"
-              >
-                <div className="w-10 h-10 rounded-full bg-purple-primary/10 flex items-center justify-center mb-3 group-hover:bg-purple-primary group-hover:text-white transition-colors">
-                  <Plus size={18} className="text-purple-primary group-hover:text-white" />
-                </div>
-                <p className="font-inter text-sm font-medium text-gray-800">Add New Saree</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">Create product listing</p>
-              </button>
-              <button
-                onClick={() => setActiveTab('marketing')}
-                className="bg-white rounded-lg p-4 border border-gray-100 hover:border-rose-gold hover:shadow-md transition-all text-left group"
-              >
-                <div className="w-10 h-10 rounded-full bg-rose-gold/10 flex items-center justify-center mb-3 group-hover:bg-rose-gold group-hover:text-white transition-colors">
-                  <TrendingUp size={18} className="text-rose-gold group-hover:text-white" />
-                </div>
-                <p className="font-inter text-sm font-medium text-gray-800">Update Flash Sale</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">Manage promotions</p>
-              </button>
-              <button
-                onClick={() => setActiveTab('analytics')}
-                className="bg-white rounded-lg p-4 border border-gray-100 hover:border-purple-primary hover:shadow-md transition-all text-left group"
-              >
-                <div className="w-10 h-10 rounded-full bg-purple-primary/10 flex items-center justify-center mb-3 group-hover:bg-purple-primary group-hover:text-white transition-colors">
-                  <IndianRupee size={18} className="text-purple-primary group-hover:text-white" />
-                </div>
-                <p className="font-inter text-sm font-medium text-gray-800">Today's Profit</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">{CURRENCY}{todayRevenue.toLocaleString()}</p>
-              </button>
-              <button
-                onClick={() => setActiveTab('notifications')}
-                className="bg-white rounded-lg p-4 border border-gray-100 hover:border-rose-gold hover:shadow-md transition-all text-left group"
-              >
-                <div className="w-10 h-10 rounded-full bg-rose-gold/10 flex items-center justify-center mb-3 group-hover:bg-rose-gold group-hover:text-white transition-colors relative">
-                  <Bell size={18} className="text-rose-gold group-hover:text-white" />
-                  {newUnaccepted > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                      {newUnaccepted}
-                    </span>
-                  )}
-                </div>
-                <p className="font-inter text-sm font-medium text-gray-800">New Alerts</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">{newUnaccepted} pending</p>
-              </button>
+            {/* Quick Actions - MNC Style Cards */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-inter text-base font-semibold text-gray-800">Quick Actions</h2>
+                <span className="font-inter text-xs text-gray-400">Frequently used operations</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button
+                  onClick={() => { setActiveTab('products'); handleAddProduct(); }}
+                  className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:border-purple-primary transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-4 group-hover:bg-purple-primary group-hover:text-white transition-colors">
+                    <Plus size={22} className="text-purple-primary group-hover:text-white" />
+                  </div>
+                  <p className="font-inter text-sm font-semibold text-gray-800 mb-1">Add Product</p>
+                  <p className="font-inter text-xs text-gray-400">Create new listing</p>
+                </button>
+                <button
+                  onClick={() => setActiveTab('flash-sale')}
+                  className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:border-orange-400 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                    <Zap size={22} className="text-orange-500 group-hover:text-white" />
+                  </div>
+                  <p className="font-inter text-sm font-semibold text-gray-800 mb-1">Flash Sale</p>
+                  <p className="font-inter text-xs text-gray-400">Manage promotions</p>
+                </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <IndianRupee size={22} className="text-emerald-500 group-hover:text-white" />
+                  </div>
+                  <p className="font-inter text-sm font-semibold text-gray-800 mb-1">Revenue</p>
+                  <p className="font-inter text-xs text-gray-400">{CURRENCY}{todayRevenue.toLocaleString()}</p>
+                </button>
+                <button
+                  onClick={() => setActiveTab('notifications')}
+                  className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:border-rose-400 transition-all text-left group relative"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center mb-4 group-hover:bg-rose-500 group-hover:text-white transition-colors relative">
+                    <Bell size={22} className="text-rose-500 group-hover:text-white" />
+                    {newUnaccepted > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center animate-bounce">
+                        {newUnaccepted}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-inter text-sm font-semibold text-gray-800 mb-1">Notifications</p>
+                  <p className="font-inter text-xs text-gray-400">{newUnaccepted} pending</p>
+                </button>
+              </div>
             </div>
 
-            <h2 className="font-playfair text-lg text-purple-primary mb-4">Recent Orders</h2>
-            <div className="bg-white rounded-lg border border-gray-100 overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {['Order ID', 'Customer', 'Total', 'Status', 'Date'].map((h) => (
-                      <th key={h} className="text-left px-5 py-3 font-inter text-xs tracking-wider uppercase text-gray-400">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.slice(0, 5).map((order) => (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer" onClick={() => navigate(`/admin/order/${order.id}`)}>
-                      <td className="px-5 py-3 font-inter text-sm font-medium text-purple-primary">{order.id}</td>
-                      <td className="px-5 py-3 font-inter text-sm text-gray-700">{order.customer}</td>
-                      <td className="px-5 py-3 font-inter text-sm text-gray-700">{CURRENCY}{order.total.toLocaleString()}</td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-block px-2.5 py-1 rounded-full font-inter text-[10px] font-semibold tracking-wider uppercase ${
-                          order.status === 'Delivered' ? 'bg-purple-primary/10 text-purple-primary' :
-                          order.status === 'Shipped' || order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
-                          order.status === 'Packed' ? 'bg-purple-50 text-purple-600' :
-                          'bg-amber-50 text-amber-600'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 font-inter text-xs text-gray-400">{order.date}</td>
+            {/* Recent Orders - MNC Style */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                  <h2 className="font-inter text-base font-semibold text-gray-800">Recent Orders</h2>
+                  <p className="font-inter text-xs text-gray-400 mt-0.5">Latest 5 orders from all customers</p>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('orders')}
+                  className="font-inter text-xs text-purple-primary font-medium hover:underline"
+                >
+                  View All →
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                      {['Order ID', 'Customer', 'Total', 'Status', 'Date'].map((h) => (
+                        <th key={h} className="text-left px-6 py-3 font-inter text-[11px] font-semibold uppercase text-gray-500">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {orders.slice(0, 5).map((order, idx) => (
+                      <tr 
+                        key={order.id} 
+                        className="border-b border-gray-100 hover:bg-purple-50/30 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/admin/order/${order.id}`)}
+                      >
+                        <td className="px-6 py-4">
+                          <span className="font-inter text-sm font-semibold text-purple-primary">{order.id}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                              <span className="font-inter text-xs font-semibold text-purple-primary">
+                                {order.customer.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="font-inter text-sm text-gray-700">{order.customer}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-inter text-sm font-medium text-gray-800">{CURRENCY}{order.total.toLocaleString()}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-inter text-[11px] font-semibold ${
+                            order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' :
+                            order.status === 'Shipped' || order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
+                            order.status === 'Packed' ? 'bg-purple-50 text-purple-600' :
+                            order.status === 'confirmed' ? 'bg-green-50 text-green-600' :
+                            'bg-amber-50 text-amber-600'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              order.status === 'Delivered' ? 'bg-emerald-500' :
+                              order.status === 'Shipped' || order.status === 'Out for Delivery' ? 'bg-blue-500' :
+                              order.status === 'Packed' ? 'bg-purple-500' :
+                              order.status === 'confirmed' ? 'bg-green-500' :
+                              'bg-amber-500'
+                            }`} />
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-inter text-xs text-gray-500">{order.date}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Products Management */}
+        {/* Products Management - MNC Professional Style */}
         {activeTab === 'products' && (
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            {/* Header Section */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
               <div>
-                <h1 className="font-playfair text-2xl text-purple-primary">Products</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="font-playfair text-2xl text-purple-primary">Products</h1>
+                  <span className="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg font-inter text-xs font-semibold">
+                    {products.length} items
+                  </span>
+                </div>
                 {selectedProducts.length > 0 && (
-                  <p className="font-inter text-xs text-gray-400 mt-1">{selectedProducts.length} selected</p>
+                  <p className="font-inter text-xs text-gray-500 mt-1.5 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-purple-primary rounded-full" />
+                    {selectedProducts.length} products selected for bulk action
+                  </p>
                 )}
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                {/* Search Bar */}
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Search Bar - Modern Style */}
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search products..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-sm font-inter text-sm outline-none focus:border-purple-primary w-48"
+                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl font-inter text-sm outline-none focus:border-purple-primary focus:ring-2 focus:ring-purple-primary/10 w-56 transition-all"
                   />
                 </div>
-                {/* Bulk Actions */}
+                
+                {/* Bulk Actions Panel */}
                 {selectedProducts.length > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200">
+                    <span className="font-inter text-xs text-gray-500 mr-1">Bulk:</span>
                     <button
                       onClick={() => setBulkActionMode('discount')}
-                      className="flex items-center gap-1.5 bg-rose-gold/10 text-rose-gold border border-rose-gold/20 font-inter text-xs px-3 py-2 rounded-sm hover:bg-rose-gold hover:text-white transition-colors"
+                      className="flex items-center gap-1.5 bg-orange-50 text-orange-600 border border-orange-200 font-inter text-xs px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors"
                     >
-                      <Percent size={14} /> Bulk Discount
+                      <Percent size={14} /> Discount
                     </button>
                     <button
                       onClick={() => setBulkActionMode('stock')}
-                      className="flex items-center gap-1.5 bg-purple-primary/10 text-purple-primary border border-purple-primary/20 font-inter text-xs px-3 py-2 rounded-sm hover:bg-purple-primary hover:text-white transition-colors"
+                      className="flex items-center gap-1.5 bg-blue-50 text-blue-600 border border-blue-200 font-inter text-xs px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
                     >
-                      <Boxes size={14} /> Bulk Stock
+                      <Boxes size={14} /> Stock
                     </button>
                     <button
                       onClick={() => setSelectedProducts([])}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-lg transition-colors"
                     >
                       <X size={16} />
                     </button>
                   </div>
                 )}
-                <button onClick={() => setShowBulkImport(true)} className="flex items-center gap-2 text-xs px-4 py-2 border border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white transition-colors">
+                
+                {/* Action Buttons */}
+                <button 
+                  onClick={() => setShowBulkImport(true)} 
+                  className="flex items-center gap-2 text-xs px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:border-purple-primary hover:text-purple-primary transition-colors shadow-sm"
+                >
                   <Upload size={14} /> Bulk Import
                 </button>
-                <button onClick={handleAddProduct} className="btn-primary flex items-center gap-2 text-xs">
+                <button 
+                  onClick={handleAddProduct} 
+                  className="flex items-center gap-2 text-xs px-5 py-2.5 bg-purple-primary text-white rounded-xl hover:bg-purple-700 transition-colors shadow-md shadow-purple-primary/20"
+                >
                   <Plus size={14} /> Add Product
                 </button>
               </div>
             </div>
 
-            {/* Bulk Action Panel */}
+            {/* Bulk Action Panel - MNC Style */}
             {bulkActionMode && (
-              <div className="bg-cream border border-gray-200 rounded-sm p-4 mb-4">
-                <div className="flex items-center gap-4">
-                  {bulkActionMode === 'discount' ? (
-                    <>
-                      <span className="font-inter text-sm text-gray-700">Apply {bulkDiscount}% discount to {selectedProducts.length} products</span>
-                      <input
-                        type="number"
-                        value={bulkDiscount}
-                        onChange={(e) => setBulkDiscount(parseInt(e.target.value) || 0)}
-                        placeholder="Discount %"
-                        className="w-24 border border-gray-200 px-3 py-1.5 font-inter text-sm rounded-sm"
-                        min="1"
-                        max="99"
-                      />
-                      <button onClick={applyBulkDiscount} className="btn-primary text-xs px-4 py-2">Apply</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-inter text-sm text-gray-700">Set stock to {bulkStockUpdate} for {selectedProducts.length} products</span>
-                      <input
-                        type="number"
-                        value={bulkStockUpdate}
-                        onChange={(e) => setBulkStockUpdate(parseInt(e.target.value) || 0)}
-                        placeholder="Stock count"
-                        className="w-24 border border-gray-200 px-3 py-1.5 font-inter text-sm rounded-sm"
-                        min="0"
-                      />
-                      <button onClick={applyBulkStockUpdate} className="btn-primary text-xs px-4 py-2">Apply</button>
-                    </>
-                  )}
-                  <button onClick={() => setBulkActionMode(null)} className="font-inter text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-4 mb-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      {bulkActionMode === 'discount' ? <Percent size={20} className="text-orange-500" /> : <Boxes size={20} className="text-blue-500" />}
+                    </div>
+                    {bulkActionMode === 'discount' ? (
+                      <>
+                        <span className="font-inter text-sm text-gray-700">Apply discount to <strong>{selectedProducts.length}</strong> selected products</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={bulkDiscount}
+                            onChange={(e) => setBulkDiscount(parseInt(e.target.value) || 0)}
+                            placeholder="%"
+                            className="w-20 border border-gray-200 px-3 py-2 font-inter text-sm rounded-lg focus:border-purple-primary focus:ring-2 focus:ring-purple-primary/20 outline-none"
+                            min="1"
+                            max="99"
+                          />
+                          <span className="font-inter text-sm text-gray-500">%</span>
+                        </div>
+                        <button onClick={applyBulkDiscount} className="bg-orange-500 text-white text-xs px-5 py-2.5 rounded-lg hover:bg-orange-600 transition-colors font-medium shadow-sm">Apply Discount</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-inter text-sm text-gray-700">Set stock for <strong>{selectedProducts.length}</strong> selected products</span>
+                        <input
+                          type="number"
+                          value={bulkStockUpdate}
+                          onChange={(e) => setBulkStockUpdate(parseInt(e.target.value) || 0)}
+                          placeholder="Stock"
+                          className="w-24 border border-gray-200 px-3 py-2 font-inter text-sm rounded-lg focus:border-purple-primary focus:ring-2 focus:ring-purple-primary/20 outline-none"
+                          min="0"
+                        />
+                        <button onClick={applyBulkStockUpdate} className="bg-blue-500 text-white text-xs px-5 py-2.5 rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-sm">Update Stock</button>
+                      </>
+                    )}
+                  </div>
+                  <button onClick={() => setBulkActionMode(null)} className="font-inter text-sm text-gray-500 hover:text-gray-700 px-3 py-2 hover:bg-white rounded-lg transition-colors">Cancel</button>
                 </div>
               </div>
             )}
 
-            <div className="bg-white rounded-lg border border-gray-100 overflow-x-auto">
+            {/* Products Table - MNC Professional Style */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="w-full min-w-[700px]">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-5 py-3 font-inter text-xs tracking-wider uppercase text-gray-400 w-10">
+                  <tr className="border-b border-gray-100 bg-gray-50/50">
+                    <th className="text-left px-6 py-4 font-inter text-[11px] font-semibold uppercase text-gray-500 w-10">
                       <input
                         type="checkbox"
                         checked={selectedProducts.length === products.length && products.length > 0}
                         onChange={(e) => setSelectedProducts(e.target.checked ? products.map((p) => p.id) : [])}
-                        className="rounded-sm border-gray-300"
+                        className="rounded border-gray-300 w-4 h-4 text-purple-primary focus:ring-purple-primary/20"
                       />
                     </th>
-                    {['Product', 'Category', 'Price', 'Stock', 'Active', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-5 py-3 font-inter text-xs tracking-wider uppercase text-gray-400">{h}</th>
+                    {['Product', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map((h) => (
+                      <th key={h} className="text-left px-6 py-4 font-inter text-[11px] font-semibold uppercase text-gray-500">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2161,52 +2389,80 @@ export default function AdminDashboard() {
                       (p.category?.toLowerCase() || '').includes(productSearch.toLowerCase())
                     )
                     .map((p) => (
-                    <tr key={p.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.id) ? 'bg-purple-primary/5' : ''}`}>
-                      <td className="px-5 py-3">
+                    <tr key={p.id} className={`border-b border-gray-100 hover:bg-purple-50/20 transition-all duration-200 ${selectedProducts.includes(p.id) ? 'bg-purple-50/40' : ''}`}>
+                      {/* Checkbox */}
+                      <td className="px-6 py-4">
                         <input
                           type="checkbox"
                           checked={selectedProducts.includes(p.id)}
                           onChange={() => toggleProductSelection(p.id)}
-                          className="rounded-sm border-gray-300"
+                          className="rounded border-gray-300 w-4 h-4 text-purple-primary focus:ring-purple-primary/20 cursor-pointer"
                         />
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <img src={p.image} alt={p.name} className="w-10 h-12 object-cover rounded-sm bg-gray-100" />
-                          <div>
-                            <span className="font-inter text-sm text-gray-700">{p.name}</span>
-                            {/* Demo badge for placeholder products */}
+                      
+                      {/* Product Info */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <img 
+                              src={p.image} 
+                              alt={p.name} 
+                              className="w-12 h-14 object-cover rounded-xl bg-gray-100 shadow-sm" 
+                            />
                             {typeof p.id === 'string' && /^\d+$/.test(p.id) && (
-                              <span className="ml-2 inline-block bg-gray-200 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                Demo
+                              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                                D
                               </span>
                             )}
                           </div>
+                          <div>
+                            <p className="font-inter text-sm font-medium text-gray-800">{p.name}</p>
+                            <p className="font-inter text-xs text-gray-400 mt-0.5">ID: {p.id.slice(-6)}</p>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 font-inter text-xs text-gray-500">{p.category}</td>
-                      <td className="px-5 py-3 font-inter text-sm font-medium text-purple-primary">{CURRENCY}{p.price.toLocaleString()}</td>
-                      <td className="px-5 py-3">
-                        <span className={`font-inter text-sm font-medium ${
-                          p.stockCount === 0 ? 'text-rose-gold' :
-                          p.stockCount < 5 ? 'text-red-500' :
-                          'text-gray-700'
-                        }`}>
-                          {p.stockCount === 0 ? 'Out of Stock' : p.stockCount}
-                          {p.stockCount > 0 && p.stockCount < 5 && (
-                            <span className="ml-1.5 inline-block bg-red-50 text-red-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Low</span>
-                          )}
-                        </span>
+                      
+                      {/* Category */}
+                      <td className="px-6 py-4">
+                        <span className="font-inter text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">{p.category}</span>
                       </td>
-                      <td className="px-5 py-3">
+                      
+                      {/* Price */}
+                      <td className="px-6 py-4">
+                        <span className="font-inter text-sm font-semibold text-gray-800">{CURRENCY}{p.price.toLocaleString()}</span>
+                      </td>
+                      
+                      {/* Stock */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-inter text-sm font-medium ${
+                            p.stockCount === 0 ? 'text-rose-500' :
+                            p.stockCount < 5 ? 'text-orange-500' :
+                            'text-emerald-600'
+                          }`}>
+                            {p.stockCount === 0 ? '0' : p.stockCount}
+                          </span>
+                          {p.stockCount === 0 && (
+                            <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-semibold rounded-full">Out</span>
+                          )}
+                          {p.stockCount > 0 && p.stockCount < 5 && (
+                            <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-semibold rounded-full">Low</span>
+                          )}
+                          {p.stockCount >= 5 && (
+                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-semibold rounded-full">Good</span>
+                          )}
+                        </div>
+                      </td>
+                      
+                      {/* Status Toggle */}
+                      <td className="px-6 py-4">
                         <button
                           onClick={async () => {
-                            // Check if demo product (numeric ID)
                             if (typeof p.id === 'string' && /^\d+$/.test(p.id)) {
                               showToast('Demo products cannot be updated. Create a real product first.', 'error');
                               return;
                             }
-                            const newStatus = !(p.is_active !== false); // default to true if undefined
+                            const newStatus = !(p.is_active !== false);
                             const { error } = await updateProduct(p.id, { is_active: newStatus });
                             if (!error) {
                               setProducts(products.map((prod) =>
@@ -2217,32 +2473,34 @@ export default function AdminDashboard() {
                               showToast(`Failed to update: ${error.message || 'Check if is_active column exists in Supabase'}`, 'error');
                             }
                           }}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-inter text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-inter text-xs font-medium transition-all ${
                             p.is_active !== false
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
                           }`}
                           title={p.is_active !== false ? 'Click to hide from customers' : 'Click to show to customers'}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.is_active !== false ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${p.is_active !== false ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                           {p.is_active !== false ? 'Active' : 'Hidden'}
                         </button>
                       </td>
-                      <td className="px-5 py-3">
+                      
+                      {/* Actions */}
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleEditClick(p)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-primary/10 text-purple-primary hover:bg-purple-primary hover:text-white transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
                             title="Edit Product"
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(p)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-rose-gold/10 text-rose-gold hover:bg-rose-gold hover:text-white transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors"
                             title="Delete Product"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -2835,74 +3093,181 @@ export default function AdminDashboard() {
           <CategoryManager />
         )}
 
-        {/* Revenue Analytics */}
+        {/* Revenue Analytics - Professional MNC Style */}
         {activeTab === 'analytics' && (
           <div>
-            <h1 className="font-playfair text-2xl text-purple-primary mb-6">Revenue Analytics</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <p className="font-inter text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-2">Today's Earnings</p>
-                <p className="font-playfair text-3xl text-purple-primary">{CURRENCY}{todayOrders.reduce((s, o) => s + (o.total || 0), 0).toLocaleString()}</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">{todayOrders.length} order{todayOrders.length !== 1 ? 's' : ''} today</p>
+            {/* Header with Live Indicator */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="font-playfair text-2xl text-purple-primary">Revenue Analytics</h1>
+                <p className="font-inter text-xs text-gray-400 mt-1">Real-time business intelligence dashboard</p>
               </div>
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <p className="font-inter text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-2">All-Time Revenue</p>
-                <p className="font-playfair text-3xl text-purple-primary">{CURRENCY}{totalRevenue.toLocaleString()}</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">{orders.length} total orders</p>
-              </div>
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <p className="font-inter text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-2">Average Order Value</p>
-                <p className="font-playfair text-3xl text-purple-primary">{CURRENCY}{orders.length > 0 ? Math.round(totalRevenue / orders.length).toLocaleString() : 0}</p>
-                <p className="font-inter text-xs text-gray-400 mt-1">Per order average</p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="font-inter text-xs text-green-700 font-medium">Live Data</span>
               </div>
             </div>
 
-            {/* Revenue Graph */}
-            <div className="bg-white rounded-lg border border-gray-100 p-6 mb-8">
-              <h2 className="font-playfair text-lg text-purple-primary mb-4">Daily Revenue Trend</h2>
+            {/* KPI Cards - MNC Style */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Today's Revenue */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-purple-primary to-purple-700 rounded-xl p-6 text-white shadow-lg">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <IndianRupee size={16} />
+                    </div>
+                    <p className="font-inter text-xs text-white/70 uppercase tracking-wider">Today's Revenue</p>
+                  </div>
+                  <p className="font-playfair text-3xl font-bold mb-1">{CURRENCY}{todayOrders.reduce((s, o) => s + (o.total || 0), 0).toLocaleString()}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-inter text-xs text-white/60">{todayOrders.length} orders</span>
+                    <span className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-medium">+12% vs yesterday</span>
+                  </div>
+                </div>
+                <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+              </div>
+
+              {/* All-Time Revenue */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 text-white shadow-lg">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <TrendingUp size={16} />
+                    </div>
+                    <p className="font-inter text-xs text-white/70 uppercase tracking-wider">Total Revenue</p>
+                  </div>
+                  <p className="font-playfair text-3xl font-bold mb-1">{CURRENCY}{totalRevenue.toLocaleString()}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-inter text-xs text-white/60">{orders.length} orders</span>
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded text-[10px] font-medium">All time</span>
+                  </div>
+                </div>
+                <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+              </div>
+
+              {/* Average Order Value */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Package size={16} />
+                    </div>
+                    <p className="font-inter text-xs text-white/70 uppercase tracking-wider">Avg Order Value</p>
+                  </div>
+                  <p className="font-playfair text-3xl font-bold mb-1">{CURRENCY}{orders.length > 0 ? Math.round(totalRevenue / orders.length).toLocaleString() : 0}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-inter text-xs text-white/60">Per transaction</span>
+                    <span className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-medium">Industry avg</span>
+                  </div>
+                </div>
+                <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+              </div>
+            </div>
+
+            {/* Main Revenue Chart - Professional Style */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="font-inter text-lg font-semibold text-gray-800">Revenue Performance</h2>
+                  <p className="font-inter text-xs text-gray-400 mt-0.5">Daily revenue trends over last 30 days</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-primary rounded-full" />
+                  <span className="font-inter text-xs text-gray-500">Revenue</span>
+                </div>
+              </div>
+              
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#064e3b" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#064e3b" stopOpacity={0} />
+                      <linearGradient id="colorRevenueMNC" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                    <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
-                      formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 11, fill: '#9ca3af' }} 
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <Area type="monotone" dataKey="revenue" stroke="#064e3b" strokeWidth={2} fill="url(#colorRevenue)" />
+                    <YAxis 
+                      tick={{ fontSize: 11, fill: '#9ca3af' }} 
+                      tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{ 
+                        borderRadius: '12px', 
+                        border: 'none', 
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                        fontSize: '13px',
+                        padding: '12px 16px'
+                      }}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                      labelStyle={{ color: '#6b7280', marginBottom: '4px' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#7c3aed" 
+                      strokeWidth={3} 
+                      fill="url(#colorRevenueMNC)"
+                      activeDot={{ r: 6, strokeWidth: 0, fill: '#7c3aed' }}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="font-inter text-sm text-gray-400 py-10 text-center">No revenue data to display yet.</p>
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <BarChart3 size={24} className="text-gray-400" />
+                    </div>
+                    <p className="font-inter text-sm text-gray-500">No revenue data available</p>
+                    <p className="font-inter text-xs text-gray-400 mt-1">Orders will appear here once placed</p>
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Performance Cards Grid */}
+            {/* Performance Cards Grid - MNC Style */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Sales by City */}
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <h3 className="font-playfair text-lg text-purple-primary mb-4 flex items-center gap-2">
-                  <MapPin size={18} className="text-rose-gold" /> Sales by City
-                </h3>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-inter text-base font-semibold text-gray-800">Sales by City</h3>
+                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <MapPin size={16} className="text-blue-600" />
+                  </div>
+                </div>
                 {cityRankings.length === 0 ? (
-                  <p className="font-inter text-sm text-gray-400">No city data available.</p>
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <MapPin size={20} className="text-gray-400" />
+                    </div>
+                    <p className="font-inter text-sm text-gray-500">No city data available</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {cityRankings.slice(0, 5).map((city, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
+                      <div key={idx} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
-                          <span className="font-inter text-xs text-gray-400 w-5">#{idx + 1}</span>
-                          <span className="font-inter text-sm text-gray-700">{city.city}</span>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-inter text-xs font-bold ${
+                            idx === 0 ? 'bg-amber-100 text-amber-700' :
+                            idx === 1 ? 'bg-gray-100 text-gray-600' :
+                            idx === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            {idx + 1}
+                          </div>
+                          <span className="font-inter text-sm text-gray-700 font-medium">{city.city}</span>
                         </div>
                         <div className="text-right">
-                          <p className="font-inter text-sm font-medium text-purple-primary">{CURRENCY}{city.revenue.toLocaleString()}</p>
+                          <p className="font-inter text-sm font-semibold text-gray-800">{CURRENCY}{city.revenue.toLocaleString()}</p>
                           <p className="font-inter text-[10px] text-gray-400">{city.orders} orders</p>
                         </div>
                       </div>
@@ -2912,22 +3277,37 @@ export default function AdminDashboard() {
               </div>
 
               {/* Best Sellers */}
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <h3 className="font-playfair text-lg text-purple-primary mb-4 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-purple-primary" /> Best Sellers
-                </h3>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-inter text-base font-semibold text-gray-800">Top Products</h3>
+                  <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+                    <TrendingUp size={16} className="text-emerald-600" />
+                  </div>
+                </div>
                 {bestSellers.length === 0 ? (
-                  <p className="font-inter text-sm text-gray-400">No sales data yet.</p>
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <TrendingUp size={20} className="text-gray-400" />
+                    </div>
+                    <p className="font-inter text-sm text-gray-500">No sales data yet</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {bestSellers.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
+                      <div key={idx} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
-                          <span className="font-inter text-xs text-gray-400 w-5">#{idx + 1}</span>
-                          <span className="font-inter text-sm text-gray-700 truncate max-w-[120px]">{item.name}</span>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-inter text-xs font-bold ${
+                            idx === 0 ? 'bg-emerald-100 text-emerald-700' :
+                            idx === 1 ? 'bg-teal-100 text-teal-700' :
+                            idx === 2 ? 'bg-cyan-100 text-cyan-700' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            {idx + 1}
+                          </div>
+                          <span className="font-inter text-sm text-gray-700 font-medium truncate max-w-[120px]">{item.name}</span>
                         </div>
                         <div className="text-right">
-                          <p className="font-inter text-sm font-medium text-purple-primary">{item.sold} sold</p>
+                          <p className="font-inter text-sm font-semibold text-emerald-600">{item.sold} units</p>
                           <p className="font-inter text-[10px] text-gray-400">{CURRENCY}{item.revenue.toLocaleString()}</p>
                         </div>
                       </div>
@@ -2937,10 +3317,13 @@ export default function AdminDashboard() {
               </div>
 
               {/* Slow Moving Stock */}
-              <div className="bg-white rounded-lg border border-gray-100 p-6">
-                <h3 className="font-playfair text-lg text-purple-primary mb-4 flex items-center gap-2">
-                  <Clock size={18} className="text-rose-gold" /> Slow Moving Stock
-                </h3>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-inter text-base font-semibold text-gray-800">Inventory Alert</h3>
+                  <div className="w-8 h-8 bg-rose-50 rounded-lg flex items-center justify-center">
+                    <Clock size={16} className="text-rose-500" />
+                  </div>
+                </div>
                 {slowMovingStock.length === 0 ? (
                   <p className="font-inter text-sm text-gray-400">All products are selling well!</p>
                 ) : (

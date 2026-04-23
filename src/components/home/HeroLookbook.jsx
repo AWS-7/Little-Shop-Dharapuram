@@ -103,7 +103,7 @@ const HeroLookbook = () => {
               src={banners[current].image} 
               alt={banners[current].title}
               loading={current === 0 ? 'eager' : 'lazy'}
-              fetchPriority={current === 0 ? 'high' : 'low'}
+              fetchpriority={current === 0 ? 'high' : 'low'}
               decoding="async"
               className="w-full h-full object-cover object-center"
             />

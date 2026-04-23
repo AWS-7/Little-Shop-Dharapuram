@@ -3,7 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, User, ShieldCheck, Bell, BellRing, Eye, EyeOff, Clock } from 'lucide-react';
 import { requestNotificationPermission, isNotificationSupported } from '../../lib/notifications';
-import { loginAdmin, isAdminAuthenticated, getSessionTimeRemaining } from '../../lib/adminAuth';
+import { 
+  loginAdmin, 
+  isAdminAuthenticated 
+} from '../../lib/adminAuth';
 
 export default function AdminLogin() {
   const navigate = useNavigate();

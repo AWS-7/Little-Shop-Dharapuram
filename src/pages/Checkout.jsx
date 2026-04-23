@@ -165,13 +165,9 @@ export default function Checkout() {
       total,
       subtotal,
       shipping,
-      discount: couponDiscount,
-      coupon_code: appliedCoupon?.code || null,
-      coupon_discount_percent: appliedCoupon?.discount_percent || null,
-      gift_wrap: isGiftWrap,
-      gift_wrap_amount: giftWrapAmount,
-      gift_message: isGiftWrap ? giftMessage : null,
-      user_id: user?.uid || null, // Add user_id to link order to user
+      // Note: Extended columns (discount, coupon_code, gift_wrap, etc.) 
+      // need to be added to Supabase orders table for full feature support
+      user_id: user?.uid || null,
       items: cart.map((item) => ({
         id: item.id,
         name: item.name,
@@ -222,8 +218,7 @@ export default function Checkout() {
       subtotal,
       shipping,
       discount: couponDiscount,
-      coupon_code: appliedCoupon?.code || null,
-      coupon_discount_percent: appliedCoupon?.discount_percent || null,
+      // Coupon info stored locally only until DB schema updated
       items: payload.items,
       customer: payload.customer,
       date: saved?.created_at || new Date().toISOString(),
