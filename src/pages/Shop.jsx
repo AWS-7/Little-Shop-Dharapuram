@@ -97,7 +97,7 @@ export default function Shop() {
       
       <div className="container-clean pt-4 md:pt-6 pb-10">
         {/* Page Header — Modern MNC Style */}
-        <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-200 mb-5">
+        <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-200 mt-10 mb-5">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
               <LayoutGrid size={20} className="text-purple-600" />
