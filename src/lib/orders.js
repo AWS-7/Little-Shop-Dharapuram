@@ -300,12 +300,9 @@ export function subscribeToOrders(callback) {
   const channel = supabase
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-      console.log('Realtime order event:', payload);
-      callback(payload);
+        callback(payload);
     })
-    .subscribe((status) => {
-      console.log('Orders subscription status:', status);
-    });
+    .subscribe();
   return channel;
 }
 
@@ -328,7 +325,6 @@ export function subscribeToOrder(orderId, callback) {
 // ── Delete Order ──
 export async function deleteOrder(orderId) {
   try {
-    console.log('Deleting order:', orderId);
     const { error } = await supabase
       .from('orders')
       .delete()
@@ -338,7 +334,6 @@ export async function deleteOrder(orderId) {
       console.error('Delete error:', error);
       throw error;
     }
-    console.log('Order deleted successfully:', orderId);
     return { success: true, error: null };
   } catch (e) {
     console.error('Delete exception:', e);
@@ -349,8 +344,7 @@ export async function deleteOrder(orderId) {
 // ── Reset All Orders (Delete all order data) ──
 export async function resetAllOrders() {
   try {
-    console.log('Resetting all orders...');
-    const { error } = await supabase
+      const { error } = await supabase
       .from('orders')
       .delete()
       .neq('order_id', 'placeholder'); // Delete all orders
@@ -359,7 +353,6 @@ export async function resetAllOrders() {
       console.error('Reset orders error:', error);
       throw error;
     }
-    console.log('All orders deleted successfully');
     return { success: true, count: 'all', error: null };
   } catch (e) {
     console.error('Reset orders exception:', e);

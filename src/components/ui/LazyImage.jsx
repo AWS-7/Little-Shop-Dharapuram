@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { PLACEHOLDER_IMG } from '../../lib/products';
 
 /**
  * LazyImage - Optimized image component with:
  * - Lazy loading (only loads when in viewport)
- * - Blur placeholder while loading
  * - Fade-in animation
  * - WebP format support
  * - Responsive srcset
@@ -18,19 +17,21 @@ export default function LazyImage({
   containerClassName = '',
   sizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
   quality = 75,
-  priority = false,  // If true, loads immediately (for above-fold images)
+  priority = false,
+  loading = 'lazy',
   onLoad,
   onError
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [inView, setInView] = useState(priority);
-  const imgRef = useRef(null);
+  const [inView, setInView] = useState(priority || loading === 'eager');
 
-  // Always load image immediately (fix for ProductDetail related products)
+  // Only lazy load when priority is false and loading is lazy
   useEffect(() => {
-    setInView(true);
-  }, []);
+    if (priority || loading === 'eager') {
+      setInView(true);
+    }
+  }, [priority, loading]);
 
   // Generate optimized image URLs
   const getOptimizedUrl = (url, width) => {

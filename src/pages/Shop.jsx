@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, X, LayoutGrid, List, Columns2, Columns3, Columns4 } from 'lucide-react';
 import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
@@ -225,42 +224,35 @@ export default function Shop() {
           </div>
         </div>
 
-        {/* Product Grid - Modern Layouts */}
+        {/* Product Grid - Optimized for Performance */}
         {loadingProducts && showSlowLoading ? (
           <ProductGridSkeleton count={8} />
         ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={viewMode + gridCols}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className={`
-                ${viewMode === 'list' 
-                  ? 'flex flex-col gap-4' 
-                  : viewMode === 'compact'
-                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
-                    : gridCols === '2'
-                      ? 'grid grid-cols-2 gap-4 md:gap-6'
-                      : gridCols === '3'
-                        ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5'
-                        : gridCols === '4'
-                          ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4'
-                          : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5'
-                }
-              `}
-            >
-              {filtered.map((product, idx) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  index={idx} 
-                  variant={viewMode}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          <div
+            className={`
+              ${viewMode === 'list' 
+                ? 'flex flex-col gap-4' 
+                : viewMode === 'compact'
+                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+                  : gridCols === '2'
+                    ? 'grid grid-cols-2 gap-4 md:gap-6'
+                    : gridCols === '3'
+                      ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5'
+                      : gridCols === '4'
+                        ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4'
+                        : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5'
+              }
+            `}
+          >
+            {filtered.slice(0, 24).map((product, idx) => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                index={idx} 
+                variant={viewMode}
+              />
+            ))}
+          </div>
         )}
 
         {filtered.length === 0 && (

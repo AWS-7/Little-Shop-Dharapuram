@@ -408,7 +408,6 @@ export function subscribeToProducts(callback) {
       'postgres_changes',
       { event: '*', table: 'products' },
       (payload) => {
-        console.log('Real-time product change:', payload);
         callback(payload);
       }
     )

@@ -974,7 +974,6 @@ export default function AdminDashboard() {
 
     // Realtime: listen for INSERT, UPDATE, and DELETE on orders table
     const channel = subscribeToOrders((payload) => {
-      console.log('Realtime order event:', payload.eventType, payload.new?.order_id || payload.old?.order_id);
       if (payload.eventType === 'INSERT' && payload.new) {
         setOrders((prev) => {
           // Prevent duplicates
@@ -992,20 +991,17 @@ export default function AdminDashboard() {
         // Remove deleted order from the list
         const deletedId = payload.old.order_id || payload.old.id;
         setOrders((prev) => prev.filter((order) => order.id !== deletedId));
-        console.log('Order removed from list:', deletedId);
       }
     });
 
-    // Fallback: Refresh orders every 30 seconds
+    // Fallback: Refresh orders every 5 minutes (reduced from 30s for performance)
     const interval = setInterval(() => {
-      console.log('Auto-refreshing orders...');
       fetchOrders();
-    }, 30000);
+    }, 300000);
 
     // Refresh when tab becomes visible
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Tab visible - refreshing orders');
         fetchOrders();
       }
     };
@@ -1024,7 +1020,6 @@ export default function AdminDashboard() {
     const initNotifications = async () => {
       const result = await requestNotificationPermission();
       setNotifPermission(result);
-      console.log('Notification permission result:', result);
     };
     
     // Small delay to ensure page is loaded
@@ -1032,7 +1027,6 @@ export default function AdminDashboard() {
 
     const notifSubscription = startOrderNotifications(
       async (newOrder) => {
-        console.log('New order notification:', newOrder);
         // Also send email notification
         await notifyNewOrder(newOrder);
         // Refresh orders list
@@ -1073,15 +1067,14 @@ export default function AdminDashboard() {
 
     // Real-time subscription for cart changes
     const cartSubscription = subscribeToCarts((payload) => {
-      console.log('Cart change detected:', payload);
       // Refresh abandoned carts list when carts are updated
       if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
         fetchAbandoned();
       }
     });
 
-    // Poll every 60s as backup
-    const interval = setInterval(fetchAbandoned, 60_000);
+    // Poll every 5 minutes as backup (reduced from 60s for performance)
+    const interval = setInterval(fetchAbandoned, 300000);
 
     return () => {
       clearInterval(interval);

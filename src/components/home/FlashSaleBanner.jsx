@@ -28,8 +28,8 @@ export default function FlashSaleBanner({ onClosePopup, triggerHeroSlide }) {
     };
 
     fetchFlashSale();
-    // Poll every 30 seconds for updates
-    const interval = setInterval(fetchFlashSale, 30000);
+    // Poll every 2 minutes for updates (reduced from 30s for performance)
+    const interval = setInterval(fetchFlashSale, 120000);
     return () => clearInterval(interval);
   }, []);
 
@@ -111,13 +111,6 @@ export default function FlashSaleBanner({ onClosePopup, triggerHeroSlide }) {
 
   // Don't render anything if loading, no flash sale, or timer expired
   if (loading || !flashSale || !timeLeft) return null;
-
-  // Debug logging
-  console.log('🎴 Flash Sale Data:', {
-    product_name: flashSale.product_name,
-    product_image: flashSale.product_image,
-    product_id: flashSale.product_id
-  });
 
   const discountPercent = Math.round(
     (1 - flashSale.discounted_price / flashSale.original_price) * 100
