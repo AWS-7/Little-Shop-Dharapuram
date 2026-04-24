@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Package, Truck, CheckCircle, Clock, MapPin, CreditCard,
-  User, Phone, PackageCheck, Check, ChevronDown, Mail,
+  User, Phone, PackageCheck, Check, ChevronDown, Mail, Trash2, AlertTriangle,
 } from 'lucide-react';
-import { getOrderById, updateOrderStatus, updateOrderTrackingId, subscribeToOrder } from '../../lib/orders';
+import { getOrderById, updateOrderStatus, updateOrderTrackingId, subscribeToOrder, deleteOrder } from '../../lib/orders';
 import { CURRENCY, ORDER_STATUSES } from '../../lib/constants';
 
 const statusSteps = [
@@ -28,12 +28,15 @@ const statusColor = (status) => {
 
 export default function AdminOrderDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const isAuth = localStorage.getItem('admin_auth');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [trackingId, setTrackingId] = useState('');
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -74,12 +77,40 @@ export default function AdminOrderDetail() {
     setUpdating(false);
   };
 
+  const handleDeleteOrder = async () => {
+    if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      const { success, error: deleteError } = await deleteOrder(id);
+      
+      if (success) {
+        alert('Order deleted successfully!');
+        // Navigate immediately to dashboard, don't wait
+        navigate('/admin/dashboard', { replace: true });
+        // Force page reload to clear all state
+        window.location.href = '/admin/dashboard';
+      } else {
+        alert('Failed to delete order: ' + (deleteError?.message || 'Unknown error'));
+        setDeleting(false);
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+      setDeleting(false);
+    }
+  };
+
   const currentStep = order ? statusSteps.findIndex((s) => s.key === order.status) : -1;
 
-  if (loading) {
+  if (loading || deleting) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="font-inter text-sm text-gray-400">Loading order...</p>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-purple-primary/30 border-t-purple-primary rounded-full animate-spin mx-auto mb-3" />
+          <p className="font-inter text-sm text-gray-400">{deleting ? 'Deleting order...' : 'Loading order...'}</p>
+        </div>
       </div>
     );
   }
@@ -132,6 +163,16 @@ export default function AdminOrderDetail() {
             }`}>
               {isPaid ? 'Paid' : 'Pending'}
             </span>
+            {/* Delete Order Button */}
+            <button
+              onClick={handleDeleteOrder}
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm border border-red-600"
+              title="Delete Order"
+            >
+              <Trash2 size={16} />
+              <span className="font-inter text-xs font-semibold">{deleting ? 'Deleting...' : 'Delete Order'}</span>
+            </button>
           </div>
         </div>
 

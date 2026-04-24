@@ -324,3 +324,45 @@ export function subscribeToOrder(orderId, callback) {
     .subscribe();
   return channel;
 }
+
+// ── Delete Order ──
+export async function deleteOrder(orderId) {
+  try {
+    console.log('Deleting order:', orderId);
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('order_id', orderId);
+    
+    if (error) {
+      console.error('Delete error:', error);
+      throw error;
+    }
+    console.log('Order deleted successfully:', orderId);
+    return { success: true, error: null };
+  } catch (e) {
+    console.error('Delete exception:', e);
+    return { success: false, error: e };
+  }
+}
+
+// ── Reset All Orders (Delete all order data) ──
+export async function resetAllOrders() {
+  try {
+    console.log('Resetting all orders...');
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .neq('order_id', 'placeholder'); // Delete all orders
+    
+    if (error) {
+      console.error('Reset orders error:', error);
+      throw error;
+    }
+    console.log('All orders deleted successfully');
+    return { success: true, count: 'all', error: null };
+  } catch (e) {
+    console.error('Reset orders exception:', e);
+    return { success: false, count: 0, error: e };
+  }
+}

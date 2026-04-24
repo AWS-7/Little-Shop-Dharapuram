@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { isAuthenticated } from '../../lib/firebaseAuth';
 import { isAdminAuthenticated, getSessionTimeRemaining } from '../../lib/adminAuth';
@@ -17,9 +18,14 @@ export function ClientProtectedRoute({ children }) {
   const location = useLocation();
   const authenticated = isAuthenticated();
 
+  // Memoize navigation state to prevent infinite re-renders
+  const navigateState = useMemo(() => ({ 
+    from: location.pathname + location.search 
+  }), [location.pathname, location.search]);
+
   if (!authenticated) {
     // Redirect to login, save the attempted URL
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={navigateState} replace />;
   }
 
   return children;
@@ -34,10 +40,16 @@ export function AdminProtectedRoute({ children }) {
   // Check for session expiration message
   const isExpired = location.search.includes('expired=true');
 
+  // Memoize navigation state to prevent infinite re-renders
+  const navigateState = useMemo(() => ({ 
+    from: location.pathname + location.search,
+    expired: isExpired 
+  }), [location.pathname, location.search, isExpired]);
+
   if (!adminAuthenticated) {
     // Not logged in as admin - redirect to admin login
     // Never redirect to customer login for admin routes
-    return <Navigate to="/admin/login" state={{ from: location, expired: isExpired }} replace />;
+    return <Navigate to="/admin/login" state={navigateState} replace />;
   }
 
   // Admin is authenticated - check session time

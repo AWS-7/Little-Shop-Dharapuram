@@ -54,51 +54,52 @@ export default function RecentlyViewed() {
   if (loading || !liveProduct) return null;
 
   return (
-    <section className="container-luxury py-8 md:py-12">
-      <div className="flex items-center gap-2 mb-4">
-        <Eye size={16} className="text-rose-gold" />
-        <h2 className="font-playfair text-lg md:text-xl text-purple-primary">Recently Viewed</h2>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-xs mx-auto"
-      >
-        <Link to={`/product/${liveProduct.id}`} className="block group">
-          {/* Single Product Card */}
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-            {/* Image Container */}
-            <div className="aspect-[4/3] overflow-hidden bg-gray-100">
-              <img
-                src={liveProduct.image}
-                alt={liveProduct.name}
-                loading="lazy"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => {
-                  e.target.src = 'https://placehold.co/400x300/f3f4f6/9ca3af?text=No+Image';
-                }}
-              />
-            </div>
-
-            {/* Content */}
-            <div className="p-4 text-center">
-              <p className="font-inter text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1">
-                {liveProduct.category}
-              </p>
-              <p className="font-inter text-sm text-gray-700 truncate group-hover:text-purple-primary transition-colors leading-tight">
-                {liveProduct.name}
-              </p>
-              <p className="font-inter text-sm font-semibold text-purple-primary mt-1">
-                {CURRENCY}{liveProduct.price?.toLocaleString()}
-              </p>
-              <button className="mt-3 px-4 py-2 bg-purple-primary text-white text-xs font-medium rounded-lg hover:bg-purple-primary/90 transition-colors">
-                View Product
-              </button>
-            </div>
+    <section className="container-clean py-6 md:py-10 bg-gray-50">
+      <div className="max-w-md mx-auto">
+        {/* Section Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+            <Eye size={16} className="text-blue-600" />
           </div>
-        </Link>
-      </motion.div>
+          <h2 className="text-base font-semibold text-gray-900">Recently Viewed</h2>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Link to={`/product/${liveProduct.id}`} className="block group">
+            {/* Single Product Card - Modern MNC Style */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+              {/* Image Container */}
+              <div className="aspect-[4/3] overflow-hidden bg-gray-100">
+                <img
+                  src={liveProduct.image}
+                  alt={liveProduct.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    e.target.src = 'https://placehold.co/400x300/f3f4f6/9ca3af?text=No+Image';
+                  }}
+                />
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                  {liveProduct.category}
+                </p>
+                <p className="text-sm font-medium text-gray-800 truncate group-hover:text-purple-600 transition-colors leading-tight mb-1">
+                  {liveProduct.name}
+                </p>
+                <p className="text-base font-semibold text-purple-600">
+                  {CURRENCY}{liveProduct.price?.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      </div>
     </section>
   );
 }

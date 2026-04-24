@@ -326,27 +326,29 @@ export default function Checkout() {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen pt-36 pb-24">
+    <div className="bg-gray-50 min-h-screen pt-32 pb-24">
       <div className="container-clean">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        {/* Header - Modern MNC Style */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <div className="flex items-center gap-2 text-purple-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">
-              <Shield size={14} />
-              <span>Secure Checkout</span>
+            <div className="flex items-center gap-2 text-purple-600 text-xs font-medium mb-2">
+              <Shield size={14} className="text-green-500" />
+              <span>Secure SSL Checkout</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight uppercase">Checkout</h1>
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Checkout</h1>
           </div>
-          {/* Stepper */}
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 ${currentStep === 'address' ? 'text-purple-primary' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${currentStep === 'address' ? 'bg-purple-primary text-white' : 'bg-gray-200'}`}>1</div>
-              <span className="text-xs font-black uppercase tracking-widest">Address</span>
+          {/* Modern Stepper */}
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm">
+            <div className={`flex items-center gap-2 ${currentStep === 'address' ? 'text-purple-600' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep === 'address' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>
+                {currentStep === 'payment' ? <Check size={12} /> : '1'}
+              </div>
+              <span className="text-xs font-medium">Address</span>
             </div>
-            <div className="w-8 h-px bg-gray-200" />
-            <div className={`flex items-center gap-2 ${currentStep === 'payment' ? 'text-purple-primary' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${currentStep === 'payment' ? 'bg-purple-primary text-white' : 'bg-gray-200'}`}>2</div>
-              <span className="text-xs font-black uppercase tracking-widest">Payment</span>
+            <div className="w-6 h-px bg-gray-200" />
+            <div className={`flex items-center gap-2 ${currentStep === 'payment' ? 'text-purple-600' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep === 'payment' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>2</div>
+              <span className="text-xs font-medium">Payment</span>
             </div>
           </div>
         </div>
@@ -356,35 +358,65 @@ export default function Checkout() {
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-8">
               {currentStep === 'address' ? (
-              <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-sm">
-                <div className="flex items-center justify-between mb-10 pb-4 border-b border-gray-50">
-                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Delivery Details</h2>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                {/* Section Header */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+                      <MapPin size={20} className="text-purple-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Delivery Details</h2>
+                      <p className="text-xs text-gray-500">Enter your shipping address</p>
+                    </div>
+                  </div>
                   {savedAddresses.length > 0 && (
-                    <button type="button" onClick={() => setShowAddressPicker(!showAddressPicker)} className="text-purple-primary text-xs font-black uppercase tracking-widest hover:underline">
-                      {showAddressPicker ? 'Close' : 'Use Saved'}
+                    <button 
+                      type="button" 
+                      onClick={() => setShowAddressPicker(!showAddressPicker)} 
+                      className="text-purple-600 text-sm font-medium hover:text-purple-700 flex items-center gap-1"
+                    >
+                      {showAddressPicker ? 'Close' : 'Use Saved Address'}
                     </button>
                   )}
                 </div>
 
+                {/* Saved Address Picker */}
                 <AnimatePresence>
                   {showAddressPicker && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 grid gap-4">
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }} 
+                      animate={{ height: 'auto', opacity: 1 }} 
+                      exit={{ height: 0, opacity: 0 }} 
+                      className="mb-6 grid gap-3"
+                    >
                       {savedAddresses.map(addr => (
-                        <button key={addr.id} type="button" onClick={() => selectAddress(addr)} className={`text-left p-6 rounded-2xl border transition-all ${selectedAddressId === addr.id ? 'border-purple-primary bg-purple-light' : 'border-gray-100 hover:border-purple-200'}`}>
-                          <p className="font-black text-gray-900">{addr.full_name}</p>
-                          <p className="text-xs font-medium text-gray-500 mt-1">{addr.address}, {addr.city} — {addr.pincode}</p>
+                        <button 
+                          key={addr.id} 
+                          type="button" 
+                          onClick={() => selectAddress(addr)} 
+                          className={`text-left p-4 rounded-xl border transition-all ${selectedAddressId === addr.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900">{addr.full_name}</p>
+                            {addr.is_default && (
+                              <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Default</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">{addr.address}, {addr.city} — {addr.pincode}</p>
                         </button>
                       ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Form Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {fields.map(field => (
                     <div key={field.name} className={field.full ? 'md:col-span-2' : ''}>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{field.label}</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">{field.label}</label>
                       <div className="relative">
-                        <field.icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                        <field.icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                           type={field.type}
                           name={field.name}
@@ -392,7 +424,7 @@ export default function Checkout() {
                           onChange={handleChange}
                           placeholder={field.placeholder}
                           required
-                          className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all placeholder:text-gray-300"
+                          className="w-full bg-white border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all placeholder:text-gray-400"
                         />
                       </div>
                     </div>
@@ -400,25 +432,50 @@ export default function Checkout() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-sm">
-                <div className="flex items-center justify-between mb-10 pb-4 border-b border-gray-50">
-                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Payment Method</h2>
-                  <button type="button" onClick={() => setCurrentStep('address')} className="text-purple-primary text-xs font-black uppercase tracking-widest hover:underline">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                {/* Section Header */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                      <CreditCard size={20} className="text-green-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Payment Method</h2>
+                      <p className="text-xs text-gray-500">Choose how you want to pay</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setCurrentStep('address')} 
+                    className="text-purple-600 text-sm font-medium hover:text-purple-700"
+                  >
                     Edit Address
                   </button>
                 </div>
                 
-                <div className="grid gap-4">
+                {/* Payment Options */}
+                <div className="grid gap-3">
                   {[
-                    { id: 'upi', label: 'UPI / QR Code' },
-                    { id: 'card', label: 'Credit / Debit Card' },
-                    { id: 'netbanking', label: 'Net Banking' },
-                    { id: 'cod', label: 'Cash on Delivery (COD)' }
+                    { id: 'upi', label: 'UPI / QR Code', icon: '💳', desc: 'Pay using any UPI app' },
+                    { id: 'card', label: 'Credit / Debit Card', icon: '💳', desc: 'Visa, Mastercard, RuPay' },
+                    { id: 'netbanking', label: 'Net Banking', icon: '🏦', desc: 'All major banks supported' },
+                    { id: 'cod', label: 'Cash on Delivery', icon: '💵', desc: 'Pay when you receive' }
                   ].map(method => (
-                    <button key={method.id} type="button" onClick={() => setSelectedPaymentMethod(method.id)} className={`flex items-center justify-between p-6 rounded-2xl border transition-all ${selectedPaymentMethod === method.id ? 'border-purple-primary bg-purple-light shadow-lg shadow-purple-primary/5' : 'border-gray-100 hover:border-purple-200'}`}>
-                      <span className="font-black text-gray-900 uppercase tracking-widest text-sm">{method.label}</span>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === method.id ? 'border-purple-primary' : 'border-gray-200'}`}>
-                        {selectedPaymentMethod === method.id && <div className="w-3 h-3 rounded-full bg-purple-primary" />}
+                    <button 
+                      key={method.id} 
+                      type="button" 
+                      onClick={() => setSelectedPaymentMethod(method.id)} 
+                      className={`flex items-center gap-4 p-4 rounded-xl border transition-all text-left ${selectedPaymentMethod === method.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    >
+                      <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-xl">
+                        {method.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{method.label}</p>
+                        <p className="text-xs text-gray-500">{method.desc}</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === method.id ? 'border-purple-600' : 'border-gray-300'}`}>
+                        {selectedPaymentMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-purple-600" />}
                       </div>
                     </button>
                   ))}
@@ -426,17 +483,17 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Gift Wrap moved inside Left Column */}
-            <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+            {/* Gift Wrap - Modern MNC Style */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
               <label className="flex items-center gap-4 cursor-pointer group">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isGiftWrap ? 'bg-purple-primary text-white shadow-lg' : 'bg-gray-50 text-gray-300'}`}>
-                  <Gift size={24} />
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isGiftWrap ? 'bg-rose-500 text-white shadow-md' : 'bg-rose-50 text-rose-400'}`}>
+                  <Gift size={22} />
                 </div>
                 <div className="flex-1">
-                  <p className="font-black text-gray-900 uppercase tracking-tight text-sm">Add Gift Wrap (+{CURRENCY}{GIFT_WRAP_PRICE})</p>
-                  <p className="text-xs font-medium text-gray-400 mt-1">Premium luxury packaging with a personal note.</p>
+                  <p className="font-medium text-gray-900">Add Gift Wrap</p>
+                  <p className="text-xs text-gray-500">Premium packaging + personal note (+{CURRENCY}{GIFT_WRAP_PRICE})</p>
                 </div>
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isGiftWrap ? 'bg-purple-primary border-purple-primary' : 'border-gray-200 group-hover:border-purple-primary'}`}>
+                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isGiftWrap ? 'bg-rose-500 border-rose-500' : 'border-gray-300 group-hover:border-rose-400'}`}>
                   {isGiftWrap && <Check size={14} className="text-white" />}
                 </div>
                 <input type="checkbox" checked={isGiftWrap} onChange={(e) => setIsGiftWrap(e.target.checked)} className="hidden" />
@@ -444,59 +501,79 @@ export default function Checkout() {
               
               <AnimatePresence>
                 {isGiftWrap && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-6 pt-6 border-t border-gray-50">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Gift Message</label>
-                    <textarea value={giftMessage} onChange={(e) => setGiftMessage(e.target.value)} rows={3} placeholder="Write a heartfelt message..." className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all resize-none placeholder:text-gray-300" />
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }} 
+                    animate={{ height: 'auto', opacity: 1 }} 
+                    exit={{ height: 0, opacity: 0 }} 
+                    className="mt-4 pt-4 border-t border-gray-100"
+                  >
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Gift Message (Optional)</label>
+                    <textarea 
+                      value={giftMessage} 
+                      onChange={(e) => setGiftMessage(e.target.value)} 
+                      rows={2} 
+                      placeholder="Write a heartfelt message for your loved one..." 
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-rose-400 focus:bg-white transition-all resize-none placeholder:text-gray-400" 
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </div>
 
-          {/* Right Column: Summary */}
+          {/* Right Column: Order Summary - Modern MNC Style */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-xl shadow-purple-primary/5 sticky top-40">
-              <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-8 pb-4 border-b border-gray-50">Order Summary</h2>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky top-32">
+              {/* Section Header */}
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Package size={18} className="text-blue-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Order Summary</h2>
+              </div>
               
-              {/* Item Details with Images */}
-              <div className="space-y-4 mb-8 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+              {/* Cart Items */}
+              <div className="space-y-3 mb-5 max-h-[280px] overflow-y-auto pr-1 scrollbar-hide">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex gap-4 items-center">
-                    <div className="w-16 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100">
+                  <div key={item.id} className="flex gap-3 items-center p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-black text-gray-900 truncate">{item.name}</p>
-                      <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Qty: {item.quantity}</p>
-                      <p className="text-xs font-black text-purple-primary mt-1">{CURRENCY}{item.price.toLocaleString()}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      <p className="text-sm font-medium text-purple-600">{CURRENCY}{item.price.toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-6 mb-8 border-t border-gray-50 pt-6">
+              {/* Price Breakdown */}
+              <div className="space-y-3 mb-5 border-t border-gray-100 pt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Items Total</span>
-                  <span className="font-black text-gray-900">{CURRENCY}{subtotal.toLocaleString()}</span>
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-medium text-gray-900">{CURRENCY}{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Shipping</span>
-                  <span className={`font-black ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>{shipping === 0 ? 'FREE' : `${CURRENCY}${shipping}`}</span>
+                  <span className="text-gray-500">Shipping</span>
+                  <span className={`font-medium ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    {shipping === 0 ? 'FREE' : `${CURRENCY}${shipping}`}
+                  </span>
                 </div>
                 {isGiftWrap && (
                   <div className="flex justify-between text-sm">
-                    <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Gift Wrap</span>
-                    <span className="font-black text-gray-900">{CURRENCY}{giftWrapAmount}</span>
+                    <span className="text-gray-500">Gift Wrap</span>
+                    <span className="font-medium text-gray-900">{CURRENCY}{giftWrapAmount}</span>
                   </div>
                 )}
                 
-                {/* Coupon Section */}
-                <div className="pt-4 border-t border-gray-100">
+                {/* Coupon Section - Modern Style */}
+                <div className="pt-3 border-t border-gray-100">
                   {!appliedCoupon ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Ticket size={16} className="text-purple-primary" />
-                        <span className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Apply Coupon</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Ticket size={14} className="text-purple-600" />
+                        <span className="text-xs font-medium text-gray-600">Have a coupon?</span>
                       </div>
                       <div className="flex gap-2">
                         <input
@@ -506,40 +583,40 @@ export default function Checkout() {
                             setCouponCode(e.target.value.toUpperCase());
                             setCouponError('');
                           }}
-                          placeholder="Enter code (e.g. LITTLE10)"
-                          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-purple-primary focus:bg-white transition-all uppercase"
+                          placeholder="Enter code"
+                          className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500 focus:bg-white transition-all uppercase placeholder:text-gray-400"
                           onKeyPress={(e) => e.key === 'Enter' && handleApplyCoupon()}
                           disabled={couponLoading}
                         />
                         <button
                           onClick={handleApplyCoupon}
                           disabled={couponLoading || !couponCode.trim()}
-                          className="bg-purple-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-purple-primary/90 transition-all disabled:opacity-50"
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium text-xs hover:bg-purple-700 transition-all disabled:opacity-50"
                         >
                           {couponLoading ? '...' : 'Apply'}
                         </button>
                       </div>
                       {couponError && (
-                        <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                        <p className="text-xs text-red-500 flex items-center gap-1">
                           <XCircle size={12} /> {couponError}
                         </p>
                       )}
                     </div>
                   ) : (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <Check size={16} className="text-green-600" />
+                          <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center">
+                            <Check size={14} className="text-green-600" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-gray-900">{appliedCoupon.code}</p>
-                            <p className="text-xs text-green-600 font-medium">{appliedCoupon.discount_percent}% OFF applied</p>
+                            <p className="text-sm font-medium text-gray-900">{appliedCoupon.code}</p>
+                            <p className="text-xs text-green-600">{appliedCoupon.discount_percent}% OFF applied</p>
                           </div>
                         </div>
                         <button
                           onClick={handleRemoveCoupon}
-                          className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          className="text-xs text-red-500 hover:text-red-600 px-2 py-1 hover:bg-red-50 rounded-md transition-colors"
                         >
                           Remove
                         </button>
@@ -550,67 +627,79 @@ export default function Checkout() {
 
                 {/* Discount Display */}
                 {couponDiscount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="font-bold text-green-600 uppercase tracking-widest text-[10px] flex items-center gap-1">
+                  <div className="flex justify-between text-sm pt-2">
+                    <span className="text-green-600 flex items-center gap-1">
                       <Tag size={12} /> Discount
                     </span>
-                    <span className="font-black text-green-600">-{CURRENCY}{couponDiscount.toLocaleString()}</span>
+                    <span className="font-medium text-green-600">-{CURRENCY}{couponDiscount.toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
-              <div className="bg-purple-light rounded-2xl p-6 mb-10 border border-purple-100">
+              {/* Total Amount */}
+              <div className="bg-gray-900 rounded-xl p-4 mb-6">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-purple-primary uppercase tracking-widest">Total Amount</span>
-                  <span className="text-2xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
+                  <span className="text-sm text-gray-300">Total Amount</span>
+                  <span className="text-xl font-semibold text-white">{CURRENCY}{total.toLocaleString()}</span>
                 </div>
               </div>
 
+              {/* Error Messages */}
               {paymentError && (
-                <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl">
-                  <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-1">{paymentError.title}</p>
-                  <p className="text-red-600 text-xs font-medium">{paymentError.message}</p>
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm font-medium">{paymentError.title}</p>
+                  <p className="text-red-500 text-xs">{paymentError.message}</p>
                 </div>
               )}
 
               {/* Stock Validation Errors */}
               {stockErrors.length > 0 && (
-                <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl">
-                  <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-3">
-                    <Ban size={14} className="inline mr-1" />
-                    Stock Issue - Please Update Cart
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm font-medium flex items-center gap-1 mb-2">
+                    <Ban size={14} />
+                    Stock Issue
                   </p>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1">
                     {stockErrors.map((error, idx) => (
-                      <li key={idx} className="text-red-600 text-xs font-medium flex items-start gap-2">
-                        <span className="font-bold">{error.name}:</span> {error.message}
+                      <li key={idx} className="text-red-500 text-xs">
+                        <span className="font-medium">{error.name}:</span> {error.message}
                       </li>
                     ))}
                   </ul>
                   <button
                     onClick={() => navigate('/cart')}
-                    className="mt-3 text-xs font-bold text-red-600 underline hover:text-red-700"
+                    className="mt-2 text-xs font-medium text-red-600 underline hover:text-red-700"
                   >
-                    Go to Cart →
+                    Update Cart →
                   </button>
                 </div>
               )}
 
+              {/* Desktop Pay Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-primary/20 hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-3"
+                className="w-full bg-purple-600 text-white py-3.5 rounded-xl font-medium text-sm hover:bg-purple-700 transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
               >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : couponDiscount > 0 ? `PAY ${CURRENCY}${total.toLocaleString()} (-${CURRENCY}${couponDiscount})` : `PAY ${CURRENCY}${total.toLocaleString()}`}
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : currentStep === 'address' ? (
+                  <>Continue to Payment <ArrowLeft size={16} className="rotate-180" /></>
+                ) : selectedPaymentMethod === 'cod' ? (
+                  'Place Order'
+                ) : (
+                  `Pay ${CURRENCY}${total.toLocaleString()}`
+                )}
               </button>
               
-              <div className="mt-8 pt-8 border-t border-gray-50 space-y-4">
-                <div className="flex items-center gap-3 text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                  <Lock size={14} className="text-purple-primary" />
-                  <span>Secure SSL Encrypted</span>
+              {/* Trust Badges */}
+              <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Lock size={12} className="text-green-500" />
+                  <span>Secure SSL Encryption</span>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                  <ShieldCheck size={14} className="text-purple-primary" />
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <ShieldCheck size={12} className="text-green-500" />
                   <span>100% Buyer Protection</span>
                 </div>
               </div>
@@ -618,41 +707,48 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Mobile Sticky Pay Button */}
-          <div className="fixed bottom-[80px] left-0 right-0 z-40 lg:hidden px-4">
-            <div className="bg-white rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="font-black text-[10px] tracking-widest uppercase text-gray-400">Total to Pay</p>
-                  <p className="font-bold text-xs text-gray-500">{cart.length} item{cart.length !== 1 ? 's' : ''} · Secured</p>
-                </div>
-                <span className="text-xl font-black text-purple-primary">{CURRENCY}{total.toLocaleString()}</span>
+        {/* Mobile Sticky Pay Button - Modern Style */}
+        <div className="fixed bottom-[80px] left-0 right-0 z-40 lg:hidden px-4">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs text-gray-500">Total to Pay</p>
+                <p className="text-sm text-gray-600">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-black text-sm uppercase tracking-widest py-4 rounded-full hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-lg shadow-purple-primary/20"
-              >
-                {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? `PLACE ORDER` : couponDiscount > 0 ? `PAY ${CURRENCY}${total.toLocaleString()}` : `PAY ${CURRENCY}${total.toLocaleString()}`}
-              </button>
+              <span className="text-lg font-semibold text-gray-900">{CURRENCY}{total.toLocaleString()}</span>
             </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white font-medium text-sm py-3 rounded-lg hover:bg-purple-700 transition-all disabled:opacity-50 shadow-md"
+            >
+              {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? 'Place Order' : `Pay ${CURRENCY}${total.toLocaleString()}`}
+            </button>
           </div>
+        </div>
         </form>
       </div>
 
-      {/* Payment Error Toast */}
+      {/* Payment Error Toast - Modern Style */}
       <AnimatePresence>
         {paymentError && (
-          <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-24 right-6 z-50 max-w-sm w-full bg-white border border-red-100 rounded-3xl shadow-2xl p-6 flex gap-4">
-            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500">
-              <XCircle size={24} />
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -20 }} 
+            className="fixed top-24 right-4 z-50 max-w-sm w-full bg-white border border-red-200 rounded-xl shadow-lg p-4 flex gap-3"
+          >
+            <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+              <XCircle size={20} className="text-red-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{paymentError.title}</p>
-              <p className="text-xs font-medium text-gray-400 mt-1 leading-relaxed">{paymentError.message}</p>
+              <p className="text-sm font-medium text-gray-900">{paymentError.title}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{paymentError.message}</p>
             </div>
-            <button onClick={() => setPaymentError(null)} className="text-gray-300 hover:text-gray-500 self-start"><XCircle size={18} /></button>
+            <button onClick={() => setPaymentError(null)} className="text-gray-400 hover:text-gray-600">
+              <XCircle size={18} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

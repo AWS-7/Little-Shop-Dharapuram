@@ -46,21 +46,34 @@ export default function FeaturedGrid() {
   }, []);
 
   return (
-    <section className="py-12 md:py-20 bg-gray-50">
+    <section className="py-10 md:py-16 bg-gray-50">
       <div className="container-clean">
-        {/* Handpicked for You Section */}
+        {/* Handpicked for You Section - Modern MNC Style */}
         {handpicked.length > 0 && (
-          <div className="mb-16 md:mb-24 bg-white p-4 md:p-6 shadow-sm border border-gray-100 rounded-sm">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-              <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">
-                Handpicked Selection
-              </h2>
-              <Link to="/shop" className="bg-purple-primary text-white px-6 py-2 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-purple-secondary transition-all">
-                View All
+          <div className="mb-12 md:mb-16">
+            {/* Section Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <span className="text-xl">✨</span>
+                </div>
+                <div>
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                    Handpicked for You
+                  </h2>
+                  <p className="text-xs text-gray-500">Curated selection from each category</p>
+                </div>
+              </div>
+              <Link 
+                to="/shop" 
+                className="text-purple-600 text-sm font-medium hover:text-purple-700 flex items-center gap-1"
+              >
+                View All →
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
+            {/* Product Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
               {handpicked.map((product, idx) => (
                 <ProductCard key={`handpicked-${product.id}`} product={product} index={idx} />
               ))}
@@ -68,33 +81,45 @@ export default function FeaturedGrid() {
           </div>
         )}
 
-        {/* Featured Collection Section */}
-        <div className="bg-white p-4 md:p-6 shadow-sm border border-gray-100 rounded-sm">
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-            <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">
-              Featured Collection
-            </h2>
-            <Link to="/shop" className="bg-purple-primary text-white px-6 py-2 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-purple-secondary transition-all">
-              View All
+        {/* Featured Collection Section - Modern MNC Style */}
+        <div>
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <span className="text-xl">🔥</span>
+              </div>
+              <div>
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                  Featured Collection
+                </h2>
+                <p className="text-xs text-gray-500">Latest arrivals in our store</p>
+              </div>
+            </div>
+            <Link 
+              to="/shop" 
+              className="text-purple-600 text-sm font-medium hover:text-purple-700 flex items-center gap-1"
+            >
+              View All →
             </Link>
           </div>
 
           {/* Featured Product Grid */}
           {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-sm" />
+                <div key={i} className="aspect-[3/4] bg-gray-200 animate-pulse rounded-xl" />
               ))}
             </div>
           ) : featured.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
               {featured.map((product, idx) => (
                 <ProductCard key={product.id} product={product} index={idx} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-20 bg-white">
-              <p className="text-gray-500 font-black">No products available yet.</p>
+            <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+              <p className="text-gray-500 font-medium">No products available yet.</p>
             </div>
           )}
         </div>

@@ -679,70 +679,77 @@ export default function ProductDetail() {
             {/* Fabric & Care */}
             <FabricCareAccordion fabric={product.fabric} category={product.category} />
 
-            {/* Desktop Actions */}
-            <div className="hidden md:flex flex-col gap-4 pt-8 border-t border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className={`flex items-center rounded-xl border p-1 ${isInStock ? 'bg-gray-50 border-gray-100' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
+            {/* Desktop Actions - Modern MNC Style */}
+            <div className="hidden md:flex flex-col gap-3 pt-6 border-t border-gray-100">
+              <div className="flex items-center gap-3">
+                {/* Quantity Selector */}
+                <div className={`flex items-center rounded-lg border ${isInStock ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     disabled={!isInStock}
-                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors disabled:cursor-not-allowed"
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:cursor-not-allowed"
                   >
-                    <Minus size={18} />
+                    <Minus size={16} />
                   </button>
-                  <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
+                  <span className="w-10 text-center font-semibold text-gray-900 text-sm">{quantity}</span>
                   <button
                     onClick={() => setQuantity(Math.min(product.stockCount || 99, quantity + 1))}
                     disabled={!isInStock}
-                    className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-purple-primary transition-colors disabled:cursor-not-allowed"
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:cursor-not-allowed"
                   >
-                    <Plus size={18} />
+                    <Plus size={16} />
                   </button>
                 </div>
+
+                {/* Add to Cart / Notify Me */}
                 {isInStock ? (
                   <button
                     onClick={handleAddToCart}
-                    className="btn-primary flex-1 gap-3 h-14"
+                    className="flex-1 bg-purple-600 text-white h-11 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-sm"
                   >
-                    <ShoppingBag size={20} />
-                    {addedToCart ? 'Added to Bag!' : 'Add to Bag'}
+                    <ShoppingBag size={18} />
+                    {addedToCart ? 'Added!' : 'Add to Cart'}
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowNotifyModal(true)}
-                    className="flex-1 bg-gray-900 text-white h-14 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                    className="flex-1 bg-gray-800 text-white h-11 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-900 transition-all"
                   >
-                    <Bell size={20} />
+                    <Bell size={18} />
                     Notify Me
                   </button>
                 )}
+
+                {/* Wishlist */}
                 <button
                   onClick={() => toggleWishlist(product)}
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 transition-all ${
+                  className={`w-11 h-11 rounded-lg flex items-center justify-center border transition-all ${
                     wishlisted
-                      ? 'bg-purple-primary border-purple-primary text-white shadow-lg'
-                      : 'bg-white border-gray-200 text-gray-400 hover:border-purple-primary'
+                      ? 'bg-rose-500 border-rose-500 text-white'
+                      : 'bg-white border-gray-200 text-gray-400 hover:border-rose-400'
                   }`}
                 >
-                  <Heart size={22} fill={wishlisted ? 'currentColor' : 'none'} />
+                  <Heart size={20} fill={wishlisted ? 'currentColor' : 'none'} />
                 </button>
               </div>
-              {isInStock ? (
+
+              {/* Buy Now Button */}
+              {isInStock && (
                 <button
                   onClick={handleBuyNow}
-                  className="btn-outline w-full h-14"
+                  className="w-full bg-gray-900 text-white h-11 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-all"
                 >
                   Buy Now
                 </button>
-              ) : null}
+              )}
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* ═══ Mobile Sticky Action Bar ═══ */}
-      <div className="fixed bottom-[72px] left-0 right-0 z-40 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-100 px-4 py-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <div className="flex gap-3 max-w-lg mx-auto">
+      {/* ═══ Mobile Sticky Action Bar - Modern MNC Style ═══ */}
+      <div className="fixed bottom-[72px] left-0 right-0 z-40 lg:hidden bg-white border-t border-gray-200 px-4 py-2 shadow-lg">
+        <div className="flex gap-2 max-w-lg mx-auto">
           <button
             onClick={() => toggleWishlist(product)}
             className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all shrink-0 ${

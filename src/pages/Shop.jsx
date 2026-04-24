@@ -97,21 +97,28 @@ export default function Shop() {
       <LogoPulse show={showSlowLoading} />
       
       <div className="container-clean pt-4 md:pt-6 pb-10">
-        {/* Page Header — Standard eCommerce */}
-        <div className="bg-white p-6 md:p-8 rounded-sm shadow-sm border border-gray-100 mb-6">
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
-            All Products
-          </h1>
-          <p className="text-gray-500 text-sm font-medium">
-            Explore {filtered.length} items from our premium collection
-          </p>
+        {/* Page Header — Modern MNC Style */}
+        <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-200 mb-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+              <LayoutGrid size={20} className="text-purple-600" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+                All Products
+              </h1>
+              <p className="text-gray-500 text-sm">
+                {filtered.length} items in our premium collection
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Filter & Sort Row — Flipkart Style */}
-        <div className="bg-white border-b border-gray-100 shadow-sm mb-4 sticky top-[64px] md:top-[88px] z-30">
-          <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100">
+        {/* Filter & Sort Row — Modern MNC Style */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 sticky top-[64px] md:top-[88px] z-30 overflow-hidden">
+          <div className="flex flex-col md:flex-row">
             {/* Category Filter */}
-            <div className="flex-1 px-4 py-3 overflow-hidden">
+            <div className="flex-1 px-4 py-3 overflow-hidden border-b md:border-b-0 md:border-r border-gray-100">
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
                 <div className="bg-gray-100 p-2 rounded-lg shrink-0 sm:hidden">
                   <SlidersHorizontal size={16} className="text-gray-500" />
@@ -120,10 +127,10 @@ export default function Shop() {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap border shadow-sm ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                       selectedCategory === cat
-                        ? 'bg-purple-primary border-purple-primary text-white'
-                        : 'bg-white border-gray-100 text-gray-600 hover:border-purple-primary'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     {cat}
@@ -139,32 +146,32 @@ export default function Shop() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent border-none text-[11px] font-bold text-gray-900 outline-none cursor-pointer"
+                  className="bg-transparent border-none text-xs font-medium text-gray-700 outline-none cursor-pointer"
                 >
-                  <option value="default">Popularity</option>
-                  <option value="newest">Newest</option>
-                  <option value="price-asc">Price: Low-High</option>
-                  <option value="price-desc">Price: High-Low</option>
+                  <option value="default">Sort by: Popularity</option>
+                  <option value="newest">Newest First</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
                 </select>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <div className="h-4 w-px bg-gray-200" />
                 <button
                   onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
-                  className="text-[10px] font-bold text-purple-primary uppercase tracking-wider hover:underline"
+                  className="text-xs font-medium text-purple-600 hover:text-purple-700"
                 >
-                  Clear All
+                  Reset
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Grid View Controls */}
+        {/* Grid View Controls - Modern MNC Style */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <span className="text-sm font-semibold text-gray-700">
-            {filtered.length} Products
+          <span className="text-sm font-medium text-gray-600">
+            Showing {filtered.length} products
           </span>
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
@@ -257,15 +264,18 @@ export default function Shop() {
         )}
 
         {filtered.length === 0 && (
-          <div className="text-center py-32 bg-white border border-gray-100 rounded-sm shadow-sm">
-            <div className="max-w-xs mx-auto">
-              <h3 className="text-xl font-black text-gray-900 mb-2">No results found</h3>
-              <p className="text-gray-500 text-sm mb-8 font-medium">Try adjusting your filters or search criteria.</p>
+          <div className="text-center py-20 bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div className="max-w-sm mx-auto px-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <LayoutGrid size={28} className="text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
+              <p className="text-gray-500 text-sm mb-6">Try adjusting your filters to see more results.</p>
               <button
                 onClick={() => { setSelectedCategory('All'); setSelectedOccasion('All'); setSelectedColor('All'); }}
-                className="bg-purple-primary text-white px-8 py-3 rounded-sm font-black text-xs uppercase tracking-widest shadow-md"
+                className="bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:bg-purple-700 transition-all shadow-sm"
               >
-                Clear All
+                Clear All Filters
               </button>
             </div>
           </div>

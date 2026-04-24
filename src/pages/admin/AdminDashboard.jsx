@@ -13,7 +13,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PLACEHOLDER_PRODUCTS, CURRENCY, ORDER_STATUSES, ADMIN_EMAIL } from '../../lib/constants';
-import { getAllOrders, updateOrderStatus, subscribeToOrders } from '../../lib/orders';
+import { getAllOrders, updateOrderStatus, subscribeToOrders, deleteOrder, resetAllOrders } from '../../lib/orders';
 import { getAbandonedCarts, markReminderSent, sendAbandonedCartReminder, subscribeToCarts } from '../../lib/carts';
 import { logoutAdmin, getAdminSession, getSessionTimeRemaining, isSessionExpiringSoon, isAdminAuthenticated } from '../../lib/adminAuth';
 import {
@@ -207,6 +207,8 @@ export default function AdminDashboard() {
 
   // Bulk order selection for invoices
   const [selectedOrders, setSelectedOrders] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [resettingData, setResettingData] = useState(false);
 
   // Bulk actions state
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -970,9 +972,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchOrders();
 
-    // Realtime: listen for INSERT and UPDATE on orders table
+    // Realtime: listen for INSERT, UPDATE, and DELETE on orders table
     const channel = subscribeToOrders((payload) => {
-      console.log('Realtime order event:', payload.eventType, payload.new?.order_id);
+      console.log('Realtime order event:', payload.eventType, payload.new?.order_id || payload.old?.order_id);
       if (payload.eventType === 'INSERT' && payload.new) {
         setOrders((prev) => {
           // Prevent duplicates
@@ -986,6 +988,11 @@ export default function AdminDashboard() {
         setOrders((prev) => prev.map((order) =>
           order.id === (o.order_id || o.id) ? { ...order, status: o.status, _raw: o } : order
         ));
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        // Remove deleted order from the list
+        const deletedId = payload.old.order_id || payload.old.id;
+        setOrders((prev) => prev.filter((order) => order.id !== deletedId));
+        console.log('Order removed from list:', deletedId);
       }
     });
 
@@ -1567,6 +1574,80 @@ export default function AdminDashboard() {
     setSelectedOrders((prev) =>
       prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
     );
+  };
+
+  // Bulk delete orders
+  const handleBulkDeleteOrders = async () => {
+    if (selectedOrders.length === 0) {
+      showToast('Please select at least one order to delete', 'error');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    setBulkDeleting(true);
+    console.log('Starting bulk delete for orders:', selectedOrders);
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    for (const orderId of selectedOrders) {
+      console.log('Attempting to delete order:', orderId);
+      const { success, error } = await deleteOrder(orderId);
+      console.log('Delete result for', orderId, ':', { success, error });
+      if (success) {
+        deletedCount++;
+      } else {
+        failedCount++;
+        console.error(`Failed to delete order ${orderId}:`, error);
+      }
+    }
+    console.log('Bulk delete complete:', { deletedCount, failedCount });
+
+    // Immediately remove deleted orders from UI
+    console.log('Removing deleted orders from UI:', selectedOrders);
+    setOrders((prevOrders) => prevOrders.filter((order) => !selectedOrders.includes(order.id)));
+    
+    // Clear selection and loading state
+    setSelectedOrders([]);
+    setBulkDeleting(false);
+    
+    // Show success message
+    if (failedCount === 0) {
+      showToast(`Successfully deleted ${deletedCount} order(s)`, 'success');
+    } else {
+      showToast(`Deleted ${deletedCount} order(s), ${failedCount} failed`, 'error');
+    }
+  };
+
+  // Reset all order data (for client handover)
+  const handleResetAllData = async () => {
+    if (!window.confirm('⚠️ WARNING: This will delete ALL orders and reset sales data.\n\nThis action is for client handover only.\n\nAre you sure you want to reset all order data?')) {
+      return;
+    }
+
+    if (!window.confirm('Double confirmation:\n\nThis will permanently delete all orders, sales history, and revenue data.\n\nType "RESET" to confirm.')) {
+      return;
+    }
+
+    setResettingData(true);
+    console.log('Resetting all order data...');
+
+    const { success, error } = await resetAllOrders();
+
+    if (success) {
+      // Clear all order-related state
+      setOrders([]);
+      setSelectedOrders([]);
+      console.log('All order data reset successfully');
+      showToast('All order data reset successfully! Ready for client handover.', 'success');
+    } else {
+      console.error('Reset failed:', error);
+      showToast('Failed to reset data: ' + (error?.message || 'Unknown error'), 'error');
+    }
+
+    setResettingData(false);
   };
 
   // Generate bulk invoices PDF
@@ -2585,14 +2666,23 @@ export default function AdminDashboard() {
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Bulk Print Button */}
+                {/* Bulk Actions */}
                 {selectedOrders.length > 0 && (
-                  <button
-                    onClick={generateBulkInvoices}
-                    className="flex items-center gap-1.5 bg-purple-primary text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-purple-primary/90 transition-colors"
-                  >
-                    <Download size={14} /> Print {selectedOrders.length} Invoices
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={generateBulkInvoices}
+                      className="flex items-center gap-1.5 bg-purple-primary text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-purple-primary/90 transition-colors"
+                    >
+                      <Download size={14} /> Print {selectedOrders.length} Invoices
+                    </button>
+                    <button
+                      onClick={handleBulkDeleteOrders}
+                      disabled={bulkDeleting}
+                      className="flex items-center gap-1.5 bg-red-600 text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={14} /> {bulkDeleting ? 'Deleting...' : `Delete ${selectedOrders.length}`}
+                    </button>
+                  </div>
                 )}
                 {/* Order Search */}
                 <div className="relative">
@@ -2605,6 +2695,15 @@ export default function AdminDashboard() {
                     className="pl-10 pr-4 py-2 border border-gray-200 rounded-sm font-inter text-sm outline-none focus:border-purple-primary w-full sm:w-64"
                   />
                 </div>
+                {/* Reset All Data Button - For Client Handover */}
+                <button
+                  onClick={handleResetAllData}
+                  disabled={resettingData || orders.length === 0}
+                  className="flex items-center gap-1.5 bg-orange-600 text-white font-inter text-xs px-4 py-2 rounded-sm hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Reset all order data for client handover"
+                >
+                  <RotateCcw size={14} /> {resettingData ? 'Resetting...' : 'Reset All Data'}
+                </button>
               </div>
             </div>
             <div className="bg-white rounded-lg border border-gray-100 overflow-x-auto">

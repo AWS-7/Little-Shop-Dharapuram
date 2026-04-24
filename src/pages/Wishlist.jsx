@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, ArrowLeft } from 'lucide-react';
 import useStore from '../store/useStore';
 import ProductCard from '../components/home/ProductCard';
 
@@ -8,15 +8,18 @@ export default function Wishlist() {
 
   if (wishlist.length === 0) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-6">
-            <Heart size={32} className="text-gray-300" strokeWidth={1.5} />
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 bg-gray-50">
+        <div className="text-center bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray-200 max-w-md w-full">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-6">
+            <Heart size={28} className="text-rose-400" />
           </div>
-          <h2 className="font-playfair text-xl md:text-2xl text-gray-900 mb-2">Your wishlist is empty</h2>
-          <p className="font-inter text-sm text-gray-400 mb-8 max-w-xs mx-auto">Save your favorite pieces here and find them easily</p>
-          <Link to="/shop" className="inline-flex items-center justify-center bg-purple-primary text-white px-8 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-purple-secondary transition-colors">
-            Explore Collection
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>
+          <p className="text-sm text-gray-500 mb-8">Save items you love and find them easily anytime.</p>
+          <Link 
+            to="/shop" 
+            className="inline-flex items-center justify-center bg-purple-600 text-white px-6 py-3 rounded-lg font-medium text-sm hover:bg-purple-700 transition-all shadow-sm"
+          >
+            Explore Products
           </Link>
         </div>
       </div>
@@ -25,11 +28,28 @@ export default function Wishlist() {
 
   return (
     <div className="container-clean py-8 md:py-12">
-      <div className="text-center mb-8 md:mb-10">
-        <h1 className="font-playfair text-2xl md:text-3xl text-purple-primary mb-2">Your Wishlist</h1>
-        <p className="font-inter text-sm text-gray-400">{wishlist.length} saved item{wishlist.length !== 1 ? 's' : ''}</p>
+      {/* Header - Modern MNC Style */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center">
+            <Heart size={20} className="text-rose-500" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Your Wishlist</h1>
+            <p className="text-sm text-gray-500">{wishlist.length} saved item{wishlist.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <Link 
+          to="/shop" 
+          className="flex items-center gap-2 text-purple-600 text-sm font-medium hover:text-purple-700"
+        >
+          <ArrowLeft size={16} />
+          Continue Shopping
+        </Link>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+
+      {/* Product Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
         {wishlist.map((product, idx) => (
           <ProductCard key={product.id} product={product} index={idx} />
         ))}
