@@ -81,7 +81,6 @@ export default function LazyImage({
 
   return (
     <div
-      ref={imgRef}
       className={`relative overflow-hidden bg-gray-100 contain-paint ${containerClassName}`}
       style={{
         aspectRatio,
