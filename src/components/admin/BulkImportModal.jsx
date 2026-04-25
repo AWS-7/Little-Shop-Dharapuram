@@ -8,8 +8,7 @@ import { supabase } from '../../lib/supabase';
 // ── CSV column definitions ──
 const CSV_COLUMNS = [
   'name', 'category', 'price', 'original_price', 'stock_count',
-  'description', 'image_url', 'badge', 'fabric', 'weave_type',
-  'material', 'care', 'origin',
+  'description', 'image_url', 'badge', 'is_active'
 ];
 
 const REQUIRED_COLUMNS = ['name', 'category', 'price'];
@@ -24,11 +23,6 @@ const SAMPLE_ROWS = [
     description: 'Traditional Kanchipuram silk saree with gold zari border and pallu.',
     image_url: 'https://your-bucket.supabase.co/storage/v1/object/public/product-images/saree1.jpg',
     badge: 'New',
-    fabric: 'Pure Kanchipuram Silk',
-    weave_type: 'Zari Jaal',
-    material: '',
-    care: 'Dry clean only',
-    origin: 'Kanchipuram, Tamil Nadu',
   },
   {
     name: 'Temple Necklace Set — Gold',
@@ -39,11 +33,6 @@ const SAMPLE_ROWS = [
     description: 'Handcrafted temple jewellery necklace with matching jhumkas.',
     image_url: 'https://your-bucket.supabase.co/storage/v1/object/public/product-images/necklace1.jpg',
     badge: '',
-    fabric: '',
-    weave_type: '',
-    material: 'Gold-plated Brass',
-    care: 'Wipe with soft cloth',
-    origin: '',
   },
 ];
 
@@ -79,23 +68,19 @@ function validateRow(row, index) {
 
 // ── Map CSV row to Supabase products table shape ──
 function mapRowToProduct(row) {
-  const fabric = {};
-  if (row.fabric?.trim()) fabric.fabric = row.fabric.trim();
-  if (row.weave_type?.trim()) fabric.weaveType = row.weave_type.trim();
-  if (row.material?.trim()) fabric.material = row.material.trim();
-  if (row.care?.trim()) fabric.care = row.care.trim();
-  if (row.origin?.trim()) fabric.origin = row.origin.trim();
-
+  // Filter out any id column - let Supabase auto-generate it
+  const { id, ...cleanRow } = row;
+  
   return {
-    name: row.name.trim(),
-    category: row.category.trim(),
-    price: parseFloat(row.price),
-    original_price: row.original_price ? parseFloat(row.original_price) : null,
-    stock_count: parseInt(row.stock_count) || 0,
-    description: row.description?.trim() || null,
-    image_url: row.image_url?.trim() || null,
-    badge: ['New', 'Sale', 'Bestseller'].includes(row.badge?.trim()) ? row.badge.trim() : null,
-    fabric: Object.keys(fabric).length > 0 ? fabric : {},
+    name: cleanRow.name?.trim() || '',
+    category: cleanRow.category?.trim() || '',
+    price: parseFloat(cleanRow.price) || 0,
+    original_price: cleanRow.original_price ? parseFloat(cleanRow.original_price) : null,
+    stock_count: parseInt(cleanRow.stock_count) || 0,
+    description: cleanRow.description?.trim() || null,
+    image_url: cleanRow.image_url?.trim() || null,
+    badge: ['New', 'Sale', 'Bestseller'].includes(cleanRow.badge?.trim()) ? cleanRow.badge.trim() : null,
+    is_active: true, // Default to active
   };
 }
 
@@ -147,14 +132,33 @@ export default function BulkImportModal({ isOpen, onClose, onImportComplete }) {
           setStep('preview');
           return;
         }
+        
+        // Check for extra columns and warn
+        const extraCols = headers.filter((h) => !CSV_COLUMNS.includes(h));
+        if (extraCols.length > 0) {
+          console.warn('CSV contains extra columns that will be ignored:', extraCols.join(', '));
+        }
+
+        // Filter rows to only include valid CSV columns and remove id
+        const filteredRows = rows.map((row) => {
+          const filtered = {};
+          CSV_COLUMNS.forEach((col) => {
+            if (row[col] !== undefined && row[col] !== '') {
+              filtered[col] = row[col];
+            }
+          });
+          // Explicitly ensure no id field is present
+          delete filtered.id;
+          return filtered;
+        });
 
         // Validate each row
         const allErrors = [];
-        rows.forEach((row, i) => {
+        filteredRows.forEach((row, i) => {
           allErrors.push(...validateRow(row, i));
         });
 
-        setParsedRows(rows);
+        setParsedRows(filteredRows);
         setValidationErrors(allErrors);
         setStep('preview');
       },
@@ -179,7 +183,24 @@ export default function BulkImportModal({ isOpen, onClose, onImportComplete }) {
     setImportedCount(0);
     setFailedRows([]);
 
-    const products = parsedRows.map(mapRowToProduct);
+    const products = parsedRows.map(mapRowToProduct).map(p => {
+      // Explicitly construct object with only valid fields (no id)
+      return {
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        original_price: p.original_price,
+        stock_count: p.stock_count,
+        description: p.description,
+        image_url: p.image_url,
+        badge: p.badge,
+        is_active: p.is_active,
+      };
+    });
+    
+    console.log('Products to import:', products);
+    console.log('First product keys:', Object.keys(products[0]));
+    
     const totalBatches = Math.ceil(products.length / BATCH_SIZE);
     let inserted = 0;
     const failed = [];

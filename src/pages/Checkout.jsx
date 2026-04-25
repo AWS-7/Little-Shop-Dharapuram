@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Lock, ShieldCheck, Truck, Ban, ArrowLeft, XCircle, MapPin, Check, ChevronDown, Star, User, Mail, Package, RefreshCw, Gift, Sparkles, Shield, Ticket, Tag } from 'lucide-react';
+import { CreditCard, Lock, ShieldCheck, Truck, Ban, ArrowLeft, XCircle, MapPin, Check, ChevronDown, Star, User, Mail, Package, RefreshCw, Gift, Sparkles, Shield, Ticket, Tag, Phone } from 'lucide-react';
 import useStore from '../store/useStore';
 import { getCurrentUser } from '../lib/firebaseAuth';
 import { createOrder } from '../lib/orders';
@@ -17,7 +17,7 @@ export default function Checkout() {
   const { cart, getCartTotal, getShipping, getOrderTotal, clearCart } = useStore();
   
   const [form, setForm] = useState({
-    name: '', email: '', address: '', city: '', pincode: '', state: '',
+    name: '', email: '', phone: '', address: '', city: '', pincode: '', state: '',
   });
   const [loading, setLoading] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
@@ -75,6 +75,7 @@ export default function Checkout() {
             setForm({
               name: defaultAddr.full_name,
               email: user?.email || '',
+              phone: defaultAddr.phone || '',
               address: defaultAddr.address,
               city: defaultAddr.city,
               state: defaultAddr.state,
@@ -91,6 +92,7 @@ export default function Checkout() {
     setForm({
       name: addr.full_name,
       email: form.email || user?.email || '',
+      phone: addr.phone || '',
       address: addr.address,
       city: addr.city,
       state: addr.state,
@@ -231,10 +233,19 @@ export default function Checkout() {
   const handlePayment = async (e) => {
     e.preventDefault();
     if (currentStep === 'address') {
-      if (!form.name || !form.address || !form.city || !form.pincode) {
+      if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
         setPaymentError({
           title: 'Missing Information',
-          message: 'Please fill in all required address fields to continue.',
+          message: 'Please fill in all required fields including phone number to continue.',
+        });
+        return;
+      }
+      // Validate phone number format (10 digits)
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(form.phone.replace(/\D/g, ''))) {
+        setPaymentError({
+          title: 'Invalid Phone Number',
+          message: 'Please enter a valid 10-digit phone number.',
         });
         return;
       }
@@ -319,6 +330,7 @@ export default function Checkout() {
   const fields = [
     { name: 'name', label: 'Full Name', type: 'text', placeholder: 'e.g. Priya Sharma', full: true, icon: User },
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'priya@example.com', full: true, icon: Mail },
+    { name: 'phone', label: 'Phone Number', type: 'tel', placeholder: '9876543210', full: true, icon: Phone },
     { name: 'address', label: 'Delivery Address', type: 'text', placeholder: '123, Main Street, Apt 4B', full: true, icon: MapPin },
     { name: 'city', label: 'City', type: 'text', placeholder: 'Chennai', icon: Package },
     { name: 'state', label: 'State', type: 'text', placeholder: 'Tamil Nadu', icon: Package },

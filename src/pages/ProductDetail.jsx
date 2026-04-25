@@ -215,7 +215,11 @@ function mapSupabaseProduct(p) {
     price: p.price,
     originalPrice: p.original_price,
     image: resolveImageUrl(p.image_url || p.image),
-    gallery: p.gallery || [resolveImageUrl(p.image_url || p.image)],
+    image2: resolveImageUrl(p.image2_url || p.image2),
+    gallery: p.gallery || [
+      resolveImageUrl(p.image_url || p.image),
+      ...(p.image2_url || p.image2 ? [resolveImageUrl(p.image2_url || p.image2)] : [])
+    ].filter(Boolean),
     category: p.category,
     badge: p.badge,
     inStock: p.stock_count > 0,
@@ -359,7 +363,11 @@ export default function ProductDetail() {
   }
 
   const wishlisted = isWishlisted(product.id);
-  const gallery = product.gallery || [product.image];
+  // Build gallery from image1, image2, and existing gallery
+  const gallery = product.gallery || [
+    product.image,
+    ...(product.image2 ? [product.image2] : [])
+  ].filter(Boolean);
   const related = PLACEHOLDER_PRODUCTS.filter((p) => p.id !== id && p.category === product.category).slice(0, 5);
   const completeTheLook = related.length < 2
     ? PLACEHOLDER_PRODUCTS.filter((p) => p.id !== id).slice(0, 5)

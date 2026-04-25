@@ -117,6 +117,7 @@ export async function getAllProducts() {
     const mappedData = (data || []).map(p => ({
       ...p,
       image: resolveImageUrl(p.image_url || p.image),
+      image2: resolveImageUrl(p.image2_url || p.image2),
       // Map stock_count (DB) to stockCount (UI)
       stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
@@ -139,6 +140,7 @@ export async function getAllProductsAdmin() {
     const mappedData = (data || []).map(p => ({
       ...p,
       image: resolveImageUrl(p.image_url || p.image),
+      image2: resolveImageUrl(p.image2_url || p.image2),
       // Map stock_count (DB) to stockCount (UI)
       stockCount: p.stock_count !== undefined ? p.stock_count : p.stockCount || 0
     }));
@@ -162,6 +164,7 @@ export async function getProductById(id) {
     // Map database fields to client-side fields
     if (data) {
       data.image = resolveImageUrl(data.image_url || data.image);
+      data.image2 = resolveImageUrl(data.image2_url || data.image2);
       data.stockCount = data.stock_count !== undefined ? data.stock_count : data.stockCount || 0;
     }
 
@@ -183,6 +186,7 @@ export async function getProductByIdAdmin(id) {
     // Map database fields to client-side fields
     if (data) {
       data.image = resolveImageUrl(data.image_url || data.image);
+      data.image2 = resolveImageUrl(data.image2_url || data.image2);
       data.stockCount = data.stock_count !== undefined ? data.stock_count : data.stockCount || 0;
     }
 
@@ -232,6 +236,7 @@ export async function getHandpickedProducts(categories) {
         results.push({
           ...data,
           image: resolveImageUrl(data.image_url || data.image),
+          image2: resolveImageUrl(data.image2_url || data.image2),
           categoryName: category.name,
           stockCount: data.stock_count !== undefined ? data.stock_count : data.stockCount || 0
         });

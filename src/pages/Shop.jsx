@@ -25,6 +25,11 @@ export default function Shop() {
   const [gridCols, setGridCols] = useState('auto'); // 'auto', '2', '3', '4'
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'compact', 'list'
 
+  // Scroll to top when page loads (fix for mobile navigation issue)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
   // Show LogoPulse if loading takes more than 500ms
   useEffect(() => {
     let timer;

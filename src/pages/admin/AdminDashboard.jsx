@@ -221,6 +221,8 @@ export default function AdminDashboard() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [image2File, setImage2File] = useState(null);
+  const [image2Preview, setImage2Preview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -230,6 +232,7 @@ export default function AdminDashboard() {
     stockCount: '',
     badge: '',
     image: '',
+    image2: '',
     description: '',
     // Category-specific fields
     fabric: '',
@@ -1197,7 +1200,17 @@ export default function AdminDashboard() {
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const handleImage2Select = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage2File(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImage2Preview(previewUrl);
     }
   };
 
@@ -1214,24 +1227,34 @@ export default function AdminDashboard() {
 
     setSaving(true);
     let imageUrl = newProduct.image;
+    let image2Url = newProduct.image2;
 
-    // Upload image to Supabase Storage if file selected
+    // Upload image 1 to Supabase Storage if file selected
     if (imageFile) {
       const { url, error: uploadErr } = await uploadProductImage(imageFile);
       if (uploadErr) {
-        console.warn('Image upload failed:', uploadErr.message);
-        // Show specific error based on the issue
+        console.warn('Image 1 upload failed:', uploadErr.message);
         if (uploadErr.message?.includes('bucket') || uploadErr.message?.includes('not found')) {
-          alert('❌ Image upload failed: Storage bucket "product-images" not found.\n\nPlease run the SQL migration in Supabase:\n\n1. Go to Supabase Dashboard > SQL Editor\n2. Run: supabase/migrations/20250116_create_storage_bucket.sql\n\nProduct will be saved without image.');
+          alert('❌ Image 1 upload failed: Storage bucket not found. Product will be saved without image.');
         } else if (uploadErr.message?.includes('permission') || uploadErr.message?.includes('policy')) {
-          alert('❌ Image upload failed: Storage permission denied.\n\nPlease check RLS policies in Supabase Storage.\n\nProduct will be saved without image.');
+          alert('❌ Image 1 upload failed: Storage permission denied. Product will be saved without image.');
         } else {
-          alert(`❌ Image upload failed: ${uploadErr.message}\n\nProduct will be saved without image.`);
+          alert(`❌ Image 1 upload failed: ${uploadErr.message}\n\nProduct will be saved without image.`);
         }
-        // Use a placeholder or empty image
         imageUrl = newProduct.image || '/placeholder.jpg';
       } else {
         imageUrl = url;
+      }
+    }
+
+    // Upload image 2 to Supabase Storage if file selected
+    if (image2File) {
+      const { url, error: uploadErr } = await uploadProductImage(image2File);
+      if (uploadErr) {
+        console.warn('Image 2 upload failed:', uploadErr.message);
+        // Silently fail for image2 - not critical
+      } else {
+        image2Url = url;
       }
     }
 
@@ -1264,23 +1287,30 @@ export default function AdminDashboard() {
     if (imageUrl && imageUrl !== '/placeholder.jpg') {
       try {
         productData.image_url = imageUrl;
-        // Image URL will be saved
       } catch (e) {
         console.warn('Image field not available in schema');
+      }
+    }
+    if (image2Url && image2Url !== '/placeholder.jpg') {
+      try {
+        productData.image2_url = image2Url;
+      } catch (e) {
+        console.warn('Image2 field not available in schema');
       }
     }
 
     let { data: saved, error } = await createProduct(productData);
 
-    // Check for schema cache error - retry without image field
+    // Check for schema cache error - retry without image fields
     if (error && (error.message?.includes('schema cache') || error.message?.includes('image_url') || error.message?.includes('column'))) {
-      console.warn('Schema cache error, retrying without image...');
+      console.warn('Schema cache error, retrying without images...');
       delete productData.image_url;
+      delete productData.image2_url;
       const retry = await createProduct(productData);
       saved = retry.data;
       error = retry.error;
       if (!error) {
-        showToast('Product added (image saved locally)', 'success');
+        showToast('Product added (images saved locally)', 'success');
       }
     }
 
@@ -1297,6 +1327,7 @@ export default function AdminDashboard() {
       price: productData.price,
       originalPrice: productData.original_price,
       image: imageUrl || '/placeholder.jpg',
+      image2: image2Url || null,
       category: productData.category,
       badge: productData.badge,
       inStock: productData.stock_count > 0,
@@ -1314,9 +1345,11 @@ export default function AdminDashboard() {
     setSaving(false);
     setImageFile(null);
     setImagePreview(null);
+    setImage2File(null);
+    setImage2Preview(null);
     setNewProduct({
       name: '', price: '', originalPrice: '', category: '', stockCount: '', badge: '',
-      image: '', description: '', fabric: '', weaveType: '', care: '', origin: '',
+      image: '', image2: '', description: '', fabric: '', weaveType: '', care: '', origin: '',
       fit: '', material: '', gemstone: '', weight: '',
     });
   };
@@ -2500,11 +2533,11 @@ export default function AdminDashboard() {
             )}
 
             {/* Products Table - MNC Professional Style */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <table className="w-full min-w-[700px]">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[600px] lg:min-w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="text-left px-6 py-4 font-inter text-[11px] font-semibold uppercase text-gray-500 w-10">
+                    <th className="text-left px-3 lg:px-6 py-3 lg:py-4 font-inter text-[10px] lg:text-[11px] font-semibold uppercase text-gray-500 w-10">
                       <input
                         type="checkbox"
                         checked={selectedProducts.length === products.length && products.length > 0}
@@ -2513,7 +2546,7 @@ export default function AdminDashboard() {
                       />
                     </th>
                     {['Product', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-6 py-4 font-inter text-[11px] font-semibold uppercase text-gray-500">{h}</th>
+                      <th key={h} className="text-left px-3 lg:px-6 py-3 lg:py-4 font-inter text-[10px] lg:text-[11px] font-semibold uppercase text-gray-500">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2527,7 +2560,7 @@ export default function AdminDashboard() {
                     .map((p) => (
                     <tr key={p.id} className={`border-b border-gray-100 hover:bg-purple-50/20 transition-all duration-200 ${selectedProducts.includes(p.id) ? 'bg-purple-50/40' : ''}`}>
                       {/* Checkbox */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
                         <input
                           type="checkbox"
                           checked={selectedProducts.includes(p.id)}
@@ -2537,41 +2570,41 @@ export default function AdminDashboard() {
                       </td>
                       
                       {/* Product Info */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
+                        <div className="flex items-center gap-3 lg:gap-4">
+                          <div className="relative flex-shrink-0">
                             <img 
                               src={p.image} 
                               alt={p.name} 
-                              className="w-12 h-14 object-cover rounded-xl bg-gray-100 shadow-sm" 
+                              className="w-10 h-12 lg:w-12 lg:h-14 object-cover rounded-lg lg:rounded-xl bg-gray-100 shadow-sm" 
                             />
                             {typeof p.id === 'string' && /^\d+$/.test(p.id) && (
-                              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                              <span className="absolute -top-1 -right-1 w-4 h-4 lg:w-5 lg:h-5 bg-gray-500 text-white text-[7px] lg:text-[8px] font-bold rounded-full flex items-center justify-center">
                                 D
                               </span>
                             )}
                           </div>
-                          <div>
-                            <p className="font-inter text-sm font-medium text-gray-800">{p.name}</p>
-                            <p className="font-inter text-xs text-gray-400 mt-0.5">ID: {p.id.slice(-6)}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-inter text-xs lg:text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                            <p className="font-inter text-[10px] lg:text-xs text-gray-400 mt-0.5">ID: {String(p.id).slice(-6)}</p>
                           </div>
                         </div>
                       </td>
                       
                       {/* Category */}
-                      <td className="px-6 py-4">
-                        <span className="font-inter text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">{p.category}</span>
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
+                        <span className="font-inter text-[10px] lg:text-xs text-gray-600 bg-gray-100 px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-lg">{p.category}</span>
                       </td>
                       
                       {/* Price */}
-                      <td className="px-6 py-4">
-                        <span className="font-inter text-sm font-semibold text-gray-800">{CURRENCY}{p.price.toLocaleString()}</span>
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
+                        <span className="font-inter text-xs lg:text-sm font-semibold text-gray-800">{CURRENCY}{p.price.toLocaleString()}</span>
                       </td>
                       
                       {/* Stock */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-inter text-sm font-medium ${
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
+                        <div className="flex items-center gap-1 lg:gap-2">
+                          <span className={`font-inter text-xs lg:text-sm font-medium ${
                             p.stockCount === 0 ? 'text-rose-500' :
                             p.stockCount < 5 ? 'text-orange-500' :
                             'text-emerald-600'
@@ -2579,19 +2612,19 @@ export default function AdminDashboard() {
                             {p.stockCount === 0 ? '0' : p.stockCount}
                           </span>
                           {p.stockCount === 0 && (
-                            <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-semibold rounded-full">Out</span>
+                            <span className="px-1.5 py-0.5 lg:px-2 lg:py-0.5 bg-rose-50 text-rose-600 text-[8px] lg:text-[10px] font-semibold rounded-full">Out</span>
                           )}
                           {p.stockCount > 0 && p.stockCount < 5 && (
-                            <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-semibold rounded-full">Low</span>
+                            <span className="px-1.5 py-0.5 lg:px-2 lg:py-0.5 bg-orange-50 text-orange-600 text-[8px] lg:text-[10px] font-semibold rounded-full">Low</span>
                           )}
                           {p.stockCount >= 5 && (
-                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-semibold rounded-full">Good</span>
+                            <span className="px-1.5 py-0.5 lg:px-2 lg:py-0.5 bg-emerald-50 text-emerald-600 text-[8px] lg:text-[10px] font-semibold rounded-full hidden lg:inline">Good</span>
                           )}
                         </div>
                       </td>
                       
                       {/* Status Toggle */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
                         <button
                           onClick={async () => {
                             if (typeof p.id === 'string' && /^\d+$/.test(p.id)) {
@@ -2622,21 +2655,21 @@ export default function AdminDashboard() {
                       </td>
                       
                       {/* Actions */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4">
+                        <div className="flex items-center gap-1.5 lg:gap-2">
                           <button
                             onClick={() => handleEditClick(p)}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                            className="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg lg:rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
                             title="Edit Product"
                           >
-                            <Edit3 size={16} />
+                            <Edit3 size={14} className="lg:w-4 lg:h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(p)}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                            className="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg lg:rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors"
                             title="Delete Product"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} className="lg:w-4 lg:h-4" />
                           </button>
                         </div>
                       </td>
@@ -4954,38 +4987,72 @@ export default function AdminDashboard() {
                     </select>
                   </div>
 
-                  {/* Image Upload */}
-                  <div>
-                    <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">Product Image</label>
-                    <div className="flex gap-4 items-start">
-                      <label className="flex-1 border-2 border-dashed border-gray-200 rounded-sm p-4 text-center cursor-pointer hover:border-purple-primary/50 transition-colors">
+                  {/* Image Upload - Two Images for Carousel */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Image 1 */}
+                    <div>
+                      <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">Image 1 (Primary)</label>
+                      <div className="flex gap-2 items-start">
+                        <label className="flex-1 border-2 border-dashed border-gray-200 rounded-sm p-3 text-center cursor-pointer hover:border-purple-primary/50 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageSelect}
+                            className="hidden"
+                          />
+                          <Upload size={20} className="mx-auto text-gray-300 mb-1" />
+                          <p className="font-inter text-[10px] text-gray-400">
+                            {imageFile ? imageFile.name.slice(0, 15) + '...' : 'Click to upload'}
+                          </p>
+                        </label>
+                        {imagePreview && (
+                          <div className="w-16 h-20 rounded-sm overflow-hidden border border-gray-200 flex-shrink-0">
+                            <img src={imagePreview} alt="Preview 1" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2">
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="hidden"
+                          type="url"
+                          value={newProduct.image}
+                          onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                          className="w-full border border-gray-200 px-3 py-2 font-inter text-xs outline-none focus:border-purple-primary"
+                          placeholder="https://example.com/image1.jpg"
                         />
-                        <Upload size={24} className="mx-auto text-gray-300 mb-2" />
-                        <p className="font-inter text-xs text-gray-400">
-                          {imageFile ? imageFile.name : 'Click to upload high-res image'}
-                        </p>
-                        <p className="font-inter text-[10px] text-gray-300 mt-1">JPG, PNG, WebP</p>
-                      </label>
-                      {imagePreview && (
-                        <div className="w-20 h-24 rounded-sm overflow-hidden border border-gray-200 flex-shrink-0">
-                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <p className="font-inter text-[10px] text-gray-400 mb-1">Or paste an image URL:</p>
-                      <input
-                        type="url"
-                        value={newProduct.image}
-                        onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                        className="w-full border border-gray-200 px-4 py-2 font-inter text-xs outline-none focus:border-purple-primary"
-                        placeholder="https://example.com/image.jpg"
-                      />
+
+                    {/* Image 2 */}
+                    <div>
+                      <label className="block font-inter text-xs tracking-wider uppercase text-gray-500 mb-2">Image 2 (Secondary)</label>
+                      <div className="flex gap-2 items-start">
+                        <label className="flex-1 border-2 border-dashed border-gray-200 rounded-sm p-3 text-center cursor-pointer hover:border-purple-primary/50 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImage2Select(e)}
+                            className="hidden"
+                          />
+                          <Upload size={20} className="mx-auto text-gray-300 mb-1" />
+                          <p className="font-inter text-[10px] text-gray-400">
+                            {image2File ? image2File.name.slice(0, 15) + '...' : 'Click to upload'}
+                          </p>
+                        </label>
+                        {image2Preview && (
+                          <div className="w-16 h-20 rounded-sm overflow-hidden border border-gray-200 flex-shrink-0">
+                            <img src={image2Preview} alt="Preview 2" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2">
+                        <input
+                          type="url"
+                          value={newProduct.image2}
+                          onChange={(e) => setNewProduct({ ...newProduct, image2: e.target.value })}
+                          className="w-full border border-gray-200 px-3 py-2 font-inter text-xs outline-none focus:border-purple-primary"
+                          placeholder="https://example.com/image2.jpg"
+                        />
+                      </div>
                     </div>
                   </div>
 
