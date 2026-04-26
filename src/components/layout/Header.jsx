@@ -153,51 +153,27 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-purple-primary text-white shadow-md">
       {/* Top Strip — Flipkart Style */}
       <div className="container-clean h-16 md:h-20 flex items-center gap-4 md:gap-8">
-        {/* Mobile Menu Button */}
-        <button
-          className="lg:hidden p-1 hover:bg-white/10 rounded transition-colors"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <Menu size={24} />
-        </button>
-
-        {/* Logo */}
-        <Link to="/" className="flex-shrink-0">
-          <div className="flex flex-col">
-            <span className="text-xl md:text-2xl font-black italic tracking-tighter leading-none">
-              LittleShop
-            </span>
-            <span className="text-[10px] md:text-xs font-medium italic text-purple-accent tracking-wide flex items-center gap-0.5">
-              Explore <span className="text-white font-bold">Plus</span>
-            </span>
-          </div>
-        </Link>
-
-        {/* Search Bar — Center & Always Visible */}
-        <div className="flex-1 relative max-w-2xl hidden sm:block">
-          <div className="relative group">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (!searchOpen) setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="Search for products, brands and more"
-              className="w-full bg-white text-gray-900 h-10 px-4 pr-12 rounded-sm shadow-sm focus:outline-none text-sm placeholder:text-gray-500"
-            />
-            <button className="absolute right-0 top-0 h-10 px-4 text-purple-primary hover:text-purple-secondary transition-colors">
-              <Search size={20} />
-            </button>
-          </div>
-
-          {/* Search Suggestions */}
-          <SearchSuggestions />
+        {/* Left Section */}
+        <div className="flex items-center gap-4 flex-1">
+          <button
+            className="lg:hidden p-1 hover:bg-white/10 rounded transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <Menu size={24} />
+          </button>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-4 md:gap-8 ml-auto">
+        {/* Center: Logo */}
+        <Link to="/" className="flex-shrink-0">
+          <img 
+            src="/src/images/lll.png" 
+            alt="Little Shop" 
+            className="h-14 md:h-20  mt-5 mb-5 w-auto object-contain rounded-full"
+          />
+        </Link>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-4 md:gap-8 flex-1 justify-end">
           {/* Login Button */}
           {isLoggedIn ? (
             <div className="relative group">
