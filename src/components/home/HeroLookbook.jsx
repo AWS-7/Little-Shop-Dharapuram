@@ -75,7 +75,7 @@ const HeroLookbook = () => {
     return (
       <section 
         className="relative w-full bg-gray-100 flex items-center justify-center overflow-hidden"
-        style={{ aspectRatio: '2048/1024' }}
+        style={{ aspectRatio: '2048/818' }}
       >
         <Loader2 size={40} className="text-purple-primary animate-spin" />
       </section>
@@ -87,7 +87,7 @@ const HeroLookbook = () => {
   return (
     <section 
       className="relative w-full overflow-hidden bg-gray-100"
-      style={{ aspectRatio: '2048/1024' }}
+      style={{ aspectRatio: '2048/818' }}
     >
       <AnimatePresence mode="wait">
         <motion.div
