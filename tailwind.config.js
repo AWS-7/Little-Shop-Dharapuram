@@ -4,13 +4,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Professional Purple & White Theme
+        // Professional Teal & White Theme
         purple: {
-          primary: '#6A0DAD',      // Deep Purple - Primary Brand Color
-          secondary: '#7B2CBF',    // Slightly Lighter Purple
-          accent: '#E0AAFF',       // Soft Lavender for highlights
-          light: '#F8F4FF',        // Very Light Purple for backgrounds
-          dark: '#3C096C',         // Deepest Purple for text contrast
+          primary: '#0D9488',      // Teal 600 - Primary Brand Color
+          secondary: '#14B8A6',    // Teal 500 - Slightly Lighter Teal
+          accent: '#5EEAD4',       // Teal 300 - Soft Teal for highlights
+          light: '#F0FDFA',        // Teal 50 - Very Light Teal for backgrounds
+          dark: '#134E4A',         // Teal 900 - Deepest Teal for text contrast
         },
         white: {
           DEFAULT: '#FFFFFF',

@@ -294,7 +294,7 @@ export default function Checkout() {
         address: `${form.address}, ${form.city}, ${form.state} - ${form.pincode}`,
         customer_name: form.name,
       },
-      theme: { color: '#6A0DAD' },
+      theme: { color: '#0D9488' },
       modal: {
         ondismiss: function () {
           rzpModalOpen.current = false;

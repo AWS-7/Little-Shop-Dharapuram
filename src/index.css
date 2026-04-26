@@ -23,7 +23,7 @@
   }
 
   ::selection {
-    background-color: #6A0DAD;
+    background-color: #0D9488;
     color: #fff;
   }
 }
@@ -72,7 +72,7 @@
     background: #FFFFFF;
   }
   ::-webkit-scrollbar-thumb {
-    background: #6A0DAD;
+    background: #0D9488;
     border-radius: 4px;
   }
 }
