@@ -166,7 +166,7 @@ export default function Header() {
         {/* Center: Logo */}
         <Link to="/" className="flex-shrink-0">
           <img 
-            src="/src/images/lll.png" 
+            src="/lll.png" 
             alt="Little Shop" 
             className="h-10 md:h-16 w-auto object-contain rounded-full"
           />
