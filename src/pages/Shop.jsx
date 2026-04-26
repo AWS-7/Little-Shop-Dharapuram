@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, LayoutGrid, List, Columns2, Columns3, Columns4 } from 'lucide-react';
 import ProductCard from '../components/home/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
@@ -14,10 +15,13 @@ const ALL_CATEGORIES = [
 ];
 
 export default function Shop() {
+  const [searchParams] = useSearchParams();
+  const categoryFromUrl = searchParams.get('category');
+  
   const [allProducts, setAllProducts] = useState(PLACEHOLDER_PRODUCTS);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [showSlowLoading, setShowSlowLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || 'All');
   const [selectedOccasion, setSelectedOccasion] = useState('All');
   const [selectedColor, setSelectedColor] = useState('All');
   const [priceRange, setPriceRange] = useState('All');
@@ -29,6 +33,13 @@ export default function Shop() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+
+  // Update category when URL parameter changes
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setSelectedCategory(categoryFromUrl);
+    }
+  }, [categoryFromUrl]);
 
   // Show LogoPulse if loading takes more than 500ms
   useEffect(() => {

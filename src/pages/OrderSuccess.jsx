@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link, useLocation, Navigate } from 'react-router-dom';
+import { Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Package, Copy, Truck, CreditCard, MapPin, FileDown, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -9,9 +9,20 @@ import { CURRENCY } from '../lib/constants';
 
 export default function OrderSuccess() {
   const location = useLocation();
+  const navigate = useNavigate();
   const order = location.state;
 
   useEffect(() => {
+    // Replace history so back button goes to home page
+    window.history.replaceState(null, '', '/order-success');
+    
+    // Handle back button - redirect to home
+    const handlePopState = () => {
+      navigate('/', { replace: true });
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
     if (!order) return;
     // Confetti Cannon — "Vetti Vedikkanum" effect
     const duration = 4000;
@@ -55,7 +66,12 @@ export default function OrderSuccess() {
     }, 300);
 
     frame();
-  }, [order]);
+    
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [order, navigate]);
 
   if (!order) return <Navigate to="/" />;
 

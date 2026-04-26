@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingBag, Heart, User, Menu, X, Package, LogOut, ChevronDown } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { getAllProducts, subscribeToProducts } from '../../lib/products';
-import { CURRENCY, ADMIN_EMAIL } from '../../lib/constants';
+import { CURRENCY, ADMIN_EMAIL, CATEGORIES } from '../../lib/constants';
 import { isAuthenticated, logoutUser, getCurrentUser } from '../../lib/firebaseAuth';
 
 export default function Header() {
@@ -265,17 +265,16 @@ export default function Header() {
         <SearchSuggestions />
       </div>
 
-      {/* Category Bar — Flipkart Style */}
+      {/* Category Bar — Product Categories */}
       <div className="bg-white border-b border-gray-200 hidden lg:block">
-        <div className="container-clean flex items-center justify-center gap-12 py-2">
-          {['Shop', 'Collections', 'New Arrivals', 'Offers'].map((item) => (
+        <div className="container-clean flex items-center justify-center gap-8 py-2">
+          {CATEGORIES.map((category) => (
             <Link
-              key={item}
-              to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
-              className="text-gray-900 text-sm font-bold hover:text-purple-primary transition-colors flex items-center gap-2"
+              key={category.name}
+              to={`/shop?category=${encodeURIComponent(category.name)}`}
+              className="text-gray-900 text-sm font-bold hover:text-purple-primary transition-colors flex items-center gap-1"
             >
-              {item}
-              <ChevronDown size={14} className="text-gray-400" />
+              {category.name}
             </Link>
           ))}
         </div>
@@ -300,15 +299,16 @@ export default function Header() {
             </div>
             
             <nav className="flex flex-col p-4 gap-2">
-              {['Shop', 'Collections', 'New Arrivals'].map((item) => (
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-2">Categories</p>
+              {CATEGORIES.map((category) => (
                 <Link
-                  key={item}
-                  to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                  key={category.name}
+                  to={`/shop?category=${encodeURIComponent(category.name)}`}
                   className="flex items-center gap-4 p-3 text-gray-900 font-bold hover:bg-gray-50 rounded-lg transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Package size={20} className="text-gray-400" />
-                  {item}
+                  {category.name}
                 </Link>
               ))}
 

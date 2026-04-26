@@ -165,8 +165,8 @@ function ProductCard({ product, index = 0, variant = 'grid' }) {
               className={`w-full rounded-xl font-semibold uppercase tracking-wide shadow-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                 isInStock
                   ? isCompact
-                    ? 'bg-purple-600 text-white hover:bg-purple-700 text-[10px] py-2'
-                    : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98] text-xs py-3'
+                    ? 'bg-[#f2a20c] text-white hover:bg-[#d9910a] text-[10px] py-2'
+                    : 'bg-[#f2a20c] text-white shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] text-xs py-3'
                   : isCompact
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed text-[10px] py-2'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed text-xs py-3'
