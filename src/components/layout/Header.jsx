@@ -168,7 +168,7 @@ export default function Header() {
           <img 
             src="/lll.png" 
             alt="Little Shop" 
-            className="h-10 md:h-16 w-auto object-contain rounded-full"
+            className="h-12 md:h-20 w-auto object-contain rounded-full"
           />
         </Link>
 
