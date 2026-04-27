@@ -17,7 +17,7 @@ export default function Wishlist() {
           <p className="text-sm text-gray-500 mb-8">Save items you love and find them easily anytime.</p>
           <Link 
             to="/shop" 
-            className="inline-flex items-center justify-center bg-[#f2a20c] text-white px-6 py-3 rounded-lg font-medium text-sm hover:bg-[#d9910a] transition-all shadow-sm"
+            className="inline-flex items-center justify-center bg-purple-primary text-white px-6 py-3 rounded-lg font-medium text-sm hover:bg-purple-secondary transition-all shadow-sm"
           >
             Explore Products
           </Link>

@@ -445,7 +445,7 @@ function ProfileView({ user, onSignOut }) {
             {!showForm && (
               <button 
                 onClick={() => setShowForm('add')} 
-                className="flex items-center gap-2 bg-[#f2a20c] text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-[#d9910a] transition-all shadow-sm hover:shadow-md"
+                className="flex items-center gap-2 bg-purple-primary text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-purple-secondary transition-all shadow-sm hover:shadow-md"
               >
                 <Plus size={16} /> 
                 Add New
@@ -480,7 +480,7 @@ function ProfileView({ user, onSignOut }) {
               <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">Add a delivery address to enjoy faster checkout and seamless order delivery.</p>
               <button 
                 onClick={() => setShowForm('add')} 
-                className="bg-[#f2a20c] text-white px-6 py-3 rounded-lg font-medium text-sm hover:bg-[#d9910a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
+                className="bg-purple-primary text-white px-6 py-3 rounded-lg font-medium text-sm hover:bg-purple-secondary transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
               >
                 <Plus size={18} />
                 Add Your First Address

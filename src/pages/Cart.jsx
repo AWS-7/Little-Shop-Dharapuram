@@ -183,7 +183,7 @@ export default function Cart() {
                   </div>
                 </div>
 
-                <Link to="/checkout" className="block w-full bg-[#f2a20c] text-white text-center py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20 hover:bg-[#d9910a] transition-all active:scale-[0.98]">
+                <Link to="/checkout" className="block w-full bg-purple-primary text-white text-center py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-teal-500/20 hover:bg-purple-secondary transition-all active:scale-[0.98]">
                   Secure Checkout
                 </Link>
               </div>
@@ -214,7 +214,7 @@ export default function Cart() {
           {/* Secure Checkout Button */}
           <Link
             to="/checkout"
-            className="flex items-center justify-center gap-2 w-full bg-[#f2a20c] text-white font-inter text-sm font-semibold tracking-wide py-3.5 rounded-full hover:bg-[#d9910a] transition-colors shadow-lg shadow-orange-500/20"
+            className="flex items-center justify-center gap-2 w-full bg-purple-primary text-white font-inter text-sm font-semibold tracking-wide py-3.5 rounded-full hover:bg-purple-secondary transition-colors shadow-lg shadow-teal-500/20"
           >
             <Lock size={14} />
             PROCEED TO CHECKOUT

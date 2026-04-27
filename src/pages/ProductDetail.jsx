@@ -713,7 +713,7 @@ export default function ProductDetail() {
                 {isInStock ? (
                   <button
                     onClick={handleAddToCart}
-                    className="flex-1 bg-[#f2a20c] text-white h-11 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-[#d9910a] transition-all shadow-sm"
+                    className="flex-1 bg-purple-primary text-white h-11 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-purple-secondary transition-all shadow-sm"
                   >
                     <ShoppingBag size={18} />
                     {addedToCart ? 'Added!' : 'Add to Cart'}
@@ -771,7 +771,7 @@ export default function ProductDetail() {
           {isInStock ? (
             <button
               onClick={handleAddToCart}
-              className="flex-1 bg-[#f2a20c] text-white h-12 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#d9910a] transition-all"
+              className="flex-1 bg-purple-primary text-white h-12 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-purple-secondary transition-all"
             >
               <ShoppingBag size={18} />
               {addedToCart ? 'Added!' : 'Add to Cart'}

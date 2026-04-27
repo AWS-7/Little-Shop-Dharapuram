@@ -147,7 +147,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                 {/* Checkout Button */}
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-4 bg-[#f2a20c] text-white font-inter text-sm font-medium uppercase tracking-wider rounded-full hover:bg-[#d9910a] transition-colors"
+                  className="w-full py-4 bg-purple-primary text-white font-inter text-sm font-medium uppercase tracking-wider rounded-full hover:bg-purple-secondary transition-colors"
                 >
                   Proceed to Checkout
                 </button>

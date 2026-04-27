@@ -691,7 +691,7 @@ export default function Checkout() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#f2a20c] text-white py-3.5 rounded-xl font-medium text-sm hover:bg-[#d9910a] transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                className="w-full bg-purple-primary text-white py-3.5 rounded-xl font-medium text-sm hover:bg-purple-secondary transition-all active:scale-[0.98] disabled:opacity-50 hidden lg:flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -733,7 +733,7 @@ export default function Checkout() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#f2a20c] text-white font-medium text-sm py-3 rounded-lg hover:bg-[#d9910a] transition-all disabled:opacity-50 shadow-md"
+              className="w-full flex items-center justify-center gap-2 bg-purple-primary text-white font-medium text-sm py-3 rounded-lg hover:bg-purple-secondary transition-all disabled:opacity-50 shadow-md"
             >
               {loading ? 'Processing...' : currentStep === 'address' ? 'Continue to Payment' : selectedPaymentMethod === 'cod' ? 'Place Order' : `Pay ${CURRENCY}${total.toLocaleString()}`}
             </button>
