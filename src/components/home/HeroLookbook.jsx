@@ -8,7 +8,7 @@ import { getHeroBanners, subscribeToHeroBanners } from '../../lib/heroBanners';
 const DEFAULT_BANNERS = [
   {
     id: 1,
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1441986300917-6467 4bd600d8?q=80&w=2000&auto=format&fit=crop',
     title: 'Huge Summer Sale',
     subtitle: 'Up to 50% Off on All Collections',
     cta: 'Shop Now',
