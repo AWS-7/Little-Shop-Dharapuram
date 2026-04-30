@@ -107,9 +107,6 @@ const HeroLookbook = () => {
               decoding="async"
               className="w-full h-full object-cover object-center"
             />
-            {/* Gradient Overlay for Text Visibility */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
-            
             {/* Content Container */}
             <div className="container-clean h-full flex flex-col justify-center relative z-10 text-white">
               <motion.div
@@ -155,8 +152,8 @@ const HeroLookbook = () => {
           <button
             key={idx}
             onClick={() => setCurrent(idx)}
-            className={`w-2.5 h-2.5 rounded-full transition-all ${
-              idx === current ? 'bg-white w-8' : 'bg-white/40'
+            className={`w-2 h-2 rounded-full transition-all ${
+              idx === current ? 'bg-white w-6' : 'bg-white/40'
             }`}
           />
         ))}
