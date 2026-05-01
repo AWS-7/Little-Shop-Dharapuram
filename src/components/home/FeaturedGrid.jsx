@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowRight, Heart, Sparkles } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { getLatestProducts, getHandpickedProducts } from '../../lib/products';
 import { CATEGORIES } from '../../lib/constants';
@@ -45,63 +47,134 @@ export default function FeaturedGrid() {
   }, []);
 
   return (
-    <section className="py-10 md:py-16 bg-gray-50">
-      <div className="container-clean">
-        {/* Handpicked for You Section - Modern MNC Style */}
+    <section className="py-16 md:py-24 bg-gradient-to-b from-white via-gray-50/50 to-gray-50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Handpicked for You Section - Beautiful Redesign */}
         {handpicked.length > 0 && (
-          <div className="mb-12 md:mb-16">
-            {/* Section Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <span className="text-xl">✨</span>
-                </div>
-                <div>
-                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-                    Handpicked for You
-                  </h2>
-                  <p className="text-xs text-gray-500">Curated selection from each category</p>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="mb-12 md:mb-16"
+          >
+            {/* Elegant Section Header */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              {/* Title with Double Line Diamond Underline */}
+              <div className="relative inline-block">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-800 tracking-wide text-center">
+                  Handpicked for You
+                </h2>
+                {/* Double Lines with Center Diamond */}
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    whileInView={{ width: 60 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                    className="h-0.5 bg-gradient-to-r from-transparent to-purple-primary rounded-full"
+                  />
+                  <motion.div
+                    initial={{ scale: 0, rotate: 0 }}
+                    whileInView={{ scale: 1, rotate: 45 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.6, duration: 0.4, type: "spring" }}
+                    className="w-2.5 h-2.5 bg-purple-primary rotate-45 shadow-lg shadow-purple-primary/40"
+                  />
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    whileInView={{ width: 60 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                    className="h-0.5 bg-gradient-to-l from-transparent to-purple-primary rounded-full"
+                  />
                 </div>
               </div>
-              <Link 
-                to="/shop" 
-                className="text-purple-600 text-sm font-medium hover:text-purple-700 flex items-center gap-1"
-              >
-                View All →
-              </Link>
-            </div>
+            </motion.div>
 
-            {/* Product Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+            {/* Beautiful Product Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
               {handpicked.map((product, idx) => (
-                <ProductCard key={`handpicked-${product.id}`} product={product} index={idx} />
+                <motion.div
+                  key={`handpicked-${product.id}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1, duration: 0.5, ease: "easeOut" }}
+                  className="group"
+                >
+                  <ProductCard product={product} index={idx} />
+                </motion.div>
               ))}
             </div>
-          </div>
+            
+            {/* View All Button */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.5 }}
+              className="mt-10 text-center"
+            >
+              <Link 
+                to="/shop" 
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-full hover:border-purple-primary hover:text-purple-primary transition-all duration-300 group shadow-md hover:shadow-lg"
+              >
+                Explore All Products
+                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </motion.div>
+          </motion.div>
         )}
 
-        {/* Featured Collection Section - Modern MNC Style */}
-        <div>
-          {/* Section Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <span className="text-xl">🔥</span>
-              </div>
-              <div>
-                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-                  Featured Collection
-                </h2>
-                <p className="text-xs text-gray-500">Latest arrivals in our store</p>
+        {/* Featured Collection Section */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          {/* Elegant Section Header */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            {/* Title with Double Line Diamond Underline */}
+            <div className="relative inline-block">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 tracking-wide text-center">
+                Featured Collection
+              </h2>
+              {/* Double Lines with Center Diamond */}
+              <div className="mt-4 flex items-center justify-center gap-3">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  whileInView={{ width: 60 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                  className="h-0.5 bg-gradient-to-r from-transparent to-purple-primary rounded-full"
+                />
+                <motion.div
+                  initial={{ scale: 0, rotate: 0 }}
+                  whileInView={{ scale: 1, rotate: 45 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.6, duration: 0.4, type: "spring" }}
+                  className="w-2.5 h-2.5 bg-purple-primary rotate-45 shadow-lg shadow-purple-primary/40"
+                />
+                <motion.div 
+                  initial={{ width: 0 }}
+                  whileInView={{ width: 60 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                  className="h-0.5 bg-gradient-to-l from-transparent to-purple-primary rounded-full"
+                />
               </div>
             </div>
-            <Link 
-              to="/shop" 
-              className="text-purple-600 text-sm font-medium hover:text-purple-700 flex items-center gap-1"
-            >
-              View All →
-            </Link>
-          </div>
+          </motion.div>
 
           {/* Featured Product Grid */}
           {loading ? (
@@ -111,9 +184,18 @@ export default function FeaturedGrid() {
               ))}
             </div>
           ) : featured.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
               {featured.map((product, idx) => (
-                <ProductCard key={product.id} product={product} index={idx} />
+                <motion.div
+                  key={`featured-${product.id}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1, duration: 0.5, ease: "easeOut" }}
+                  className="group"
+                >
+                  <ProductCard product={product} index={idx} />
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -121,7 +203,7 @@ export default function FeaturedGrid() {
               <p className="text-gray-500 font-medium">No products available yet.</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

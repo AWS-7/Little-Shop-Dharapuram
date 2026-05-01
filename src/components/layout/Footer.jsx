@@ -1,45 +1,78 @@
 import { Link } from 'react-router-dom';
-import { Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Instagram, Mail, Phone, MapPin, Facebook, Youtube, Twitter, Heart, ArrowUp, Sparkles } from 'lucide-react';
 import { BRAND, POLICIES } from '../../lib/constants';
 
 export default function Footer() {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <footer className="bg-white border-t border-gray-100 pt-10 pb-8">
-      <div className="container-clean">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+    <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pt-16 pb-8 relative overflow-hidden">
+      {/* Decorative Elements */}
+      <div className="absolute top-0 left-1/4 w-64 h-64 bg-purple-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl" />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Main Footer Content */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12"
+        >
           {/* Brand Info */}
-          <div className="space-y-6">
-            <Link to="/" className="flex flex-col">
-              <span className="text-2xl font-black italic tracking-tighter leading-none text-purple-primary">
+          <div className="lg:col-span-1 space-y-6">
+            <Link to="/" className="flex flex-col group">
+              <span className="text-3xl font-black italic tracking-tighter leading-none text-white group-hover:text-purple-300 transition-colors">
                 LittleShop
               </span>
-              <span className="text-xs font-medium italic text-purple-accent tracking-wide flex items-center gap-0.5">
-                Explore <span className="text-purple-primary font-bold">Plus</span>
+              <span className="text-sm font-medium italic text-gray-400 tracking-wide flex items-center gap-1">
+                Explore <span className="text-purple-400 font-bold">Plus</span>
+                <Sparkles className="w-3 h-3 text-yellow-400" />
               </span>
             </Link>
-            <p className="text-gray-500 text-sm leading-relaxed max-w-xs font-medium">
-              {BRAND.description}
+            <p className="text-gray-400 text-sm leading-relaxed">
+              {BRAND.description} Discover premium fashion collections crafted with love and delivered with care.
             </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-purple-light text-purple-primary flex items-center justify-center hover:bg-purple-primary hover:text-white transition-all duration-300">
-                <Instagram size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-purple-light text-purple-primary flex items-center justify-center hover:bg-purple-primary hover:text-white transition-all duration-300">
-                <Mail size={18} />
-              </a>
+            
+            {/* Social Icons */}
+            <div className="flex items-center gap-3">
+              {[
+                { icon: Instagram, label: 'Instagram' },
+                { icon: Facebook, label: 'Facebook' },
+                { icon: Youtube, label: 'YouTube' },
+                { icon: Twitter, label: 'Twitter' },
+              ].map(({ icon: Icon, label }) => (
+                <motion.a 
+                  key={label}
+                  href="#" 
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-purple-primary hover:text-white transition-all duration-300 group"
+                  aria-label={label}
+                >
+                  <Icon size={18} className="text-gray-300 group-hover:text-white" />
+                </motion.a>
+              ))}
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Shopping</h4>
-            <ul className="space-y-4">
-              {['Shop All', 'New Arrivals', 'Collections', 'Bestsellers'].map((item) => (
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-purple-primary rounded-full" />
+              Shopping
+            </h4>
+            <ul className="space-y-3">
+              {['Shop All', 'New Arrivals', 'Collections', 'Bestsellers', 'Sale'].map((item) => (
                 <li key={item}>
                   <Link
                     to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="text-sm text-gray-500 hover:text-purple-primary transition-colors"
+                    className="text-gray-400 hover:text-purple-300 transition-colors text-sm flex items-center gap-2 group"
                   >
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-600 group-hover:bg-purple-400 transition-colors" />
                     {item}
                   </Link>
                 </li>
@@ -49,14 +82,18 @@ export default function Footer() {
 
           {/* Customer Service */}
           <div>
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Customer Care</h4>
-            <ul className="space-y-4">
-              {['Track Order', 'Shipping Info', 'Returns & Exchanges', 'Contact Us'].map((item) => (
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-purple-primary rounded-full" />
+              Customer Care
+            </h4>
+            <ul className="space-y-3">
+              {['Track Order', 'Shipping Info', 'Returns & Exchanges', 'Contact Us', 'FAQ'].map((item) => (
                 <li key={item}>
                   <Link
                     to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="text-sm text-gray-500 hover:text-purple-primary transition-colors"
+                    className="text-gray-400 hover:text-purple-300 transition-colors text-sm flex items-center gap-2 group"
                   >
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-600 group-hover:bg-purple-400 transition-colors" />
                     {item}
                   </Link>
                 </li>
@@ -66,31 +103,82 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-6">Contact Us</h4>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-purple-primary rounded-full" />
+              Contact Us
+            </h4>
             <div className="space-y-4">
-              <div className="flex items-start gap-3 text-sm text-gray-500">
-                <MapPin size={18} className="text-purple-primary shrink-0" />
-                <span>Chennai, Tamil Nadu, India</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-gray-500">
-                <Phone size={18} className="text-purple-primary shrink-0" />
-                <span>+91 98765 43210</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-gray-500">
-                <Mail size={18} className="text-purple-primary shrink-0" />
-                <span>hello@littleshop.in</span>
-              </div>
+              <motion.a 
+                href="#" 
+                whileHover={{ x: 4 }}
+                className="flex items-start gap-3 text-gray-400 hover:text-purple-300 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-purple-primary/20 transition-colors">
+                  <MapPin size={18} className="text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Visit Us</p>
+                  <span className="text-sm">Chennai, Tamil Nadu, India</span>
+                </div>
+              </motion.a>
+              
+              <motion.a 
+                href="tel:+919876543210" 
+                whileHover={{ x: 4 }}
+                className="flex items-center gap-3 text-gray-400 hover:text-purple-300 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-purple-primary/20 transition-colors">
+                  <Phone size={18} className="text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Call Us</p>
+                  <span className="text-sm">+91 98765 43210</span>
+                </div>
+              </motion.a>
+              
+              <motion.a 
+                href="mailto:hello@littleshop.in" 
+                whileHover={{ x: 4 }}
+                className="flex items-center gap-3 text-gray-400 hover:text-purple-300 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-purple-primary/20 transition-colors">
+                  <Mail size={18} className="text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Email Us</p>
+                  <span className="text-sm">hello@littleshop.in</span>
+                </div>
+              </motion.a>
             </div>
           </div>
-        </div>
+        </motion.div>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mb-8" />
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-gray-400">
-          <p>© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</p>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            © {new Date().getFullYear()} {BRAND.name}. Made with 
+            <Heart className="w-3 h-3 text-red-500 fill-red-500" /> 
+            in India. All rights reserved.
+          </p>
+          
           <div className="flex items-center gap-6">
-            <Link to="/privacy-policy" className="hover:text-purple-primary transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-purple-primary transition-colors">Terms of Service</Link>
+            <Link to="/privacy-policy" className="text-xs text-gray-500 hover:text-purple-300 transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="text-xs text-gray-500 hover:text-purple-300 transition-colors">Terms of Service</Link>
+            <Link to="/shipping" className="text-xs text-gray-500 hover:text-purple-300 transition-colors">Shipping Info</Link>
           </div>
+          
+          {/* Back to Top Button */}
+          <motion.button
+            onClick={scrollToTop}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 rounded-full bg-purple-primary/20 backdrop-blur-sm flex items-center justify-center hover:bg-purple-primary transition-all duration-300 group"
+          >
+            <ArrowUp size={18} className="text-purple-300 group-hover:text-white" />
+          </motion.button>
         </div>
       </div>
     </footer>

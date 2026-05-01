@@ -15,7 +15,7 @@ export default function OffersTicker() {
 
   return (
     <div 
-      className="bg-white border-b border-gray-100 py-2 overflow-hidden"
+      className="bg-white border-b border-gray-100 py-2  md:mt-3 lg:mt-4 overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)} 
     >

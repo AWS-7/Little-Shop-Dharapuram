@@ -11,17 +11,17 @@ const OCCASIONS = ['All', 'Wedding', 'Party', 'Daily Wear', 'Festive'];
 const COLORS = ['All', 'Red', 'Pink', 'Blue', 'Green', 'Gold', 'Black', 'White', 'Purple'];
 const ALL_CATEGORIES = [
   'All', 'Silk Sarees', 'Cotton Sarees', 'Designer Sarees', 'Bridal Sarees', 'Festive Sarees',
-  'Kurtas', 'Lehengas', 'Gowns', 'Co-ords', 'Jewellery', 'Accessories',
+  'Kurtas', 'Lehengas', 'Gowns', 'Co-ords', 'Jewellery', 'Bangles', 'Bags', 'Accessories',
 ];
 
 export default function Shop() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const categoryFromUrl = searchParams.get('category');
   
   const [allProducts, setAllProducts] = useState(PLACEHOLDER_PRODUCTS);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [showSlowLoading, setShowSlowLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || 'All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedOccasion, setSelectedOccasion] = useState('All');
   const [selectedColor, setSelectedColor] = useState('All');
   const [priceRange, setPriceRange] = useState('All');
@@ -37,9 +37,20 @@ export default function Shop() {
   // Update category when URL parameter changes
   useEffect(() => {
     if (categoryFromUrl) {
-      setSelectedCategory(categoryFromUrl);
+      // Decode URL parameter and sync with state
+      const decodedCategory = decodeURIComponent(categoryFromUrl);
+      setSelectedCategory(decodedCategory);
     }
   }, [categoryFromUrl]);
+
+  // Sync state changes back to URL
+  useEffect(() => {
+    if (selectedCategory !== 'All') {
+      setSearchParams({ category: selectedCategory });
+    } else {
+      setSearchParams({});
+    }
+  }, [selectedCategory]);
 
   // Show LogoPulse if loading takes more than 500ms
   useEffect(() => {
@@ -92,7 +103,14 @@ export default function Shop() {
   const filtered = useMemo(() => {
     let items = [...allProducts];
     if (selectedCategory !== 'All') {
-      items = items.filter((p) => p.category === selectedCategory || p.category?.includes(selectedCategory.split(' ').pop()));
+      items = items.filter((p) => {
+        const productCategory = p.category?.toLowerCase() || '';
+        const selectedCat = selectedCategory.toLowerCase();
+        // Match exact, partial, or word-based
+        return productCategory === selectedCat || 
+               productCategory.includes(selectedCat) || 
+               selectedCat.includes(productCategory);
+      });
     }
     if (selectedOccasion !== 'All') {
       items = items.filter((p) => p.occasion === selectedOccasion || p.tags?.includes(selectedOccasion));

@@ -4930,8 +4930,8 @@ export default function AdminDashboard() {
                         className="w-full border border-gray-200 px-4 py-3 font-inter text-sm outline-none focus:border-purple-primary bg-white"
                       >
                         <option value="">Select Category</option>
-                        {PRODUCT_CATEGORIES.map((cat) => (
-                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                         ))}
                       </select>
                     </div>
@@ -5359,8 +5359,8 @@ export default function AdminDashboard() {
                         className="w-full border border-gray-200 px-4 py-3 font-inter text-sm outline-none focus:border-purple-primary bg-white"
                       >
                         <option value="">Select Category</option>
-                        {PRODUCT_CATEGORIES.map((cat) => (
-                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                         ))}
                       </select>
                     </div>
