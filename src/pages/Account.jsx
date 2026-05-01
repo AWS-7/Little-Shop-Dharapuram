@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, LogOut, Package, Heart, ChevronRight, Chrome,
-  MapPin, Plus, Pencil, Trash2, Star, Check, Gift, Share2, Copy, Wallet, Shield, Sparkles
+  MapPin, Plus, Pencil, Trash2, Star, Check, Gift, Share2, Copy, Wallet, Shield, Sparkles,
+  ShoppingBag
 } from 'lucide-react';
 import { loginWithGoogle, logoutUser, getCurrentUser, isAuthenticated } from '../lib/firebaseAuth';
 import {
@@ -377,7 +378,7 @@ function ProfileView({ user, onSignOut }) {
             </div>
           </div>
 
-          {/* Referral Card - Modern MNC Style */}
+          {/* Order Summary Card */}
           <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
             {/* Decorative Pattern */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
@@ -387,42 +388,37 @@ function ProfileView({ user, onSignOut }) {
               {/* Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <Gift size={20} className="text-white" />
+                  <ShoppingBag size={20} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold">Refer & Earn</h2>
-                  <p className="text-white/70 text-xs">Share with friends</p>
+                  <h2 className="text-base font-semibold">My Orders</h2>
+                  <p className="text-white/70 text-xs">Track your shopping</p>
                 </div>
               </div>
               
-              {/* Referral Code */}
-              <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">Your Code</p>
-                    <span className="text-lg font-mono font-semibold tracking-wider">{referralCode || '...'}</span>
-                  </div>
-                  <button 
-                    onClick={handleCopyCode} 
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                    title="Copy code"
-                  >
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
-                  </button>
+              {/* Order Stats */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
+                  <p className="text-xl font-semibold">0</p>
+                  <p className="text-[10px] text-white/60">Total Orders</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
+                  <p className="text-xl font-semibold">₹0</p>
+                  <p className="text-[10px] text-white/60">Total Spent</p>
                 </div>
               </div>
               
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
-                  <p className="text-xl font-semibold">{referralStats?.totalReferrals || 0}</p>
-                  <p className="text-[10px] text-white/60">Invites</p>
+              {/* Quick Actions */}
+              <Link 
+                to="/orders"
+                className="flex items-center justify-between p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-colors group"
+              >
+                <div className="flex items-center gap-2">
+                  <Package size={16} className="text-white/80" />
+                  <span className="text-sm font-medium">View All Orders</span>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
-                  <p className="text-xl font-semibold">₹{referralStats?.totalRewards || 0}</p>
-                  <p className="text-[10px] text-white/60">Earned</p>
-                </div>
-              </div>
+                <ChevronRight size={16} className="text-white/60 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
         </div>
