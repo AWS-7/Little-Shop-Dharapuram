@@ -1,9 +1,10 @@
 /**
  * Flash Sale System - Database Operations
  * Dynamic flash sale management with countdown timer
+ * MIGRATED: Using new backend API instead of Supabase
  */
 
-import { supabase } from './supabase';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 /**
  * Get the currently active flash sale
@@ -11,39 +12,23 @@ import { supabase } from './supabase';
  */
 export async function getActiveFlashSale() {
   try {
-    console.log('🔍 Fetching active flash sale...');
-    // Simple query first - just get active sales
-    const { data, error } = await supabase
-      .from('flash_sales')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      // PGRST116 = no rows returned (OK - no active sale)
-      // 406 = table/column issue (OK - flash sales not set up)
-      if (error.code === 'PGRST116' || error.status === 406 || error.status === 400) {
-        console.log('ℹ️ No flash sale found or table not set up');
-        return { data: null, error: null };
-      }
-      console.error('❌ Error fetching active flash sale:', error);
-      return { data: null, error };
-    }
-
-    // No active sale
-    if (!data || data.length === 0) {
+    console.log('🔍 Fetching active flash sale from backend...');
+    
+    // Use new backend API
+    const response = await fetch(`${API_URL}/flash-sales/active`);
+    const result = await response.json();
+    
+    if (!result.success || !result.data) {
       console.log('ℹ️ No active flash sale found');
       return { data: null, error: null };
     }
 
-    const sale = data[0];
+    const sale = result.data;
     console.log('✅ Flash sale found:', sale.product_name, 'Ends:', sale.end_time);
 
     // Check if sale has expired
     if (sale.end_time && new Date(sale.end_time) <= new Date()) {
       console.log('⏰ Flash sale expired, deactivating...');
-      // Auto-deactivate
       await deactivateFlashSale(sale.id);
       return { data: null, error: null };
     }
@@ -91,40 +76,33 @@ export async function createFlashSale({
       isCustomImage: !!customImage
     });
     
-    // First, deactivate any existing active sales
-    await supabase
-      .from('flash_sales')
-      .update({ is_active: false })
-      .eq('is_active', true);
-
-    // Create new flash sale
-    const { data, error } = await supabase
-      .from('flash_sales')
-      .insert([{
+    // Create new flash sale via backend
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/flash-sales`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         product_id: productId,
         product_name: productName,
-        product_image: finalImage,
         original_price: originalPrice,
-        discounted_price: discountedPrice,
+        sale_price: discountedPrice,
+        discount_percent: Math.floor(((originalPrice - discountedPrice) / originalPrice) * 100),
         end_time: endTime,
-        banner_text: bannerText,
         is_active: true
-      }])
-      .select();
-
-    if (error) {
-      console.error('❌ Error creating flash sale:', error);
-      // Check for RLS policy error
-      if (error.code === '42501' || error.message?.includes('row-level security')) {
-        return { data: null, error: { message: 'Database permission denied. Please disable RLS for flash_sales table in Supabase.' } };
-      }
-      return { data: null, error };
-    }
+      })
+    });
     
-    console.log('✅ Flash Sale saved:', data);
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error creating flash sale:', result.message);
+      return { data: null, error: new Error(result.message) };
+    }
 
-    // Return first item from array
-    return { data: data?.[0] || null, error: null };
+    console.log('✅ Flash sale created:', result.data);
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception creating flash sale:', e);
     return { data: null, error: e };
@@ -139,22 +117,23 @@ export async function createFlashSale({
  */
 export async function updateFlashSale(id, updates) {
   try {
-    const { data, error } = await supabase
-      .from('flash_sales')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating flash sale:', error);
-      return { data: null, error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/flash-sales/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error updating flash sale:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
 
-    return { data, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception updating flash sale:', e);
     return { data: null, error: e };
@@ -168,17 +147,22 @@ export async function updateFlashSale(id, updates) {
  */
 export async function deactivateFlashSale(id) {
   try {
-    const { error } = await supabase
-      .from('flash_sales')
-      .update({ is_active: false })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deactivating flash sale:', error);
-      return { success: false, error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/flash-sales/${id}/deactivate`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error deactivating flash sale:', result.message);
+      return { error: new Error(result.message) };
     }
 
-    return { success: true, error: null };
+    console.log('✅ Flash sale deactivated');
+    return { error: null };
   } catch (e) {
     console.error('Exception deactivating flash sale:', e);
     return { success: false, error: e };
@@ -193,27 +177,23 @@ export async function deactivateFlashSale(id) {
  */
 export async function toggleFlashSale(id, isActive) {
   try {
-    if (isActive) {
-      // Deactivate all other sales first
-      await supabase
-        .from('flash_sales')
-        .update({ is_active: false })
-        .eq('is_active', true);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/flash-sales/${id}/toggle`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ is_active: isActive })
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error toggling flash sale:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
 
-    const { data, error } = await supabase
-      .from('flash_sales')
-      .update({ is_active: isActive })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error toggling flash sale:', error);
-      return { data: null, error };
-    }
-
-    return { data, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception toggling flash sale:', e);
     return { data: null, error: e };
@@ -226,17 +206,15 @@ export async function toggleFlashSale(id, isActive) {
  */
 export async function getAllFlashSales() {
   try {
-    const { data, error } = await supabase
-      .from('flash_sales')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching flash sales:', error);
-      return { data: [], error };
+    const response = await fetch(`${API_URL}/flash-sales`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.error('❌ Error fetching flash sales:', result.message);
+      return { data: [], error: new Error(result.message) };
     }
 
-    return { data: data || [], error: null };
+    return { data: result.data || [], error: null };
   } catch (e) {
     console.error('Exception fetching flash sales:', e);
     return { data: [], error: e };
@@ -250,17 +228,21 @@ export async function getAllFlashSales() {
  */
 export async function deleteFlashSale(id) {
   try {
-    const { error } = await supabase
-      .from('flash_sales')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting flash sale:', error);
-      return { success: false, error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/flash-sales/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('❌ Error deleting flash sale');
+      return { error: new Error('Failed to delete flash sale') };
     }
 
-    return { success: true, error: null };
+    console.log('✅ Flash sale deleted');
+    return { error: null };
   } catch (e) {
     console.error('Exception deleting flash sale:', e);
     return { success: false, error: e };
@@ -299,23 +281,9 @@ export function calculateTimeRemaining(endTime) {
  * @returns {Object} Subscription channel
  */
 export function subscribeToFlashSales(callback) {
-  const channel = supabase
-    .channel('flash-sales-realtime')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'flash_sales'
-    }, (payload) => {
-      callback(payload);
-    })
-    .subscribe((status) => {
-      if (status === 'CHANNEL_ERROR') {
-        // Table doesn't exist - silently ignore
-        console.log('Flash sales real-time not available (table may not exist)');
-        return;
-      }
-      console.log('Flash sales subscription:', status);
-    });
-
-  return channel;
+  // Realtime not available with REST API
+  console.log('⚠️ Realtime subscriptions not available with REST API');
+  return {
+    unsubscribe: () => {}
+  };
 }

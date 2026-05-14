@@ -3,7 +3,8 @@
  * Admin-controlled carousel banners
  */
 
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 /**
  * Get all active hero banners
@@ -11,62 +12,65 @@ import { supabase } from './supabase';
  */
 export async function getHeroBanners() {
   try {
-    console.log('🎯 Fetching hero banners...');
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
-
-    if (error) {
-      console.error('❌ Error fetching hero banners:', error);
-      // Return fallback banners if table not set up
-      if (error.code === '42P01' || error.status === 406) {
-        console.log('ℹ️ Hero banners table not found, using defaults');
-        return { 
-          data: [
-            {
-              id: 1,
-              image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop',
-              title: 'Huge Summer Sale',
-              subtitle: 'Up to 50% Off on All Collections',
-              cta: 'Shop Now',
-              color: 'bg-purple-primary'
-            },
-            {
-              id: 2,
-              image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2000&auto=format&fit=crop',
-              title: 'New Arrivals 2026',
-              subtitle: 'Premium Lifestyle Essentials',
-              cta: 'Explore More',
-              color: 'bg-indigo-600'
-            },
-            {
-              id: 3,
-              image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=2000&auto=format&fit=crop',
-              title: 'Exclusive Jewellery',
-              subtitle: 'Timeless Elegance in Every Piece',
-              cta: 'View Collection',
-              color: 'bg-pink-600'
-            }
-          ], 
-          error: null 
-        };
-      }
-      return { data: null, error };
+    console.log('🎯 Fetching hero banners from new backend...');
+    
+    // Using new backend API
+    const response = await fetch(`${API_URL}/banners`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.error('❌ Error fetching hero banners:', result.message);
+      return getDefaultHeroBanners();
     }
+
+    // Filter active banners and sort
+    const data = (result.data || [])
+      .filter(b => b.is_active)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
     if (!data || data.length === 0) {
-      console.log('ℹ️ No active hero banners found');
-      return { data: [], error: null };
+      console.log('ℹ️ No active hero banners found, using defaults');
+      return getDefaultHeroBanners();
     }
 
-    console.log('✅ Hero banners fetched:', data.length);
+    console.log('✅ Hero banners fetched from backend:', data.length);
     return { data, error: null };
   } catch (e) {
     console.error('❌ Exception fetching hero banners:', e);
-    return { data: null, error: e };
+    return getDefaultHeroBanners();
   }
+}
+
+function getDefaultHeroBanners() {
+  return { 
+    data: [
+      {
+        id: 1,
+        image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop',
+        title: 'Huge Summer Sale',
+        subtitle: 'Up to 50% Off on All Collections',
+        cta: 'Shop Now',
+        color: 'bg-purple-primary'
+      },
+      {
+        id: 2,
+        image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2000&auto=format&fit=crop',
+        title: 'New Arrivals 2026',
+        subtitle: 'Premium Lifestyle Essentials',
+        cta: 'Explore More',
+        color: 'bg-indigo-600'
+      },
+      {
+        id: 3,
+        image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=2000&auto=format&fit=crop',
+        title: 'Exclusive Jewellery',
+        subtitle: 'Timeless Elegance in Every Piece',
+        cta: 'View Collection',
+        color: 'bg-pink-600'
+      }
+    ], 
+    error: null 
+  };
 }
 
 /**
@@ -75,13 +79,11 @@ export async function getHeroBanners() {
  */
 export async function getAllHeroBanners() {
   try {
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .select('*')
-      .order('sort_order', { ascending: true });
-
-    if (error) throw error;
-    return { data: data || [], error: null };
+    const response = await fetch(`${API_URL}/banners`);
+    const result = await response.json();
+    
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data || [], error: null };
   } catch (e) {
     console.error('Error fetching all hero banners:', e);
     return { data: [], error: e };
@@ -93,44 +95,36 @@ export async function getAllHeroBanners() {
  * @param {Object} banner - Banner data
  * @returns {Promise<{data: Object|null, error: Error|null}>}
  */
-export async function createHeroBanner({
-  image,
-  title,
-  subtitle,
-  cta = 'Shop Now',
-  link = '/shop',
-  color = 'bg-purple-primary',
-  sortOrder = 0,
-  isActive = true
-}) {
+export async function createHeroBanner({ title, image, sort_order = 0 }) {
   try {
     console.log('💾 Creating hero banner:', { title, image });
     
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .insert([{
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/banners`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         image,
         title,
-        subtitle,
-        cta,
-        link,
-        color,
-        sort_order: sortOrder,
-        is_active: isActive
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error creating hero banner:', error);
-      return { data: null, error };
+        sort_order,
+        is_active: true
+      })
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error creating banner:', result.message);
+      throw new Error(result.message);
     }
-
-    console.log('✅ Hero banner created:', data);
-    return { data, error: null };
-  } catch (e) {
-    console.error('Exception creating hero banner:', e);
-    return { data: null, error: e };
+    
+    console.log('✅ Banner created:', result.data);
+    return { data: result.data, error: null };
+  } catch (error) {
+    console.error('❌ Exception creating banner:', error);
+    return { data: null, error };
   }
 }
 
@@ -142,18 +136,21 @@ export async function createHeroBanner({
  */
 export async function updateHeroBanner(id, updates) {
   try {
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (e) {
-    console.error('Error updating hero banner:', e);
-    return { data: null, error: e };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/banners/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
+  } catch (error) {
+    return { data: null, error };
   }
 }
 
@@ -164,21 +161,23 @@ export async function updateHeroBanner(id, updates) {
  */
 export async function deleteHeroBanner(id) {
   try {
-    const { error } = await supabase
-      .from('hero_banners')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return { success: true, error: null };
-  } catch (e) {
-    console.error('Error deleting hero banner:', e);
-    return { success: false, error: e };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/banners/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete banner');
+    return { error: null };
+  } catch (error) {
+    return { error };
   }
 }
 
 /**
- * Upload hero banner image to Supabase Storage
+ * Upload hero banner image to backend API
  * @param {File} file - Image file
  * @returns {Promise<{url: string|null, error: Error|null}>}
  */
@@ -239,26 +238,28 @@ export async function uploadHeroBannerImage(file) {
       console.warn('Image optimization failed, using original:', e);
     }
     
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, uploadBlob, {
-        cacheControl: 'public, max-age=31536000, immutable',
-        contentType: 'image/webp',
-      });
+    // Upload via backend API
+    const formData = new FormData();
+    formData.append('file', uploadBlob, fileName);
     
-    if (uploadError) {
-      console.error('❌ Upload error:', uploadError);
-      return { url: null, error: uploadError };
+    const token = await getAuthToken();
+    const uploadResponse = await fetch(`${API_URL}/uploads/banners`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const uploadResult = await uploadResponse.json();
+    
+    if (!uploadResult.success) {
+      console.error('Upload failed:', uploadResult.message);
+      throw new Error(uploadResult.message);
     }
     
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath);
-    
-    console.log('✅ Banner image uploaded:', urlData.publicUrl);
-    return { url: urlData.publicUrl, error: null };
+    console.log('✅ Upload successful:', uploadResult.data.url);
+    return { url: uploadResult.data.url, error: null };
     
   } catch (e) {
     console.error('❌ Error uploading banner image:', e);
@@ -274,18 +275,21 @@ export async function uploadHeroBannerImage(file) {
  */
 export async function toggleHeroBanner(id, isActive) {
   try {
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .update({ is_active: isActive })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (e) {
-    console.error('Error toggling hero banner:', e);
-    return { data: null, error: e };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/banners/${id}/toggle`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ is_active: isActive })
+    });
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
+  } catch (error) {
+    return { data: null, error };
   }
 }
 
@@ -295,21 +299,9 @@ export async function toggleHeroBanner(id, isActive) {
  * @returns {Object} Subscription channel
  */
 export function subscribeToHeroBanners(callback) {
-  const channel = supabase
-    .channel('hero-banners-changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'hero_banners'
-      },
-      (payload) => {
-        console.log('🔄 Hero banner change:', payload);
-        callback(payload);
-      }
-    )
-    .subscribe();
-
-  return channel;
+  // Realtime not available with REST API - use polling instead
+  console.log('⚠️ Realtime subscriptions not available with REST API');
+  return {
+    unsubscribe: () => {}
+  };
 }

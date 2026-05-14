@@ -1,7 +1,15 @@
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
 import { completeReferral, checkUserReferralStatus } from './referrals';
 import { createReferralRewardCoupon } from './coupons';
 import { sendOrderStatusNotification, sendAdminOrderNotification, isWhatsAppConfigured } from './whatsapp';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 // ── Create Order ──
 export async function createOrder(orderData) {
@@ -9,56 +17,64 @@ export async function createOrder(orderData) {
     // Validate stock availability before creating order
     const items = orderData.items || [];
     for (const item of items) {
-      const { data: product, error: stockError } = await supabase
-        .from('products')
-        .select('stock_count, name')
-        .eq('id', item.id)
-        .single();
-
-      if (stockError || !product) {
+      // Check stock via backend API
+      const response = await fetch(`${API_URL}/products/${item.id}`);
+      const result = await response.json();
+      
+      if (!result.success || !result.data) {
         return { data: null, error: { message: `Product ${item.name} not found` } };
       }
+      
+      const product = result.data;
 
-      if (product.stock_count < item.quantity) {
+      if (product.stock_quantity < item.quantity) {
         return {
           data: null,
           error: {
-            message: `Insufficient stock for "${item.name}". Available: ${product.stock_count}, Requested: ${item.quantity}`
+            message: `Insufficient stock for "${item.name}". Available: ${product.stock_quantity}, Requested: ${item.quantity}`
           }
         };
       }
     }
 
     // All stock validated - proceed with order creation
-    const { data, error } = await supabase
-      .from('orders')
-      .insert([orderData])
-      .select()
-      .single();
-
-    if (error) {
-      return { data: null, error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(orderData)
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      return { data: null, error: new Error(result.message) };
     }
+    
+    const data = result.data;
 
     // Deduct inventory for each item
     for (const item of items) {
-      // Get current stock and calculate new value
-      const { data: currentProduct } = await supabase
-        .from('products')
-        .select('stock_count')
-        .eq('id', item.id)
-        .single();
+      // Get current stock via API
+      const prodResponse = await fetch(`${API_URL}/products/${item.id}`);
+      const prodResult = await prodResponse.json();
 
-      if (currentProduct) {
-        const newStockCount = Math.max(0, currentProduct.stock_count - item.quantity);
-        const { error: deductError } = await supabase
-          .from('products')
-          .update({ stock_count: newStockCount })
-          .eq('id', item.id);
+      if (prodResult.data) {
+        const newStockCount = Math.max(0, prodResult.data.stock_quantity - item.quantity);
+        // Update stock via API
+        const updateResponse = await fetch(`${API_URL}/products/${item.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ stock_quantity: newStockCount })
+        });
 
-        if (deductError) {
-          console.error(`Failed to deduct stock for product ${item.id}:`, deductError);
-          // Log but don't fail - order is already created
+        if (!updateResponse.ok) {
+          console.error(`Failed to deduct stock for product ${item.id}`);
         }
       }
     }
@@ -92,15 +108,14 @@ export async function createOrder(orderData) {
 // ── Process Referral Reward on First Purchase ──
 async function processReferralReward(userId, orderData) {
   try {
-    // Check if user has any previous orders
-    const { data: previousOrders, error: countError } = await supabase
-      .from('orders')
-      .select('order_id')
-      .eq('user_id', userId)
-      .lt('created_at', orderData.created_at || new Date().toISOString())
-      .limit(1);
-
-    if (countError || (previousOrders && previousOrders.length > 0)) {
+    // Check if user has any previous orders via API
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders/user/${userId}`);
+    const result = await response.json();
+    
+    const previousOrders = result.data || [];
+    
+    if (previousOrders.length > 0) {
       // Not first order, skip referral reward
       return;
     }
@@ -128,10 +143,14 @@ async function processReferralReward(userId, orderData) {
       }
 
       // Mark referral reward as claimed
-      await supabase
-        .from('referrals')
-        .update({ reward_claimed: true, reward_coupon_id: coupon?.id })
-        .eq('id', referral.id);
+      await fetch(`${API_URL}/referrals/${referral.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reward_claimed: true, reward_coupon_id: coupon?.id })
+      });
     }
   } catch (err) {
     console.error('Error processing referral reward:', err);
@@ -143,17 +162,13 @@ async function processReferralReward(userId, orderData) {
 export async function getUserOrders(userId) {
   try {
     console.log('🔍 Fetching orders for userId:', userId);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const response = await fetch(`${API_URL}/orders/user/${userId}`);
+    const result = await response.json();
     
-    if (error) {
-      console.error('❌ Error fetching orders:', error);
+    if (!result.success) {
+      console.error('❌ Error fetching orders:', result.message);
     } else {
-      console.log('✅ Orders fetched:', data?.length || 0, 'orders found');
-      console.log('📋 Orders data:', data);
+      console.log('✅ Orders fetched:', result.data?.length || 0, 'orders found');
     }
     
     return { data: data || [], error };
@@ -166,12 +181,9 @@ export async function getUserOrders(userId) {
 // ── Get single order by ID (admin or user) ──
 export async function getOrderById(orderId) {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('order_id', orderId)
-      .single();
-    return { data, error };
+    const response = await fetch(`${API_URL}/orders/${orderId}`);
+    const result = await response.json();
+    return { data: result.data, error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: null, error: e };
   }
@@ -180,11 +192,14 @@ export async function getOrderById(orderId) {
 // ── Get ALL orders (admin) ──
 export async function getAllOrders() {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-    return { data: data || [], error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    return { data: result.data || [], error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: [], error: e };
   }
@@ -195,37 +210,36 @@ export async function updateOrderStatus(orderId, status) {
   try {
     console.log(`Updating order ${orderId} → status: ${status}`);
     
-    // Get current order data before updating (for notification)
-    const { data: currentOrder } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('order_id', orderId)
-      .single();
+    // Get current order data before updating
+    const getResponse = await fetch(`${API_URL}/orders/${orderId}`);
+    const getResult = await getResponse.json();
+    const currentOrder = getResult.data;
     
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('order_id', orderId)
-      .select();
+    // Update via API
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status })
+    });
     
-    if (error) {
-      console.error('Order status update failed:', error.message, error.details);
-      return { data: null, error };
+    const result = await response.json();
+    if (!result.success) {
+      console.error('Order status update failed:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
-    if (!data || data.length === 0) {
-      console.warn(`No order found with order_id: ${orderId} (may be a demo order)`);
-      return { data: null, error: null }; // Not a real error, just a demo order
-    }
     
-    console.log('Order status updated:', data[0]);
+    console.log('Order status updated:', result.data);
     
     // Send WhatsApp notification for important status changes
-    const updatedOrder = data[0];
+    const updatedOrder = result.data;
     const previousStatus = currentOrder?.status;
     
     // Trigger notification on status change to 'paid' (order confirmed)
     if (status === 'paid' && previousStatus !== 'paid') {
-      // Non-blocking WhatsApp notification
       sendWhatsAppNotification(updatedOrder, 'paid').catch(err => {
         console.error('WhatsApp notification failed (non-blocking):', err);
       });
@@ -239,7 +253,7 @@ export async function updateOrderStatus(orderId, status) {
       });
     }
     
-    return { data: data[0], error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Order status update exception:', e);
     return { data: null, error: e };
@@ -249,14 +263,19 @@ export async function updateOrderStatus(orderId, status) {
 // ── Update order tracking ID (admin) ──
 export async function updateOrderTrackingId(orderId, trackingId) {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ courier_tracking_id: trackingId })
-      .eq('order_id', orderId)
-      .select();
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders/${orderId}/tracking`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ courier_tracking_id: trackingId })
+    });
     
-    if (error) throw error;
-    return { data: data?.[0], error: null };
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
   } catch (e) {
     return { data: null, error: e };
   }
@@ -295,45 +314,34 @@ async function sendWhatsAppNotification(order, status) {
 }
 
 // ── Subscribe to order changes (realtime) ──
+// NOTE: Realtime not available with REST API - use polling instead
 export function subscribeToOrders(callback) {
-  const channelName = `orders-${Math.random().toString(36).substring(7)}`;
-  const channel = supabase
-    .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        callback(payload);
-    })
-    .subscribe();
-  return channel;
+  console.log('⚠️ Realtime subscriptions not available with REST API');
+  return {
+    unsubscribe: () => {}
+  };
 }
 
 // ── Subscribe to single order (client tracking) ──
 export function subscribeToOrder(orderId, callback) {
-  const channel = supabase
-    .channel(`order-${orderId}`)
-    .on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'orders',
-      filter: `order_id=eq.${orderId}`,
-    }, (payload) => {
-      callback(payload.new);
-    })
-    .subscribe();
-  return channel;
+  console.log('⚠️ Realtime subscriptions not available with REST API');
+  return {
+    unsubscribe: () => {}
+  };
 }
 
 // ── Delete Order ──
 export async function deleteOrder(orderId) {
   try {
-    const { error } = await supabase
-      .from('orders')
-      .delete()
-      .eq('order_id', orderId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders/${orderId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    if (error) {
-      console.error('Delete error:', error);
-      throw error;
-    }
+    if (!response.ok) throw new Error('Failed to delete order');
     return { success: true, error: null };
   } catch (e) {
     console.error('Delete exception:', e);
@@ -344,18 +352,18 @@ export async function deleteOrder(orderId) {
 // ── Reset All Orders (Delete all order data) ──
 export async function resetAllOrders() {
   try {
-      const { error } = await supabase
-      .from('orders')
-      .delete()
-      .neq('order_id', 'placeholder'); // Delete all orders
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/orders/reset`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    if (error) {
-      console.error('Reset orders error:', error);
-      throw error;
-    }
-    return { success: true, count: 'all', error: null };
+    if (!response.ok) throw new Error('Failed to reset orders');
+    return { success: true, error: null };
   } catch (e) {
     console.error('Reset orders exception:', e);
-    return { success: false, count: 0, error: e };
+    return { success: false, error: e };
   }
 }

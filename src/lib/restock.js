@@ -3,7 +3,14 @@
  * Handle customer requests for out-of-stock products
  */
 
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 /**
  * Create a new restock request
@@ -26,41 +33,35 @@ export async function createRestockRequest({ productId, productName, email, cust
     }
 
     // Check if this email already requested for this product
-    const { data: existingRequest } = await supabase
-      .from('restock_requests')
-      .select('id, status')
-      .eq('product_id', productId)
-      .eq('customer_email', email)
-      .eq('status', 'pending')
-      .single();
+    const checkResponse = await fetch(`${API_URL}/restock/check?product_id=${productId}&email=${email}`);
+    const checkResult = await checkResponse.json();
 
-    if (existingRequest) {
-      return {
-        data: null,
-        error: new Error('You have already requested to be notified when this product is back in stock.'),
-        alreadyExists: true
-      };
+    if (checkResult.data) {
+      return { success: false, error: 'You already have a pending request for this product', data: null };
     }
 
     // Create the restock request
-    const { data, error } = await supabase
-      .from('restock_requests')
-      .insert([{
+    const response = await fetch(`${API_URL}/restock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         product_id: productId,
         product_name: productName,
         customer_email: email,
-        customer_name: customerName || null,
-        status: 'pending'
-      }])
-      .select()
-      .single();
+        customer_phone: phone,
+        customer_name: customerName
+      })
+    });
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error creating restock request:', error);
-      return { data: null, error };
+    if (result.error) {
+      console.error('Error creating restock request:', result.error);
+      return { data: null, error: result.error };
     }
 
-    return { data, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception creating restock request:', e);
     return { data: null, error: e };
@@ -76,27 +77,20 @@ export async function createRestockRequest({ productId, productName, email, cust
  */
 export async function getRestockRequests(filters = {}) {
   try {
-    let query = supabase
-      .from('restock_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Build query params
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.productId) params.append('product_id', filters.productId);
+    
+    const response = await fetch(`${API_URL}/restock?${params.toString()}`);
+    const result = await response.json();
 
-    if (filters.status) {
-      query = query.eq('status', filters.status);
+    if (result.error) {
+      console.error('Error fetching restock requests:', result.error);
+      return { data: [], error: result.error };
     }
 
-    if (filters.productId) {
-      query = query.eq('product_id', filters.productId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching restock requests:', error);
-      return { data: [], error };
-    }
-
-    return { data: data || [], error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception fetching restock requests:', e);
     return { data: [], error: e };
@@ -111,50 +105,14 @@ export async function getRestockRequests(filters = {}) {
 export async function getAggregatedRestockRequests() {
   try {
     // Get all pending requests grouped by product
-    const { data, error } = await supabase
-      .from('restock_requests')
-      .select('product_id, product_name, customer_email, customer_phone, created_at')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    const response = await fetch(`${API_URL}/restock/aggregated`);
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error fetching aggregated restock requests:', error);
-      return { data: [], error };
+    if (!result.success) {
+      return { data: [], error: new Error(result.message) };
     }
 
-    // Group and aggregate manually since Supabase doesn't support GROUP BY in the same way
-    const aggregated = data.reduce((acc, request) => {
-      const key = request.product_id;
-      
-      if (!acc[key]) {
-        acc[key] = {
-          product_id: request.product_id,
-          product_name: request.product_name,
-          request_count: 0,
-          email_requests: 0,
-          phone_requests: 0,
-          last_request_date: request.created_at,
-          requests: []
-        };
-      }
-      
-      acc[key].request_count++;
-      if (request.customer_email) acc[key].email_requests++;
-      if (request.customer_phone) acc[key].phone_requests++;
-      acc[key].requests.push(request);
-      
-      // Update last request date if this is newer
-      if (new Date(request.created_at) > new Date(acc[key].last_request_date)) {
-        acc[key].last_request_date = request.created_at;
-      }
-      
-      return acc;
-    }, {});
-
-    // Convert to array and sort by request count
-    const sorted = Object.values(aggregated).sort((a, b) => b.request_count - a.request_count);
-
-    return { data: sorted, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception fetching aggregated restock requests:', e);
     return { data: [], error: e };
@@ -168,22 +126,22 @@ export async function getAggregatedRestockRequests() {
  */
 export async function markRequestsAsNotified(productId) {
   try {
-    const { data, error } = await supabase
-      .from('restock_requests')
-      .update({
-        status: 'notified',
-        notification_sent_at: new Date().toISOString()
-      })
-      .eq('product_id', productId)
-      .eq('status', 'pending')
-      .select();
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/restock/${productId}/notify`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error marking requests as notified:', error);
-      return { data: null, error };
+    if (result.error) {
+      console.error('Error marking requests as notified:', result.error);
+      return { data: null, error: result.error };
     }
 
-    return { data, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception marking requests as notified:', e);
     return { data: null, error: e };
@@ -197,14 +155,21 @@ export async function markRequestsAsNotified(productId) {
  */
 export async function deleteRestockRequest(requestId) {
   try {
-    const { error } = await supabase
-      .from('restock_requests')
-      .delete()
-      .eq('id', requestId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/restock/${requestId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete request');
 
-    if (error) {
-      console.error('Error deleting restock request:', error);
-      return { success: false, error };
+    const result = await response.json();
+
+    if (result.error) {
+      console.error('Error deleting restock request:', result.error);
+      return { success: false, error: result.error };
     }
 
     return { success: true, error: null };
@@ -221,18 +186,15 @@ export async function deleteRestockRequest(requestId) {
  */
 export async function getRestockRequestCount(productId) {
   try {
-    const { count, error } = await supabase
-      .from('restock_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('product_id', productId)
-      .eq('status', 'pending');
+    const response = await fetch(`${API_URL}/restock/count/${productId}`);
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error fetching restock request count:', error);
-      return { count: 0, error };
+    if (result.error) {
+      console.error('Error fetching restock request count:', result.error);
+      return { count: 0, error: result.error };
     }
 
-    return { count: count || 0, error: null };
+    return { count: result.data, error: null };
   } catch (e) {
     console.error('Exception fetching restock request count:', e);
     return { count: 0, error: e };
@@ -298,29 +260,28 @@ export async function checkProductRestockRequests(productId) {
 export async function notifyRestockCustomers(productId, productName, newStockCount) {
   try {
     // Get pending requests for this product
-    const { data: requests, error: fetchError } = await supabase
-      .from('restock_requests')
-      .select('*')
-      .eq('product_id', productId)
-      .eq('status', 'pending');
+    const response = await fetch(`${API_URL}/restock/pending/${productId}`);
+    const result = await response.json();
+    const requests = result.data || [];
 
-    if (fetchError || !requests || requests.length === 0) {
+    if (result.error || !requests || requests.length === 0) {
       return { notified: 0, error: null };
     }
 
     // Mark all as notified
-    const { error: updateError } = await supabase
-      .from('restock_requests')
-      .update({
-        status: 'notified',
-        notification_sent_at: new Date().toISOString()
-      })
-      .eq('product_id', productId)
-      .eq('status', 'pending');
+    const token = await getAuthToken();
+    const updateResponse = await fetch(`${API_URL}/restock/${productId}/notify`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const updateResult = await updateResponse.json();
 
-    if (updateError) {
-      console.error('Error marking restock requests as notified:', updateError);
-      return { notified: 0, error: updateError };
+    if (updateResult.error) {
+      console.error('Error marking restock requests as notified:', updateResult.error);
+      return { notified: 0, error: updateResult.error };
     }
 
     // Send WhatsApp notifications if phone numbers available

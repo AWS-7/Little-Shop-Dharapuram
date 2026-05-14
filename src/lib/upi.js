@@ -115,21 +115,30 @@ export async function isUPIAppInstalled(appName) {
 /**
  * Save UPI payment details to database
  */
-export async function saveUPITransaction(supabase, transactionDetails) {
-  const { data, error } = await supabase
-    .from('upi_transactions')
-    .insert({
-      order_id: transactionDetails.orderId,
-      amount: transactionDetails.amount,
-      upi_id: MERCHANT_UPI,
-      app_used: transactionDetails.app,
-      status: 'pending',  // Will be updated after verification
-      created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  return { data, error };
+export async function saveUPITransaction(transactionDetails) {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/payments/upi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        order_id: transactionDetails.orderId,
+        amount: transactionDetails.amount,
+        upi_id: MERCHANT_UPI,
+        app_used: transactionDetails.app,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      })
+    });
+    
+    const result = await response.json();
+    return { data: result.data, error: result.success ? null : new Error(result.message) };
+  } catch (error) {
+    return { data: null, error };
+  }
 }
 
 /**

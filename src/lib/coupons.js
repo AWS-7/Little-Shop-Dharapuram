@@ -1,46 +1,32 @@
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 // Create a reward coupon for referrer
 export async function createReferralRewardCoupon(userId, referredUserName) {
-  // Skip if userId is not valid UUID (Firebase UID issue)
-  if (!userId || userId.length > 36) {
-    return { data: null, error: null };
-  }
-  
   try {
-    // Generate unique coupon code
-    const couponCode = `REF${Date.now().toString(36).toUpperCase().slice(-6)}`;
-    
-    const { data, error } = await supabase
-      .from('coupons')
-      .insert([{
-        code: couponCode,
-        user_id: userId,
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         type: 'referral_reward',
-        discount_amount: 100, // ₹100
-        discount_percent: null,
-        min_order_amount: 0,
-        max_discount: 100,
-        description: `₹100 off referral reward for inviting ${referredUserName || 'a friend'}`,
-        is_used: false,
-        valid_from: new Date().toISOString(),
-        valid_until: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days valid
-        usage_limit: 1,
-        usage_count: 0,
-      }])
-      .select()
-      .single();
-
-    if (error && error.code === '22P02') {
-      return { data: [], error: null };
-    }
-
-    if (error) {
-      console.error('Error creating coupon:', error);
-      return { data: [], error };
-    }
-
-    return { data, error };
+        discount_amount: 100,
+        description: `₹100 off referral reward for inviting ${referredUserName || 'a friend'}`
+      })
+    });
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
   } catch (e) {
     return { data: null, error: e };
   }
@@ -48,29 +34,17 @@ export async function createReferralRewardCoupon(userId, referredUserName) {
 
 // Get user's coupons
 export async function getUserCoupons(userId, options = {}) {
-  // Skip if userId is not valid UUID (Firebase UID issue)
-  if (!userId || userId.length > 36) {
-    return { data: [], error: null };
-  }
-  
   try {
-    const { onlyActive = true } = options;
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    let query = supabase
-      .from('coupons')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (onlyActive) {
-      query = query
-        .eq('is_used', false)
-        .gte('valid_until', new Date().toISOString());
-    }
-
-    const { data, error } = await query;
-
-    return { data: data || [], error };
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data || [], error: null };
   } catch (e) {
     return { data: [], error: e };
   }
@@ -79,49 +53,49 @@ export async function getUserCoupons(userId, options = {}) {
 // Validate a coupon code
 export async function validateCoupon(code, userId, orderAmount) {
   try {
-    const { data: coupon, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .eq('user_id', userId)
-      .single();
+    const response = await fetch(`${API_URL}/coupons/validate/${code.toUpperCase()}`);
+    const result = await response.json();
 
-    if (error || !coupon) {
+    if (!result.success || !result.data) {
       return { valid: false, message: 'Invalid coupon code', discount: 0 };
     }
 
-    if (coupon.is_used) {
-      return { valid: false, message: 'Coupon already used', discount: 0 };
-    }
+    const coupon = result.data;
 
-    if (new Date(coupon.valid_until) < new Date()) {
+    // Check if coupon is expired
+    if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
       return { valid: false, message: 'Coupon has expired', discount: 0 };
     }
 
-    if (orderAmount < coupon.min_order_amount) {
-      return { 
-        valid: false, 
+    // Check if minimum order amount is met
+    if (coupon.min_order_amount && orderAmount < coupon.min_order_amount) {
+      return {
+        valid: false,
         message: `Minimum order amount of ₹${coupon.min_order_amount} required`,
-        discount: 0 
+        discount: 0
       };
     }
 
     // Calculate discount
     let discount = 0;
-    if (coupon.discount_amount) {
-      discount = Math.min(coupon.discount_amount, orderAmount);
-    } else if (coupon.discount_percent) {
-      discount = Math.min(
-        (orderAmount * coupon.discount_percent) / 100,
-        coupon.max_discount || Infinity
-      );
+    if (coupon.discount_percent) {
+      discount = Math.round((orderAmount * coupon.discount_percent) / 100);
+      if (coupon.max_discount) {
+        discount = Math.min(discount, coupon.max_discount);
+      }
+    } else if (coupon.discount_amount) {
+      discount = coupon.discount_amount;
     }
 
-    return { 
-      valid: true, 
+    return {
+      valid: true,
       message: 'Coupon applied successfully',
       discount,
-      coupon 
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        type: coupon.type
+      }
     };
   } catch (e) {
     return { valid: false, message: 'Error validating coupon', discount: 0 };
@@ -131,18 +105,16 @@ export async function validateCoupon(code, userId, orderAmount) {
 // Mark coupon as used
 export async function markCouponUsed(couponId) {
   try {
-    const { data, error } = await supabase
-      .from('coupons')
-      .update({ 
-        is_used: true,
-        usage_count: 1,
-        used_at: new Date().toISOString(),
-      })
-      .eq('id', couponId)
-      .select()
-      .single();
-
-    return { data, error };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons/${couponId}/use`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    return { data: result.data, error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: null, error: e };
   }
@@ -151,18 +123,22 @@ export async function markCouponUsed(couponId) {
 // Get coupon stats
 export async function getCouponStats(userId) {
   try {
-    const { data, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('user_id', userId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons/stats/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
 
-    if (error) return { stats: null, error };
+    if (!result.success) return { stats: null, error: new Error(result.message) };
 
-    const totalCoupons = data?.length || 0;
-    const activeCoupons = data?.filter(c => !c.is_used && new Date(c.valid_until) > new Date()).length || 0;
-    const usedCoupons = data?.filter(c => c.is_used).length || 0;
+    const data = result.data || [];
+    const totalCoupons = data.length || 0;
+    const activeCoupons = data.filter(c => !c.is_used && new Date(c.valid_until) > new Date()).length || 0;
+    const usedCoupons = data.filter(c => c.is_used).length || 0;
     const totalSavings = data
-      ?.filter(c => c.is_used)
+      .filter(c => c.is_used)
       .reduce((sum, c) => sum + (c.discount_amount || 0), 0) || 0;
 
     return {
@@ -186,12 +162,15 @@ export async function getCouponStats(userId) {
 // Get all coupons (for admin)
 export async function getAllCoupons() {
   try {
-    const { data, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
 
-    return { data: data || [], error };
+    return { data: result.data || [], error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: [], error: e };
   }
@@ -200,24 +179,31 @@ export async function getAllCoupons() {
 // Create new coupon (admin only)
 export async function createCoupon(couponData) {
   try {
-    const { data, error } = await supabase
-      .from('coupons')
-      .insert([{
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         code: couponData.code.toUpperCase(),
         discount_percent: couponData.discount_percent,
         usage_limit: couponData.usage_limit,
         usage_count: 0,
         expiry_date: couponData.expiry_date,
         is_active: couponData.is_active ?? true,
-      }])
-      .select();
+      })
+    });
 
-    if (error) {
-      console.error('Error creating coupon:', error);
-      return { data: null, error };
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error('Error creating coupon:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
 
-    return { data: data?.[0] || null, error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception creating coupon:', e);
     return { data: null, error: e };
@@ -229,27 +215,23 @@ export async function updateCoupon(couponId, updates) {
   try {
     console.log('Updating coupon:', couponId, updates);
     
-    const { data, error } = await supabase
-      .from('coupons')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', couponId)
-      .select();
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons/${couponId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error updating coupon:', error);
-      return { data: null, error };
+    if (!result.success) {
+      console.error('Error updating coupon:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
 
-    // Check if any rows were updated
-    if (!data || data.length === 0) {
-      console.warn('No rows updated for coupon:', couponId);
-      return { data: null, error: { message: 'Coupon not found or no changes made' } };
-    }
-
-    return { data: data[0], error: null };
+    return { data: result.data, error: null };
   } catch (e) {
     console.error('Exception updating coupon:', e);
     return { data: null, error: e };
@@ -261,17 +243,16 @@ export async function deleteCoupon(couponId) {
   try {
     console.log('Deleting coupon:', couponId);
     
-    const { error } = await supabase
-      .from('coupons')
-      .delete()
-      .eq('id', couponId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/coupons/${couponId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete coupon');
 
-    if (error) {
-      console.error('Error deleting coupon:', error);
-      return { success: false, error };
-    }
-
-    console.log('Coupon deleted successfully:', couponId);
     return { success: true, error: null };
   } catch (e) {
     console.error('Exception deleting coupon:', e);
@@ -291,20 +272,18 @@ export async function toggleCouponStatus(couponId, isActive) {
 // Validate coupon for checkout (public - no user restriction)
 export async function validateCheckoutCoupon(code) {
   try {
-    // Check if code exists and is valid
-    const { data: coupon, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .single();
+    const response = await fetch(`${API_URL}/coupons/validate/${code.toUpperCase()}`);
+    const result = await response.json();
 
-    if (error || !coupon) {
+    if (!result.success || !result.data) {
       return { 
         valid: false, 
         message: 'Invalid coupon code',
         discount_percent: 0 
       };
     }
+
+    const coupon = result.data;
 
     // Check if active
     if (!coupon.is_active) {
@@ -325,7 +304,7 @@ export async function validateCheckoutCoupon(code) {
     }
 
     // Check usage limit
-    if (coupon.used_count >= coupon.usage_limit) {
+    if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
       return { 
         valid: false, 
         message: 'Usage limit reached',
@@ -352,26 +331,18 @@ export async function validateCheckoutCoupon(code) {
 // Apply coupon and increment usage count (call this after successful order)
 export async function applyCouponAndIncrement(code) {
   try {
-    // Use the database function for atomic operation
-    const { data, error } = await supabase.rpc('validate_and_use_coupon', {
-      coupon_code: code.toUpperCase()
-    });
-
-    if (error) {
-      // Fallback: manual validation and update
-      const validation = await validateCheckoutCoupon(code);
-      if (!validation.valid) {
-        return { success: false, ...validation };
+    const response = await fetch(`${API_URL}/coupons/apply/${code.toUpperCase()}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       }
+    });
+    
+    const result = await response.json();
 
-      // Increment usage count
-      const { error: updateError } = await supabase
-        .from('coupons')
-        .update({ 
-          used_count: supabase.raw('used_count + 1'),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', validation.coupon_id);
+    if (!result.success) {
+      console.error('Coupon validation error:', result.message);
+      return { applied: false, error: result.message, discount: 0 };
 
       if (updateError) {
         return { success: false, message: 'Failed to apply coupon' };

@@ -1,4 +1,10 @@
-import { supabase } from './supabase';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 // Generate a unique referral code
 export function generateReferralCode(userId) {
@@ -14,19 +20,17 @@ export async function getOrCreateReferralCode(userId) {
   if (!userId || userId.length > 36) {
     return { code: null, error: null };
   }
-  
-  try {
-    // Check if user already has a referral code in profiles
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('referral_code')
-      .eq('id', userId)
-      .single();
-
-    // Silently handle UUID errors
-    if (profileError && profileError.code === '22P02') {
-      return { code: null, error: null };
-    }
+    try {
+    // Check if user already has a referral code via backend
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    const profile = result.data;
 
     if (profile?.referral_code) {
       return { code: profile.referral_code, error: null };
@@ -35,25 +39,23 @@ export async function getOrCreateReferralCode(userId) {
     // Generate new code
     const code = generateReferralCode(userId);
 
-    // Update profile with referral code
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ referral_code: code })
-      .eq('id', userId);
+    // Update profile with referral code via backend
+    const updateResponse = await fetch(`${API_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ referral_code: code })
+    });
 
-    if (updateError && updateError.code === '22P02') {
-      return { code: null, error: null };
-    }
-
-    if (updateError) {
-      console.error('Error saving referral code:', updateError);
-      return { code: null, error: updateError };
+    if (!updateResponse.ok) {
+      console.error('Error saving referral code');
+      return { code: null, error: new Error('Failed to save referral code') };
     }
 
     return { code, error: null };
   } catch (e) {
-    // Silently return null for UUID errors
-    if (e?.code === '22P02') return { code: null, error: null };
     return { code: null, error: e };
   }
 }
@@ -63,17 +65,14 @@ export async function validateReferralCode(code) {
   if (!code) return { valid: false, referrerId: null };
   
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, referral_code')
-      .eq('referral_code', code.toUpperCase())
-      .single();
-
-    if (error || !data) {
-      return { valid: false, referrerId: null, error: error || new Error('Invalid code') };
+    const response = await fetch(`${API_URL}/referrals/validate/${code.toUpperCase()}`);
+    const result = await response.json();
+    
+    if (!result.success || !result.data) {
+      return { valid: false, referrerId: null, error: new Error('Invalid code') };
     }
 
-    return { valid: true, referrerId: data.id, error: null };
+    return { valid: true, referrerId: result.data.id, error: null };
   } catch (e) {
     return { valid: false, referrerId: null, error: e };
   }
@@ -87,24 +86,22 @@ export async function recordReferral(referredUserId, referrerId, referralCode) {
   }
   
   try {
-    const { data, error } = await supabase
-      .from('referrals')
-      .insert([{
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/referrals`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         referred_user_id: referredUserId,
         referrer_id: referrerId,
-        referral_code: referralCode.toUpperCase(),
-        status: 'pending',
-        reward_claimed: false,
-      }])
-      .select()
-      .single();
-
-    // Silently handle UUID errors  
-    if (error && error.code === '22P02') {
-      return { data: null, error: null };
-    }
-
-    return { data, error };
+        referral_code: referralCode.toUpperCase()
+      })
+    });
+    
+    const result = await response.json();
+    return { data: result.data, error: result.success ? null : new Error(result.message) };
   } catch (e) {
     // Silently return for UUID errors
     if (e?.code === '22P02') return { data: null, error: null };
@@ -121,20 +118,20 @@ export async function getReferralStats(userId) {
   
   try {
     // Get total referrals
-    const { data: referrals, error } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referrer_id', userId);
-
-    // Silently handle UUID errors
-    if (error && error.code === '22P02') {
-      return { total: 0, successful: 0, pending: 0, earned: 0, error: null };
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/referrals/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      console.error('Error fetching referrals:', result.message);
+      return { total: 0, successful: 0, pending: 0, earned: 0, error: new Error(result.message) };
     }
-
-    if (error) {
-      console.error('Error fetching referrals:', error);
-      return { total: 0, successful: 0, pending: 0, earned: 0, error };
-    }
+    
+    const referrals = result.data || [];
 
     const totalReferrals = referrals?.length || 0;
     const successfulReferrals = referrals?.filter(r => r.status === 'completed').length || 0;
@@ -159,29 +156,18 @@ export async function getReferralStats(userId) {
 // Mark referral as completed (when referred user makes first purchase)
 export async function completeReferral(referredUserId) {
   try {
-    // Find the referral record
-    const { data: referral, error: findError } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referred_user_id', referredUserId)
-      .eq('status', 'pending')
-      .single();
-
-    if (findError || !referral) {
-      return { success: false, error: findError || new Error('No pending referral found') };
-    }
-
-    // Update referral status to completed
-    const { error: updateError } = await supabase
-      .from('referrals')
-      .update({ 
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', referral.id);
-
-    if (updateError) {
-      return { success: false, error: updateError };
+    // Find and update referral record
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/referrals/complete/${referredUserId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      return { success: false, error: new Error(result.message) };
     }
 
     return { 
@@ -197,16 +183,18 @@ export async function completeReferral(referredUserId) {
 // Check if user was referred
 export async function checkUserReferralStatus(userId) {
   try {
-    const { data, error } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referred_user_id', userId)
-      .single();
-
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/referrals/status/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
     return { 
-      wasReferred: !!data, 
-      referral: data,
-      error 
+      wasReferred: !!result.data, 
+      referral: result.data,
+      error: result.success ? null : new Error(result.message)
     };
   } catch (e) {
     return { wasReferred: false, referral: null, error: e };

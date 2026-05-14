@@ -139,7 +139,7 @@ export function isValidImage(file) {
 }
 
 /**
- * Get optimized image URL with Supabase transformations
+ * Get optimized image URL
  * @param {string} url - Original image URL
  * @param {Object} options - Transform options
  * @returns {string} - Optimized URL
@@ -153,11 +153,9 @@ export function getOptimizedImageUrl(url, options = {}) {
     format = 'webp',
   } = options;
 
-  // If URL is from Supabase storage, add transformation params
-  if (url.includes('supabase.co')) {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}width=${width}&quality=${quality}&format=${format}`;
-  }
+  // Backend API doesn't support on-the-fly transformations
+  // Return URL as-is
+  return url;
 
   return url;
 }

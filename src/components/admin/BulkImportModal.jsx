@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Download, X, CheckCircle, AlertCircle, FileText, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+// MIGRATED: Using backend API instead of Supabase
 
 // ── CSV column definitions ──
 const CSV_COLUMNS = [
@@ -175,7 +175,7 @@ export default function BulkImportModal({ isOpen, onClose, onImportComplete }) {
     maxFiles: 1,
   });
 
-  // ── Bulk insert to Supabase in batches ──
+  // ── Bulk insert to backend API in batches ──
   const handleImport = async () => {
     if (validationErrors.length > 0) return;
     setStep('importing');
@@ -205,19 +205,28 @@ export default function BulkImportModal({ isOpen, onClose, onImportComplete }) {
     let inserted = 0;
     const failed = [];
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+    const token = localStorage.getItem('adminToken');
+    
     for (let i = 0; i < totalBatches; i++) {
       const batch = products.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .insert(batch)
-          .select();
+        const response = await fetch(`${API_URL}/products/bulk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ products: batch })
+        });
+        
+        const result = await response.json();
 
-        if (error) {
-          console.error(`Batch ${i + 1} failed:`, error.message);
-          failed.push(...batch.map((p, j) => ({ row: i * BATCH_SIZE + j + 1, name: p.name, error: error.message })));
+        if (!result.success) {
+          console.error(`Batch ${i + 1} failed:`, result.message);
+          failed.push(...batch.map((p, j) => ({ row: i * BATCH_SIZE + j + 1, name: p.name, error: result.message })));
         } else {
-          inserted += (data?.length || batch.length);
+          inserted += (result.data?.inserted || batch.length);
         }
       } catch (e) {
         failed.push(...batch.map((p, j) => ({ row: i * BATCH_SIZE + j + 1, name: p.name, error: e.message })));

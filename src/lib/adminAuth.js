@@ -7,7 +7,7 @@
  * - Secure token storage
  */
 
-import { supabase } from './supabase';
+// Admin Auth uses localStorage only, no Supabase needed
 
 const ADMIN_SESSION_KEY = 'admin_session';
 const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -97,7 +97,7 @@ export async function loginAdmin(username, password) {
       return { success: false, error: 'Invalid username or password' };
     }
 
-    // Create session - skip Supabase table checks (tables may not exist)
+    // Create session
     const session = createAdminSession();
 
     // Log admin login (optional - don't await, don't block on error)
@@ -226,20 +226,24 @@ async function logAdminAction(action, details = {}) {
   try {
     const session = getAdminSession();
     
-    const { error } = await supabase.from('admin_logs').insert({
-      admin_id: session?.adminId || 'unknown',
-      action,
-      details,
-      timestamp: new Date().toISOString(),
-      ip_address: null
-    });
-    
-    // Silently ignore - table may not exist
-    if (error) {
-      // Only log in development, not in production
-      if (import.meta.env.DEV) {
-        console.log('[Admin Log] Table not available:', action);
-      }
+    // Log admin action via backend API (optional - don't await)
+    try {
+      const token = localStorage.getItem('adminToken');
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/admin/logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          admin_id: session?.adminId || 'unknown',
+          action,
+          details,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(() => {}); // Silently ignore
+    } catch (e) {
+      // Silently ignore
     }
   } catch (error) {
     // Completely silent - admin_logs table may not exist

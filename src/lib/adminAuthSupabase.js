@@ -1,14 +1,15 @@
 /**
- * Admin Authentication with Supabase (Cross-Device)
- * Uses Supabase Auth instead of localStorage for multi-device support
+ * Admin Authentication (Cross-Device)
+ * Uses new backend API for multi-device support
  */
 
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const ADMIN_EMAIL = 'admin@littleshop.com'; // Fixed admin email
 
 /**
- * Login admin with email and password using Supabase Auth
+ * Login admin with email and password using backend API
  * This allows cross-device authentication
  */
 export async function loginAdminSupabase(email, password) {
@@ -18,76 +19,43 @@ export async function loginAdminSupabase(email, password) {
       return { success: false, error: 'Invalid email or password' };
     }
 
-    // Sign in with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: password,
-    });
-
-    if (error) {
-      console.error('Supabase signin error:', error);
+    // Authenticate with new backend
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: ADMIN_EMAIL,
+          password: password
+        })
+      });
       
-      // If user doesn't exist in Supabase, we need to sign them up first
-      if (error.message?.includes('Invalid login') || error.code === 'invalid_credentials') {
-        console.log('Admin user not found, attempting signup...');
-        
-        // Try to sign up the admin user
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: ADMIN_EMAIL,
-          password: password,
-          options: {
-            data: {
-              role: 'admin',
-              adminId: 'admin_001',
-              username: 'admin'
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Admin signup failed:', signUpError);
-          return { success: false, error: `Signup failed: ${signUpError.message}` };
-        }
-
-        console.log('Signup successful, attempting signin...');
-
-        // Sign in again after signup
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_EMAIL,
-          password: password,
-        });
-
-        if (signInError) {
-          console.error('Signin after signup failed:', signInError);
-          return { success: false, error: `Login after signup failed: ${signInError.message}` };
-        }
-
-        return {
-          success: true,
-          session: signInData.session,
-          admin: {
-            email: ADMIN_EMAIL,
-            role: 'admin',
-            adminId: 'admin_001',
-            username: 'admin'
-          }
-        };
+      const result = await response.json();
+      
+      if (!result.success) {
+        return { success: false, error: result.message || 'Login failed' };
       }
 
-      return { success: false, error: `Auth error: ${error.message || error.code || 'Unknown error'}` };
+      // Store token
+      if (result.token) {
+        localStorage.setItem('adminToken', result.token);
+      }
+
+      return {
+        success: true,
+        session: { token: result.token },
+        admin: {
+          email: ADMIN_EMAIL,
+          role: 'admin',
+          adminId: 'admin_001',
+          username: 'admin'
+        }
+      };
+    } catch (error) {
+      return { success: false, error: `Auth error: ${error.message || 'Unknown error'}` };
     }
-
-    // Successful login
-    return {
-      success: true,
-      session: data.session,
-      admin: {
-        email: ADMIN_EMAIL,
-        role: 'admin',
-        adminId: 'admin_001',
-        username: 'admin'
-      }
-    };
 
   } catch (error) {
     console.error('Admin login error:', error);
@@ -96,19 +64,22 @@ export async function loginAdminSupabase(email, password) {
 }
 
 /**
- * Check if admin is authenticated using Supabase session
+ * Check if admin is authenticated using backend API
  */
 export async function isAdminAuthenticatedSupabase() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const token = localStorage.getItem('adminToken');
+    if (!token) return false;
     
-    if (error || !session) {
-      return false;
-    }
-
-    // Verify admin role in user metadata
-    const userRole = session.user?.user_metadata?.role;
-    return userRole === 'admin';
+    // Verify token with backend
+    const response = await fetch(`${API_URL}/auth/verify`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    return result.success && result.data?.role === 'admin';
   } catch (error) {
     console.error('Auth check error:', error);
     return false;
@@ -120,37 +91,33 @@ export async function isAdminAuthenticatedSupabase() {
  */
 export async function getAdminSessionSupabase() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const token = localStorage.getItem('adminToken');
+    if (!token) return null;
     
-    if (error || !session) {
-      return null;
+    // Verify token with backend
+    const response = await fetch(`${API_URL}/auth/verify`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (result.success && result.data?.role === 'admin') {
+      return { token };
     }
-
-    // Verify admin role
-    const userRole = session.user?.user_metadata?.role;
-    if (userRole !== 'admin') {
-      return null;
-    }
-
-    return {
-      token: session.access_token,
-      adminId: session.user.user_metadata?.adminId || 'admin_001',
-      role: 'admin',
-      email: session.user.email,
-      expiresAt: new Date(session.expires_at * 1000).getTime()
-    };
+    return null;
   } catch (error) {
-    console.error('Get session error:', error);
+    console.error('Session error:', error);
     return null;
   }
 }
 
 /**
- * Logout admin from Supabase
+ * Logout admin
  */
 export async function logoutAdminSupabase() {
   try {
-    await supabase.auth.signOut();
+    localStorage.removeItem('adminToken');
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
@@ -181,36 +148,46 @@ export async function isSessionExpiringSoonSupabase() {
 }
 
 /**
- * Setup admin user in Supabase (run once)
+ * Setup admin user (run once)
  */
 export async function setupAdminUser() {
   try {
-    // Check if admin user already exists by trying to sign in
-    const { error } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: 'LittleShop@2024!'
+    // Check if admin user already exists
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: ADMIN_EMAIL,
+        password: 'LittleShop@2024!'
+      })
     });
 
-    if (!error) {
+    const result = await response.json();
+
+    if (result.success) {
       console.log('Admin user already exists');
       return { success: true, message: 'Admin already set up' };
     }
 
-    // Create admin user
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: ADMIN_EMAIL,
-      password: 'LittleShop@2024!',
-      options: {
-        data: {
-          role: 'admin',
-          adminId: 'admin_001',
-          username: 'admin'
-        }
-      }
+    // Create admin user via backend
+    const signupResponse = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: ADMIN_EMAIL,
+        password: 'LittleShop@2024!',
+        role: 'admin'
+      })
     });
 
-    if (signUpError) {
-      return { success: false, error: signUpError.message };
+    const signupResult = await signupResponse.json();
+
+    if (!signupResult.success) {
+      return { success: false, error: signupResult.message };
     }
 
     return { success: true, message: 'Admin user created' };
@@ -223,15 +200,13 @@ export async function setupAdminUser() {
  * Listen for auth state changes
  */
 export function onAdminAuthStateChange(callback) {
-  return supabase.auth.onAuthStateChange((event, session) => {
-    const isAdmin = session?.user?.user_metadata?.role === 'admin';
-    callback(event, isAdmin ? session : null);
-  });
+  // No realtime auth state with REST API - use polling instead
+  console.log('⚠️ Realtime auth state not available with REST API');
+  return { data: { subscription: { unsubscribe: () => {} } } };
 }
 
-// NOTE: Supabase Auth requires additional setup (Auth settings, email confirmation, etc.)
-// For now, re-export from old adminAuth.js for backward compatibility
-// To enable Supabase Auth, update imports in components to use the Supabase functions directly
+// NOTE: Backend API authentication is now active
+// All auth functions use the new backend API
 
 import {
   loginAdmin,
@@ -252,7 +227,7 @@ export {
   isSessionExpiringSoon
 };
 
-// Supabase functions (for future use when Auth is properly configured)
+// Backend API functions
 export {
   loginAdminSupabase,
   isAdminAuthenticatedSupabase,

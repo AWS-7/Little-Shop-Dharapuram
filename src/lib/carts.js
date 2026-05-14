@@ -1,21 +1,33 @@
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
-// ── Sync cart to Supabase (upsert) ──
-export async function syncCartToSupabase(userId, email, name, items, total) {
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
+
+// ── Sync cart to backend (upsert) ──
+export async function syncCartToBackend(userId, email, name, items, total) {
   try {
-    const { data, error } = await supabase
-      .from('carts')
-      .upsert({
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/carts/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         user_id: userId,
         items,
         total,
-        status: items.length > 0 ? 'active' : 'converted',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' })
-      .select()
-      .single();
-    if (error) console.warn('Cart sync skipped:', error.message);
-    return { data, error };
+        status: items.length > 0 ? 'active' : 'converted'
+      })
+    });
+    
+    const result = await response.json();
+    if (!result.success) console.warn('Cart sync skipped:', result.message);
+    return { data: result.data, error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: null, error: e };
   }
@@ -24,10 +36,16 @@ export async function syncCartToSupabase(userId, email, name, items, total) {
 // ── Mark cart as converted (after order placed) ──
 export async function markCartConverted(userId) {
   try {
-    const { error } = await supabase
-      .from('carts')
-      .update({ status: 'converted', items: [], total: 0 })
-      .eq('user_id', userId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/carts/${userId}/convert`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
     return { error };
   } catch (e) {
     return { error: e };
@@ -41,14 +59,14 @@ export async function getAbandonedCarts() {
     const oneMinuteAgo = new Date(now - 1 * 60 * 1000).toISOString(); // 1 min for demo
     const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-    const { data, error } = await supabase
-      .from('carts')
-      .select('*')
-      .eq('status', 'active')
-      .gt('total', 0)
-      .lt('updated_at', oneMinuteAgo)
-      .gt('updated_at', twentyFourHoursAgo)
-      .order('updated_at', { ascending: false });
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/carts/abandoned?since=${twentyFourHoursAgo}&until=${oneMinuteAgo}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    const data = result.data || [];
 
     // Calculate time elapsed for each cart
     const cartsWithTimeElapsed = (data || []).map(cart => {
@@ -77,12 +95,14 @@ export async function getAbandonedCarts() {
 // ── Get all active carts (admin overview) ──
 export async function getAllActiveCarts() {
   try {
-    const { data, error } = await supabase
-      .from('carts')
-      .select('*')
-      .eq('status', 'active')
-      .gt('total', 0)
-      .order('updated_at', { ascending: false });
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/carts/active`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    const data = result.data || [];
     return { data: data || [], error };
   } catch (e) {
     return { data: [], error: e };
@@ -92,28 +112,39 @@ export async function getAllActiveCarts() {
 // ── Mark reminder sent ──
 export async function markReminderSent(cartId) {
   try {
-    const { error } = await supabase
-      .from('carts')
-      .update({ reminder_sent: true })
-      .eq('id', cartId);
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/carts/${cartId}/reminder`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to mark reminder');
     return { error };
   } catch (e) {
     return { error: e };
   }
 }
 
-// ── Send abandoned cart reminder email via Supabase Edge Function ──
+// ── Send abandoned cart reminder email via backend API ──
 export async function sendAbandonedCartReminder(cart) {
   try {
-    const { data, error } = await supabase.functions.invoke('send-email', {
-      body: {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/notifications/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         type: 'abandoned_cart_reminder',
         cart: cart
-      }
+      })
     });
-
-    if (error) {
-      console.error('Edge function error:', error);
+    
+    if (!response.ok) {
+      console.error('Email notification failed');
       return { success: false, error: error.message };
     }
 
@@ -127,11 +158,9 @@ export async function sendAbandonedCartReminder(cart) {
 
 // ── Subscribe to cart changes (admin realtime) ──
 export function subscribeToCarts(callback) {
-  const channel = supabase
-    .channel('carts-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'carts' }, (payload) => {
-      callback(payload);
-    })
-    .subscribe();
-  return channel;
+  // Realtime not available with REST API
+  console.log('⚠️ Realtime subscriptions not available with REST API');
+  return {
+    unsubscribe: () => {}
+  };
 }

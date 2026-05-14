@@ -1,4 +1,11 @@
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 // ── Push Notification Service ──
 // Handles browser notifications for new orders using Service Workers
@@ -164,118 +171,102 @@ function playNotificationSound() {
   }
 }
 
-// ── Supabase Real-time Order Listener ──
+// ── Order Listener (via polling since realtime not available with REST API) ──
 // Listen for new orders and trigger notifications
 
-let ordersSubscription = null;
+let pollInterval = null;
+let lastCheckTime = new Date().toISOString();
 
-export function startOrderNotifications(onNewOrder, onError) {
-  // Stop any existing subscription
-  stopOrderNotifications();
+export function startOrderNotifications(callback) {
+  if (pollInterval) return;
   
-  console.log('Starting order notifications...');
+  console.log('Starting order notifications (polling mode)...');
   
-  // Subscribe to orders table changes
-  ordersSubscription = supabase
-    .channel('orders-notifications')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'orders'
-      },
-      (payload) => {
-        console.log('New order received:', payload);
-        
-        const order = payload.new;
-        const totalAmount = order.total || order.total_amount || 0;
-        const customer = order.customer_name || order.user_email || 'Customer';
-        
-        // Trigger notification
-        showLocalNotification('🛍️ New Order Received!', {
-          body: `A new order has been placed for ₹${totalAmount} by ${customer}. Click to view details.`,
-          data: {
-            orderId: order.id,
-            url: `/admin/orders/${order.id}`
-          },
-          actions: [
-            {
-              action: 'view',
-              title: 'View Order'
-            },
-            {
-              action: 'close',
-              title: 'Dismiss'
+  // Poll every 30 seconds for new orders
+  pollInterval = setInterval(async () => {
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`${API_URL}/orders/new?since=${encodeURIComponent(lastCheckTime)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.length > 0) {
+        for (const order of result.data) {
+          console.log('New order detected:', order);
+          
+          try {
+            // Send email notification
+            await sendOrderEmailNotification(order);
+            
+            // Send WhatsApp notification if configured
+            const whatsappConfigured = await isWhatsAppConfigured();
+            if (whatsappConfigured) {
+              await sendAdminOrderNotification(order);
             }
-          ]
-        });
-        
-        // Call callback if provided
-        if (onNewOrder) {
-          onNewOrder(order);
+            
+            // Call custom callback if provided
+            if (callback) {
+              callback(order);
+            }
+          } catch (error) {
+            console.error('Error processing order notification:', error);
+          }
         }
       }
-    )
-    .subscribe((status) => {
-      console.log('Order notification subscription status:', status);
-      if (status === 'CHANNEL_ERROR' && onError) {
-        onError('Failed to connect to order notifications');
-      }
-    });
-  
-  return ordersSubscription;
+      
+      lastCheckTime = new Date().toISOString();
+    } catch (error) {
+      console.error('Error polling for new orders:', error);
+    }
+  }, 30000);
 }
 
 export function stopOrderNotifications() {
-  if (ordersSubscription) {
-    supabase.removeChannel(ordersSubscription);
-    ordersSubscription = null;
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
     console.log('Order notifications stopped');
   }
 }
-
-// ── Fallback: WhatsApp/Email Integration ──
-// Send instant WhatsApp or Email alert via API
 
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@littleshop.com';
 const WHATSAPP_NUMBER = import.meta.env.VITE_ADMIN_WHATSAPP || '';
 
-// Send email notification using Supabase Edge Function
+// Send email notification via backend API
 export async function sendOrderEmailNotification(order) {
   try {
     // Check if we're in development mode (localhost)
-    const isDev = window.location.hostname === 'localhost';
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
-    // For now, just log the email in development
     if (isDev) {
-      console.log('📧 [DEV] Order email would be sent:', {
-        to: ADMIN_EMAIL,
-        orderId: order.id,
-        customer: order.customer_name,
-        total: order.total
-      });
+      console.log('DEV MODE: Email notification would be sent for order:', order.order_id);
+      console.log('To:', ADMIN_EMAIL);
       return { success: true, data: { dev: true, message: 'Email logged in dev mode' } };
     }
 
-    const { data, error } = await supabase.functions.invoke('send-email', {
-      body: {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/notifications/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         type: 'order_notification',
         order: order
-      }
+      })
     });
-
-    if (error) {
-      console.error('Edge function error:', error);
-      // Silent fail - don't break the order flow
-      return { success: false, error: error.message, silent: true };
-    }
-
-    console.log('Order email notification sent');
-    return { success: true, data };
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error('Email notification error:', error);
+    console.error('Error sending email notification:', error);
+    return { success: false, error: error.message };
     // Silent fail - notification is not critical
     return { success: false, error: error.message, silent: true };
   }

@@ -5,7 +5,7 @@ import { ArrowRight, Heart, Sparkles } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { getLatestProducts, getHandpickedProducts } from '../../lib/products';
 import { CATEGORIES } from '../../lib/constants';
-import { supabase } from '../../lib/supabase';
+// Real-time not available with REST API
 
 export default function FeaturedGrid() {
   const [featured, setFeatured] = useState([]);
@@ -28,22 +28,9 @@ export default function FeaturedGrid() {
   useEffect(() => {
     fetchProducts();
 
-    // Real-time subscription to products table
-    const channel = supabase
-      .channel('products-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'products'
-      }, () => {
-        // Refetch products when any change happens
-        fetchProducts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Poll every 30 seconds for updates (realtime not available with REST API)
+    const interval = setInterval(fetchProducts, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

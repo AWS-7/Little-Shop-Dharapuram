@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import useStore from '../store/useStore';
 import { useAuth } from '../context/AuthContext';
-import { syncCartToSupabase } from '../lib/carts';
+import { syncCartToBackend } from '../lib/carts';
 
 export default function CartSync() {
   const { cart, getCartTotal } = useStore();
@@ -22,7 +22,7 @@ export default function CartSync() {
         quantity: item.quantity,
         image: item.image,
       }));
-      syncCartToSupabase(user.id, user.email, user.user_metadata?.full_name || '', items, total).catch(() => {});
+      syncCartToBackend(user.id, user.email, user.user_metadata?.full_name || '', items, total).catch(() => {});
     }, 2000);
 
     return () => clearTimeout(debounceRef.current);

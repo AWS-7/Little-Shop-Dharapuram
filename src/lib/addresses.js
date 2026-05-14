@@ -1,4 +1,11 @@
-import { supabase } from './supabase';
+// MIGRATED: Using new backend API instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Helper to get auth token
+async function getAuthToken() {
+  const token = localStorage.getItem('authToken');
+  return token;
+}
 
 // ── Helper: Convert any string to a valid UUID v5-like format ──
 // Creates a deterministic UUID from any string (Firebase UID, email, etc.)
@@ -42,123 +49,127 @@ export async function getAddresses(userId) {
     return { data: [], error: null };
   }
   
-  const uuid = toUUID(userId);
-  const { data, error } = await supabase
-    .from('addresses')
-    .select('*')
-    .eq('user_id', uuid)
-    .order('is_default', { ascending: false })
-    .order('created_at', { ascending: false });
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/addresses/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-  // Silently handle UUID errors
-  if (error && error.code === '22P02') {
-    return { data: [], error: null };
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error fetching addresses:', result.message);
+      return { data: [], error: new Error(result.message) };
+    }
+
+    console.log('✅ Addresses fetched:', result.data?.length || 0, 'addresses found');
+    return { data: result.data || [], error: null };
+  } catch (e) {
+    console.error('❌ Exception fetching addresses:', e);
+    return { data: [], error: e };
   }
-  
-  return { data: data || [], error };
 }
 
-export async function createAddress(userId, address) {
-  console.log('Creating address for user:', userId, 'with data:', address);
-  
-  // Validate userId
-  if (!userId || typeof userId !== 'string') {
-    console.error('Invalid userId:', userId);
-    return { data: null, error: { message: 'Please sign in to save addresses.' } };
-  }
-  
-  // Skip if userId is not valid UUID (Firebase UID issue)
-  if (userId.length > 36) {
-    return { data: null, error: { message: 'Cannot save address with this account type.' } };
-  }
-  
-  const uuid = toUUID(userId);
-  
+export async function saveAddress(userId, addressData) {
   try {
-    // If this is the first address or marked default, unset other defaults
-    if (address.is_default) {
-      await supabase
-        .from('addresses')
-        .update({ is_default: false })
-        .eq('user_id', uuid);
+    console.log('💾 Saving address for user:', userId);
+    console.log('📋 Address data:', JSON.stringify(addressData, null, 2));
+
+    // Validate required fields
+    const requiredFields = ['street', 'city', 'state', 'pincode', 'phone'];
+    const missingFields = requiredFields.filter(field => !addressData[field]);
+    if (missingFields.length > 0) {
+      return { data: null, error: { message: `Missing required fields: ${missingFields.join(', ')}` } };
     }
-    
-    const { data, error } = await supabase
-      .from('addresses')
-      .insert({ ...address, user_id: uuid })
-      .select()
-      .single();
-      
-    // Silently handle UUID errors
-    if (error && error.code === '22P02') {
-      return { data: null, error: { message: 'Account type not supported for addresses.' } };
+
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/addresses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        full_name: addressData.full_name || '',
+        street: addressData.street,
+        city: addressData.city,
+        state: addressData.state,
+        pincode: addressData.pincode,
+        phone: addressData.phone,
+        is_default: addressData.is_default || false
+      })
+    });
+
+    const result = await response.json();
+    if (!result.success) {
+      console.error('❌ Error saving address:', result.message);
+      return { data: null, error: new Error(result.message) };
     }
-    
-    if (error) {
-      console.error('Supabase error creating address:', error);
-      return { data: null, error: { message: 'Failed to save address. Please try again.' } };
-    }
-    
-    console.log('Create address result:', { data, error });
-    return { data, error };
-  } catch (err) {
-    console.error('Exception creating address:', err);
+
+    console.log('✅ Address saved:', result.data);
+    return { data: result.data, error: null };
+  } catch (e) {
+    console.error('❌ Exception saving address:', e);
+    return { data: null, error: e };
     return { data: null, error: { message: err.message || 'Failed to save address' } };
   }
 }
 
-export async function updateAddress(userId, addressId, updates) {
-  // Skip if userId is not valid UUID
-  if (!userId || userId.length > 36) {
-    return { data: null, error: null };
-  }
-  
-  const uuid = toUUID(userId);
-  // If setting as default, unset others first
-  if (updates.is_default) {
-    await supabase
-      .from('addresses')
-      .update({ is_default: false })
-      .eq('user_id', uuid);
-  }
-  const { data, error } = await supabase
-    .from('addresses')
-    .update(updates)
-    .eq('id', addressId)
-    .select()
-    .single();
+export async function updateAddress(addressId, updates, userId) {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/addresses/${addressId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
     
-  // Silently handle UUID errors
-  if (error && error.code === '22P02') {
-    return { data: null, error: null };
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
+  } catch (e) {
+    return { data: null, error: e };
   }
-  
-  return { data, error };
 }
 
 export async function deleteAddress(addressId) {
-  const { error } = await supabase
-    .from('addresses')
-    .delete()
-    .eq('id', addressId);
-  return { error };
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/addresses/${addressId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete address');
+    return { error: null };
+  } catch (e) {
+    return { error: e };
+  }
 }
 
 export async function setDefaultAddress(userId, addressId) {
-  const uuid = toUUID(userId);
-  // Unset all defaults for this user
-  await supabase
-    .from('addresses')
-    .update({ is_default: false })
-    .eq('user_id', uuid);
-  // Set the selected one
-  const { data, error } = await supabase
-    .from('addresses')
-    .update({ is_default: true })
-    .eq('id', addressId)
-    .select()
-    .single();
-  return { data, error };
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/addresses/${addressId}/default`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+    return { data: result.data, error: null };
+  } catch (e) {
+    return { data: null, error: e };
+  }
 }
 
 // Relationship tag options
