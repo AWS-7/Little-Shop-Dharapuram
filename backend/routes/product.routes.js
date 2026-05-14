@@ -15,6 +15,7 @@ router.get('/bestsellers', productController.getBestsellers);
 router.get('/handpicked', productController.getHandpickedProducts);
 router.get('/search', productController.searchProducts);
 router.get('/categories/:categorySlug', productController.getProductsByCategory);
+router.get('/category/:categorySlug', productController.getProductsByCategory);
 router.get('/:slug', productController.getProductBySlug);
 
 // Protected routes (Admin only)

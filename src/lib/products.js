@@ -2,6 +2,14 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 import { isValidImage, optimizeImage } from './imageOptimizer';
 
+// Helper to get auth token (checks multiple possible keys)
+async function getAuthToken() {
+  return localStorage.getItem('authToken')
+    || localStorage.getItem('adminToken')
+    || localStorage.getItem('firebase_auth_token')
+    || null;
+}
+
 // ── Category definitions with category-specific fields ──
 export const PRODUCT_CATEGORIES = [
   { value: 'Sarees', label: 'Sarees', fields: ['fabric', 'weaveType', 'care', 'origin'] },
@@ -170,12 +178,17 @@ export async function getAllProductsAdmin() {
 
 // ── Get single ACTIVE product by ID ──
 export async function getProductById(id) {
+  // Skip old Supabase UUIDs (they don't exist in MySQL backend)
+  if (typeof id === 'string' && id.length > 20 && id.includes('-')) {
+    return { data: null, error: null };
+  }
+
   try {
     const response = await fetch(`${API_URL}/products/${id}`);
     const result = await response.json();
-    
+
     if (!result.success) {
-      return { data: null, error: new Error(result.message) };
+      return { data: null, error: null };
     }
 
     // Map database fields to client-side fields
@@ -184,16 +197,22 @@ export async function getProductById(id) {
       data.image = resolveImageUrl(data.image_url || data.image);
       data.image2 = resolveImageUrl(data.image2_url || data.image2);
       data.stockCount = data.stock_quantity !== undefined ? data.stock_quantity : data.stockCount || 0;
+      data.stock_count = data.stockCount; // alias for Checkout.jsx compatibility
     }
 
     return { data, error: null };
   } catch (e) {
-    return { data: null, error: e };
+    return { data: null, error: null };
   }
 }
 
 // ── Get single product by ID for Admin (ignores is_active) ──
 export async function getProductByIdAdmin(id) {
+  // Skip old Supabase UUIDs (they don't exist in MySQL backend)
+  if (typeof id === 'string' && id.length > 20 && id.includes('-')) {
+    return { data: null, error: null };
+  }
+
   try {
     const token = await getAuthToken();
     const response = await fetch(`${API_URL}/products/${id}/admin`, {
@@ -202,9 +221,9 @@ export async function getProductByIdAdmin(id) {
       }
     });
     const result = await response.json();
-    
+
     if (!result.success) {
-      return { data: null, error: new Error(result.message) };
+      return { data: null, error: null };
     }
 
     const data = result.data;
@@ -216,7 +235,7 @@ export async function getProductByIdAdmin(id) {
 
     return { data, error: null };
   } catch (e) {
-    return { data: null, error: e };
+    return { data: null, error: null };
   }
 }
 
@@ -248,18 +267,24 @@ export async function getHandpickedProducts(categories) {
     const results = [];
 
     for (const category of categories) {
-      const response = await fetch(`${API_URL}/products/category/${category.name}?limit=1`);
+      const response = await fetch(`${API_URL}/products/category/${encodeURIComponent(category.name)}?limit=1`);
       const result = await response.json();
 
-      if (result.data && result.success) {
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        results.push({
-          ...data,
-          image: resolveImageUrl(data.image_url || data.image),
-          image2: resolveImageUrl(data.image2_url || data.image2),
-          categoryName: category.name,
-          stockCount: data.stock_quantity !== undefined ? data.stock_quantity : data.stockCount || 0
-        });
+      if (result.success && result.data) {
+        // Backend returns { category, products } — extract products array
+        const products = result.data.products || result.data;
+        const data = Array.isArray(products) ? products[0] : products;
+        if (data && data.id) {
+          results.push({
+            ...data,
+            price: data.price !== undefined ? Number(data.price) : 0,
+            originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : (data.compare_price ? Number(data.compare_price) : null),
+            image: resolveImageUrl(data.image_url || data.featured_image || data.image),
+            image2: resolveImageUrl(data.image2_url || data.image2),
+            categoryName: category.name,
+            stockCount: data.stock_quantity !== undefined ? data.stock_quantity : data.stockCount || 0
+          });
+        }
       }
     }
 
@@ -455,18 +480,23 @@ export function subscribeToProducts(callback) {
 // ── Get related products by category (for product detail page) ──
 export async function getProductsByCategory(category, excludeId = null, limit = 4) {
   try {
-    const response = await fetch(`${API_URL}/products/category/${category}?limit=${limit}${excludeId ? '&exclude=' + excludeId : ''}`);
+    const response = await fetch(`${API_URL}/products/category/${encodeURIComponent(category)}?limit=${limit}${excludeId ? '&exclude=' + excludeId : ''}`);
     const result = await response.json();
 
     if (!result.success) throw new Error(result.message);
-    
+
+    // Backend returns { category, products } — extract products array
+    const products = result.data?.products || result.data || [];
+
     // Map database fields to client-side fields
-    const mappedData = (result.data || []).map(p => ({
+    const mappedData = (products || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image),
+      price: p.price !== undefined ? Number(p.price) : 0,
+      originalPrice: p.originalPrice !== undefined ? Number(p.originalPrice) : (p.compare_price ? Number(p.compare_price) : null),
+      image: resolveImageUrl(p.image_url || p.featured_image || p.image),
       stockCount: p.stock_quantity !== undefined ? p.stock_quantity : p.stockCount || 0
     }));
-    
+
     return { data: mappedData, error: null };
   } catch (err) {
     console.error('Failed to fetch products by category:', err);

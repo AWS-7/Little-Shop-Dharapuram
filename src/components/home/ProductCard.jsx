@@ -12,8 +12,12 @@ function ProductCard({ product, index = 0, variant = 'grid' }) {
   const wishlisted = isWishlisted(product.id);
   const navigate = useNavigate();
 
-  const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  // Defensive: ensure price is always a number
+  const safePrice = product.price !== undefined && product.price !== null ? Number(product.price) : 0;
+  const safeOriginalPrice = product.originalPrice !== undefined && product.originalPrice !== null ? Number(product.originalPrice) : null;
+
+  const discount = safeOriginalPrice && safePrice
+    ? Math.round(((safeOriginalPrice - safePrice) / safeOriginalPrice) * 100)
     : 0;
 
   // Check stock status
@@ -131,14 +135,14 @@ function ProductCard({ product, index = 0, variant = 'grid' }) {
         {/* Price Row - Variant Based */}
         <div className={`flex items-center gap-2 flex-wrap ${isList ? 'mb-2' : isCompact ? 'mb-2' : 'mb-3'}`}>
           {/* Original Price - Strikethrough */}
-          {product.originalPrice && !isCompact && (
+          {safeOriginalPrice && !isCompact && (
             <span className={`text-gray-400 line-through decoration-red-400 decoration-2 ${isList ? 'text-xs' : 'text-sm'}`}>
-              {CURRENCY}{product.originalPrice.toLocaleString()}
+              {CURRENCY}{safeOriginalPrice.toLocaleString()}
             </span>
           )}
           {/* Discounted Price */}
           <span className={`font-bold text-purple-700 ${isCompact ? 'text-base' : isList ? 'text-lg' : 'text-xl'}`}>
-            {CURRENCY}{product.price.toLocaleString()}
+            {CURRENCY}{safePrice.toLocaleString()}
           </span>
           {/* Discount % Badge - Hide in compact */}
           {discount > 0 && !isCompact && (

@@ -441,3 +441,40 @@ exports.getCartSummary = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get abandoned carts (admin only)
+ */
+exports.getAbandonedCarts = async (req, res) => {
+  try {
+    const { since, until } = req.query;
+    // Abandoned = carts updated more than 24h ago (no is_abandoned column in schema)
+    let sql = `
+      SELECT c.*,
+             p.name as product_name,
+             p.price as product_price,
+             p.featured_image as product_image,
+             u.email as user_email,
+             u.display_name as user_name
+      FROM carts c
+      JOIN products p ON c.product_id = p.id
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    `;
+    const params = [];
+    if (since) {
+      sql += ' AND c.updated_at >= ?';
+      params.push(since);
+    }
+    if (until) {
+      sql += ' AND c.updated_at <= ?';
+      params.push(until);
+    }
+    sql += ' ORDER BY c.updated_at DESC';
+    const carts = await database.getMany(sql, params);
+    res.json({ success: true, data: carts });
+  } catch (error) {
+    console.error('Get abandoned carts error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch abandoned carts' });
+  }
+};

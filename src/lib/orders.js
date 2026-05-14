@@ -7,8 +7,10 @@ import { sendOrderStatusNotification, sendAdminOrderNotification, isWhatsAppConf
 
 // Helper to get auth token
 async function getAuthToken() {
-  const token = localStorage.getItem('authToken');
-  return token;
+  return localStorage.getItem('authToken')
+    || localStorage.getItem('adminToken')
+    || localStorage.getItem('firebase_auth_token')
+    || null;
 }
 
 // ── Create Order ──

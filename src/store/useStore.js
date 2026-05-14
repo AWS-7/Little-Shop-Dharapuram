@@ -4,17 +4,30 @@ import { SHIPPING_THRESHOLD, SHIPPING_COST } from '../lib/constants';
 const MAX_RECENTLY_VIEWED = 10;
 const CART_STORAGE_KEY = 'ls_cart';
 
-// Load recently viewed from localStorage
+// Helper: detect old Supabase UUIDs
+const isSupabaseUUID = (id) => typeof id === 'string' && id.length > 20 && id.includes('-');
+
+// Load recently viewed from localStorage (filter out old Supabase UUIDs)
 const loadRecentlyViewed = () => {
   try {
-    return JSON.parse(localStorage.getItem('ls_recently_viewed') || '[]');
+    const items = JSON.parse(localStorage.getItem('ls_recently_viewed') || '[]');
+    const valid = items.filter((p) => !isSupabaseUUID(p.id));
+    if (valid.length !== items.length) {
+      localStorage.setItem('ls_recently_viewed', JSON.stringify(valid));
+    }
+    return valid;
   } catch { return []; }
 };
 
-// Load cart from localStorage
+// Load cart from localStorage (filter out old Supabase UUIDs)
 const loadCart = () => {
   try {
-    return JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+    const items = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+    const valid = items.filter((item) => !isSupabaseUUID(item.id));
+    if (valid.length !== items.length) {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(valid));
+    }
+    return valid;
   } catch { return []; }
 };
 

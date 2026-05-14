@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cart.controller');
-const { verifyFirebaseToken, optionalAuth } = require('../middleware/auth.middleware');
+const { verifyFirebaseToken, optionalAuth, requireAdmin } = require('../middleware/auth.middleware');
 
 // Get cart - works with or without auth (session-based for guests)
 router.get('/', optionalAuth, cartController.getCart);
@@ -27,5 +27,8 @@ router.post('/sync', verifyFirebaseToken, cartController.syncCart);
 
 // Get cart summary (counts, totals)
 router.get('/summary', optionalAuth, cartController.getCartSummary);
+
+// Admin: abandoned carts
+router.get('/abandoned', verifyFirebaseToken, requireAdmin, cartController.getAbandonedCarts);
 
 module.exports = router;

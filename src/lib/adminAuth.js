@@ -7,7 +7,7 @@
  * - Secure token storage
  */
 
-// Admin Auth uses localStorage only, no Supabase needed
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const ADMIN_SESSION_KEY = 'admin_session';
 const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -97,8 +97,33 @@ export async function loginAdmin(username, password) {
       return { success: false, error: 'Invalid username or password' };
     }
 
+    // Get real JWT from backend for API calls
+    let apiToken = null;
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'admin@littleshop.com',
+          password: ADMIN_CREDENTIALS.password
+        })
+      });
+      const result = await response.json();
+      if (result.success && result.token) {
+        apiToken = result.token;
+        localStorage.setItem('adminToken', apiToken);
+      }
+    } catch (e) {
+      console.warn('Backend login failed, using local session only:', e.message);
+    }
+
     // Create session
     const session = createAdminSession();
+    // Attach API token to session
+    if (apiToken) {
+      session.apiToken = apiToken;
+      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+    }
 
     // Log admin login (optional - don't await, don't block on error)
     logAdminAction('login', { username, timestamp: new Date().toISOString() }).catch(() => {});

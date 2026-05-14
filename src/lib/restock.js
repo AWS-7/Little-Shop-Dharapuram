@@ -8,8 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 // Helper to get auth token
 async function getAuthToken() {
-  const token = localStorage.getItem('authToken');
-  return token;
+  return localStorage.getItem('authToken')
+    || localStorage.getItem('adminToken')
+    || localStorage.getItem('firebase_auth_token')
+    || null;
 }
 
 /**

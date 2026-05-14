@@ -8,7 +8,7 @@ import { createOrder } from '../lib/orders';
 import { markCartConverted } from '../lib/carts';
 import { CURRENCY, POLICIES } from '../lib/constants';
 import { getAddresses } from '../lib/addresses';
-import { getProductByIdAdmin } from '../lib/products';
+import { getProductById } from '../lib/products';
 import { validateCheckoutCoupon, calculateDiscount, applyCouponAndIncrement } from '../lib/coupons';
 
 export default function Checkout() {
@@ -46,7 +46,7 @@ export default function Checkout() {
   const validateCartStock = async () => {
     const errors = [];
     for (const item of cart) {
-      const { data: product } = await getProductByIdAdmin(item.id);
+      const { data: product } = await getProductById(item.id);
       if (!product) {
         errors.push({ name: item.name, message: 'Product no longer available' });
       } else if (product.stock_count < item.quantity) {

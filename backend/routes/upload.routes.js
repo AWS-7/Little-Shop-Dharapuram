@@ -17,6 +17,7 @@ router.post('/multiple', verifyFirebaseToken, requireAdmin, uploadMultiple, uplo
 
 // Product image upload
 router.post('/product-image', verifyFirebaseToken, requireAdmin, uploadSingle, uploadController.uploadProductImage);
+router.post('/products', verifyFirebaseToken, requireAdmin, uploadSingle, uploadController.uploadProductImage);
 
 // Category image upload
 router.post('/category-image', verifyFirebaseToken, requireAdmin, uploadSingle, uploadController.uploadCategoryImage);

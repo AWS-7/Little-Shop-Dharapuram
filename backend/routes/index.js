@@ -13,30 +13,32 @@ const categoryRoutes = require('./category.routes');
 const cartRoutes = require('./cart.routes');
 const orderRoutes = require('./order.routes');
 const addressRoutes = require('./address.routes');
-// const userRoutes = require('./user.routes'); // TODO: Create this file
-// const couponRoutes = require('./coupon.routes'); // TODO: Create this file
-// const bannerRoutes = require('./banner.routes'); // TODO: Create this file
-// const flashSaleRoutes = require('./flashsale.routes'); // TODO: Create this file
-// const testimonialRoutes = require('./testimonial.routes'); // TODO: Create this file
+const couponRoutes = require('./coupon.routes');
+const bannerRoutes = require('./banner.routes');
+const flashSaleRoutes = require('./flashsale.routes');
+const testimonialRoutes = require('./testimonial.routes');
+const restockRoutes = require('./restock.routes');
 const uploadRoutes = require('./upload.routes');
-// const settingsRoutes = require('./settings.routes'); // TODO: Create this file
-// const adminRoutes = require('./admin.routes'); // TODO: Create this file
+const authRoutes = require('./auth.routes');
+const productController = require('../controllers/product.controller');
 
 // Mount routes
-// router.use('/auth', authRoutes); // TODO: Enable when auth.routes.js created
+router.use('/auth', authRoutes);
+
+// Direct category route (ensure it matches before nested router)
+router.get('/products/category/:categorySlug', productController.getProductsByCategory);
 router.use('/products', productRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/cart', cartRoutes);
+router.use('/carts', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/addresses', addressRoutes);
-// router.use('/users', userRoutes); // TODO: Enable when created
-// router.use('/coupons', couponRoutes); // TODO: Enable when created
-// router.use('/banners', bannerRoutes); // TODO: Enable when created
-// router.use('/flash-sales', flashSaleRoutes); // TODO: Enable when created
-// router.use('/testimonials', testimonialRoutes); // TODO: Enable when created
+router.use('/coupons', couponRoutes);
+router.use('/banners', bannerRoutes);
+router.use('/flash-sales', flashSaleRoutes);
+router.use('/testimonials', testimonialRoutes);
+router.use('/restock', restockRoutes);
 router.use('/uploads', uploadRoutes);
-// router.use('/settings', settingsRoutes); // TODO: Enable when created
-// router.use('/admin', adminRoutes); // TODO: Enable when created
 
 // Dashboard/Analytics routes
 router.get('/dashboard/stats', async (req, res) => {

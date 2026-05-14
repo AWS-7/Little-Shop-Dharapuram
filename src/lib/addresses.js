@@ -3,8 +3,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 // Helper to get auth token
 async function getAuthToken() {
-  const token = localStorage.getItem('authToken');
-  return token;
+  return localStorage.getItem('authToken')
+    || localStorage.getItem('adminToken')
+    || localStorage.getItem('firebase_auth_token')
+    || null;
 }
 
 // ── Helper: Convert any string to a valid UUID v5-like format ──
@@ -45,18 +47,18 @@ function toUUID(str) {
 
 export async function getAddresses(userId) {
   // Skip if userId is not valid UUID (Firebase UID issue)
-  if (!userId || userId.length > 36) {
-    return { data: [], error: null };
-  }
-  
   try {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/addresses/user/${userId}`, {
+    if (!token) {
+      return { data: [], error: null };
+    }
+
+    const response = await fetch(`${API_URL}/addresses`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-    
+
     const result = await response.json();
     if (!result.success) {
       console.error('❌ Error fetching addresses:', result.message);

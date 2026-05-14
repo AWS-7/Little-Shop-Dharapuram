@@ -5,9 +5,9 @@
 const express = require('express');
 const router = express.Router();
 const addressController = require('../controllers/address.controller');
-const { verifyFirebaseToken } = require('../middleware/auth.middleware');
+const { verifyFirebaseToken, optionalAuth } = require('../middleware/auth.middleware');
 
-router.get('/', verifyFirebaseToken, addressController.getAddresses);
+router.get('/', optionalAuth, addressController.getAddresses);
 router.post('/', verifyFirebaseToken, addressController.createAddress);
 router.put('/:id', verifyFirebaseToken, addressController.updateAddress);
 router.delete('/:id', verifyFirebaseToken, addressController.deleteAddress);

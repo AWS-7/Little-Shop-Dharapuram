@@ -6,6 +6,14 @@
 const MERCHANT_UPI = import.meta.env.VITE_MERCHANT_UPI || 'littleshop@icici';
 const MERCHANT_NAME = 'LittleShop';
 
+// Helper to get auth token
+async function getAuthToken() {
+  return localStorage.getItem('authToken')
+    || localStorage.getItem('adminToken')
+    || localStorage.getItem('firebase_auth_token')
+    || null;
+}
+
 /**
  * Generate UPI deep link for any app
  */

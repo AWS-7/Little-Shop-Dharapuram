@@ -6,6 +6,23 @@
 const database = require('../config/database');
 const cloudinaryService = require('../services/cloudinary.service');
 
+// Helper: Parse MySQL DECIMAL strings to numbers and JSON fields
+function parseProduct(product) {
+  if (!product) return product;
+  return {
+    ...product,
+    price: product.price !== null && product.price !== undefined ? parseFloat(product.price) : 0,
+    compare_price: product.compare_price !== null && product.compare_price !== undefined ? parseFloat(product.compare_price) : null,
+    cost_price: product.cost_price !== null && product.cost_price !== undefined ? parseFloat(product.cost_price) : null,
+    originalPrice: product.compare_price !== null && product.compare_price !== undefined ? parseFloat(product.compare_price) : null,
+    images: product.images ? JSON.parse(product.images) : [],
+    weight: product.weight !== null && product.weight !== undefined ? parseFloat(product.weight) : null,
+    stock_quantity: product.stock_quantity !== null ? parseInt(product.stock_quantity) : 0,
+    view_count: product.view_count !== null ? parseInt(product.view_count) : 0,
+    sales_count: product.sales_count !== null ? parseInt(product.sales_count) : 0
+  };
+}
+
 /**
  * Get all products with pagination, filtering, and sorting
  */
@@ -97,10 +114,7 @@ exports.getAllProducts = async (req, res) => {
     );
     
     // Parse JSON fields
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -140,10 +154,7 @@ exports.getFeaturedProducts = async (req, res) => {
       [limit]
     );
     
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -176,10 +187,7 @@ exports.getNewArrivals = async (req, res) => {
       [limit]
     );
     
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -212,10 +220,7 @@ exports.getBestsellers = async (req, res) => {
       [limit]
     );
     
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -250,10 +255,7 @@ exports.getHandpickedProducts = async (req, res) => {
       [limit]
     );
     
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -301,10 +303,7 @@ exports.searchProducts = async (req, res) => {
       [searchTerm, searchTerm, searchTerm, searchTerm, `%${q}%`, `%${q}%`, parseInt(limit)]
     );
     
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
+    const parsedProducts = products.map(parseProduct);
     
     res.json({
       success: true,
@@ -330,55 +329,74 @@ exports.getProductsByCategory = async (req, res) => {
     const { page = 1, limit = 20, sortBy = 'created_at', order = 'desc' } = req.query;
     const offset = (page - 1) * limit;
     
-    // Get category info
-    const category = await database.getOne(
+    // Get category info - try slug first, then name
+    let category = await database.getOne(
       'SELECT * FROM categories WHERE slug = ?',
       [categorySlug]
     );
-    
+
+    // Fallback: try matching by name (for spaces like "Silk Sarees")
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found'
-      });
+      category = await database.getOne(
+        'SELECT * FROM categories WHERE name = ?',
+        [categorySlug]
+      );
     }
-    
-    // Get total count
-    const countResult = await database.getOne(
-      `SELECT COUNT(*) as total FROM products 
-       WHERE is_active = TRUE AND (category_id = ? OR category = ?)`,
-      [category.id, category.name]
-    );
-    
-    const sortColumn = ['name', 'price', 'created_at', 'view_count'].includes(sortBy) 
-      ? sortBy 
+
+    const sortColumn = ['name', 'price', 'created_at', 'view_count'].includes(sortBy)
+      ? sortBy
       : 'created_at';
     const sortOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-    
-    // Get products
-    const products = await database.getMany(
-      `SELECT * FROM products 
-       WHERE is_active = TRUE AND (category_id = ? OR category = ?)
-       ORDER BY ${sortColumn} ${sortOrder}
-       LIMIT ? OFFSET ?`,
-      [category.id, category.name, parseInt(limit), offset]
-    );
-    
-    const parsedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : []
-    }));
-    
+    const safeLimit = parseInt(limit) || 20;
+    const safeOffset = parseInt(offset) || 0;
+
+    let products;
+    let countResult;
+
+    if (category) {
+      // Category found — use both category_id and category name
+      countResult = await database.getOne(
+        `SELECT COUNT(*) as total FROM products
+         WHERE is_active = TRUE AND (category_id = ? OR category = ?)`,
+        [category.id, category.name]
+      );
+
+      products = await database.getMany(
+        `SELECT * FROM products
+         WHERE is_active = TRUE AND (category_id = ? OR category = ?)
+         ORDER BY ${sortColumn} ${sortOrder}
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [category.id, category.name]
+      );
+    } else {
+      // No category row — query products directly by category name
+      countResult = await database.getOne(
+        `SELECT COUNT(*) as total FROM products
+         WHERE is_active = TRUE AND category = ?`,
+        [categorySlug]
+      );
+
+      products = await database.getMany(
+        `SELECT * FROM products
+         WHERE is_active = TRUE AND category = ?
+         ORDER BY ${sortColumn} ${sortOrder}
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [categorySlug]
+      );
+    }
+
+    const parsedProducts = products.map(parseProduct);
+
     res.json({
       success: true,
       data: {
-        category,
+        category: category || { name: categorySlug, slug: categorySlug },
         products: parsedProducts
       },
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(countResult.total / limit),
-        totalItems: countResult.total,
+        totalPages: Math.ceil((countResult?.total || 0) / limit),
+        totalItems: countResult?.total || 0,
         itemsPerPage: parseInt(limit)
       }
     });
@@ -421,26 +439,26 @@ exports.getProductBySlug = async (req, res) => {
       [product.id]
     );
     
-    // Parse images
-    product.images = product.images ? JSON.parse(product.images) : [];
-    
+    // Parse product fields
+    const parsedProduct = parseProduct(product);
+
     // Get related products
     const relatedProducts = await database.getMany(
       `SELECT id, name, slug, price, compare_price, featured_image, category
-       FROM products 
-       WHERE is_active = TRUE 
-       AND id != ? 
+       FROM products
+       WHERE is_active = TRUE
+       AND id != ?
        AND (category_id = ? OR category = ?)
        ORDER BY sales_count DESC
        LIMIT 8`,
-      [product.id, product.category_id, product.category]
+      [parsedProduct.id, parsedProduct.category_id, parsedProduct.category]
     );
-    
+
     res.json({
       success: true,
       data: {
-        product,
-        relatedProducts
+        product: parsedProduct,
+        relatedProducts: relatedProducts.map(parseProduct)
       }
     });
     
