@@ -485,9 +485,10 @@ exports.getAbandonedCarts = async (req, res) => {
 exports.markCartConverted = async (req, res) => {
   try {
     const { userId } = req.params;
+    // userId is a Firebase UID string, not an INT — only match firebase_uid column
     await database.query(
-      'DELETE FROM carts WHERE user_id = ? OR firebase_uid = ?',
-      [userId, userId]
+      'DELETE FROM carts WHERE firebase_uid = ?',
+      [userId]
     );
     res.json({ success: true, message: 'Cart marked as converted' });
   } catch (error) {

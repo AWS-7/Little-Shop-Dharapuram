@@ -134,18 +134,33 @@ export async function getAllProducts() {
       return { data: [], error: new Error(result.message) };
     }
 
+    // Debug: log raw image data from first product
+    if (result.data && result.data.length > 0) {
+      const first = result.data[0];
+      console.log('📷 First product raw images:', {
+        id: first.id,
+        featured_image: first.featured_image,
+        images: first.images,
+        image_url: first.image_url,
+        image: first.image
+      });
+    }
+
     // Map database fields to client-side fields
     const mappedData = (result.data || [])
       .filter(p => p.is_active) // Only active products
       .map(p => ({
         ...p,
-        image: resolveImageUrl(parseImages(p.images)[0] || p.featured_image || p.image_url || p.image),
-        image2: resolveImageUrl(parseImages(p.images)[1] || p.image2_url || p.image2),
+        image: resolveImageUrl(p.featured_image || parseImages(p.images)[0] || p.image_url || p.image),
+        image2: resolveImageUrl(p.image2_url || parseImages(p.images)[1] || p.image2),
         // Map stock_quantity (DB) to stockCount (UI)
         stockCount: p.stock_quantity !== undefined ? p.stock_quantity : p.stockCount || 0
       }));
 
     console.log('✅ Products fetched:', mappedData.length);
+    if (mappedData.length > 0) {
+      console.log('📷 First product resolved image:', mappedData[0].image);
+    }
     return { data: mappedData, error: null };
   } catch (e) {
     console.error('❌ Exception fetching products:', e);

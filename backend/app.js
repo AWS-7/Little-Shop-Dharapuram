@@ -24,6 +24,7 @@ app.use(helmet({
     },
   },
   crossOriginResourcePolicy: false, // Allow images to load from uploads on different origin
+  crossOriginOpenerPolicy: false,   // Allow Firebase Auth popup windows
 }));
 
 // CORS Configuration

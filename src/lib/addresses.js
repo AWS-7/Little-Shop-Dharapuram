@@ -174,6 +174,11 @@ export async function setDefaultAddress(userId, addressId) {
   }
 }
 
+// Alias for Account.jsx compatibility
+export async function createAddress(userId, addressData) {
+  return saveAddress(userId, addressData);
+}
+
 // Relationship tag options
 export const RELATIONSHIP_TAGS = [
   { value: 'self', label: 'Self' },

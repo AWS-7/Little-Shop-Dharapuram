@@ -57,30 +57,6 @@ export async function createOrder(orderData) {
     
     const data = result.data;
 
-    // Deduct inventory for each item
-    for (const item of items) {
-      // Get current stock via API
-      const prodResponse = await fetch(`${API_URL}/products/${item.id}`);
-      const prodResult = await prodResponse.json();
-
-      if (prodResult.data) {
-        const newStockCount = Math.max(0, prodResult.data.stock_quantity - item.quantity);
-        // Update stock via API
-        const updateResponse = await fetch(`${API_URL}/products/${item.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ stock_quantity: newStockCount })
-        });
-
-        if (!updateResponse.ok) {
-          console.error(`Failed to deduct stock for product ${item.id}`);
-        }
-      }
-    }
-
     // Check if this is user's first order and process referral reward
     if (data && orderData.user_id) {
       await processReferralReward(orderData.user_id, data);
@@ -101,7 +77,7 @@ export async function createOrder(orderData) {
       });
     }
 
-    return { data, error };
+    return { data, error: null };
   } catch (e) {
     return { data: null, error: e };
   }

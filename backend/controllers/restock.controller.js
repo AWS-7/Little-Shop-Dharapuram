@@ -23,6 +23,23 @@ exports.getPendingByProduct = async (req, res) => {
   }
 };
 
+exports.getRequestCount = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const result = await database.getOne(
+      'SELECT COUNT(*) as count FROM restock_notifications WHERE product_id = ?',
+      [productId]
+    );
+    res.json({ success: true, data: result?.count || 0 });
+  } catch (error) {
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: 0, note: 'restock_notifications table not created yet' });
+    }
+    console.error('Get restock count error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch restock count' });
+  }
+};
+
 exports.markRequestsAsNotified = async (req, res) => {
   try {
     const { productId } = req.params;

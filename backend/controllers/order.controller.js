@@ -18,11 +18,7 @@ const generateOrderNumber = () => {
  * Create new order
  */
 exports.createOrder = async (req, res) => {
-  const connection = await database.getConnection();
-  
   try {
-    await connection.beginTransaction();
-    
     const {
       items,
       shippingAddressId,
@@ -30,166 +26,92 @@ exports.createOrder = async (req, res) => {
       billingAddress,
       paymentMethod,
       couponCode,
-      notes
+      notes,
+      customer
     } = req.body;
-    
+
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order items are required'
-      });
+      return res.status(400).json({ success: false, message: 'Order items are required' });
     }
-    
-    const userId = req.userId;
-    const firebaseUid = req.firebaseUid;
-    
+
+    const userId = req.userId || null;
+    const firebaseUid = req.firebaseUid || null;
+    const finalShipping = shippingAddress || customer || null;
+    const finalBilling = billingAddress || customer || null;
+    const finalPayment = paymentMethod || 'cod';
+
     // Validate products and calculate totals
     let subtotal = 0;
     const orderItems = [];
-    
+
     for (const item of items) {
-      const product = await database.getOne(
-        'SELECT * FROM products WHERE id = ? AND is_active = TRUE',
-        [item.productId]
-      );
-      
-      if (!product) {
-        throw new Error(`Product ${item.productId} not found`);
-      }
-      
-      if (product.stock_quantity < item.quantity) {
-        throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock_quantity}`);
-      }
-      
+      const pid = item.productId || item.id || item.product_id;
+      if (!pid) continue;
+
+      const product = await database.getOne('SELECT id, name, sku, featured_image, price, stock_quantity FROM products WHERE id = ? AND is_active = TRUE', [pid]);
+      if (!product) throw new Error(`Product ${pid} not found`);
+      if (product.stock_quantity < item.quantity) throw new Error(`Insufficient stock for ${product.name}`);
+
       const itemTotal = product.price * item.quantity;
       subtotal += itemTotal;
-      
-      orderItems.push({
-        productId: item.productId,
-        productName: product.name,
-        productSku: product.sku,
-        productImage: product.featured_image,
-        quantity: item.quantity,
-        unitPrice: product.price,
-        totalPrice: itemTotal,
-        size: item.size,
-        color: item.color
-      });
+      orderItems.push({ productId: pid, productName: product.name, productSku: product.sku, productImage: product.featured_image, quantity: item.quantity, unitPrice: product.price, totalPrice: itemTotal, size: item.size, color: item.color });
     }
-    
-    // Calculate totals
-    const shippingCost = subtotal >= 999 ? 0 : 50; // Free shipping over ₹999
-    const taxAmount = 0; // GST included in prices
-    let discountAmount = 0;
-    
-    // Apply coupon if provided
-    if (couponCode) {
-      const coupon = await database.getOne(
-        'SELECT * FROM coupons WHERE code = ? AND is_active = TRUE AND (end_date IS NULL OR end_date >= CURDATE())',
-        [couponCode]
-      );
-      
-      if (coupon && subtotal >= coupon.min_order_amount) {
-        if (coupon.discount_type === 'percentage') {
-          discountAmount = (subtotal * coupon.discount_value) / 100;
-          if (coupon.max_discount_amount && discountAmount > coupon.max_discount_amount) {
-            discountAmount = coupon.max_discount_amount;
-          }
-        } else {
-          discountAmount = coupon.discount_value;
-        }
-      }
-    }
-    
-    const totalAmount = subtotal + shippingCost + taxAmount - discountAmount;
-    
-    // Generate order number
+
+    const shippingCost = subtotal >= 999 ? 0 : 50;
+    const totalAmount = subtotal + shippingCost;
     const orderNumber = generateOrderNumber();
-    
-    // Create order
+
+    // Build safe params array
+    const params = [
+      orderNumber,
+      userId,
+      firebaseUid,
+      shippingAddressId || null,
+      finalShipping ? JSON.stringify(finalShipping) : null,
+      finalBilling ? JSON.stringify(finalBilling) : null,
+      subtotal,
+      shippingCost,
+      0, // tax_amount
+      0, // discount_amount
+      couponCode || null,
+      totalAmount,
+      finalPayment,
+      notes || null,
+      req.ip || null
+    ];
+
+    // Ensure no undefined values
+    const safeParams = params.map(v => v === undefined ? null : v);
+
     const orderId = await database.insert(
-      `INSERT INTO orders (
-        order_number, user_id, firebase_uid, 
-        shipping_address_id, shipping_address, billing_address,
-        subtotal, shipping_cost, tax_amount, discount_amount, coupon_code, total_amount,
-        status, payment_status, payment_method, notes, ip_address, ordered_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, NOW())`,
-      [
-        orderNumber,
-        userId ?? null,
-        firebaseUid ?? null,
-        shippingAddressId ?? null,
-        shippingAddress ? JSON.stringify(shippingAddress) : null,
-        billingAddress ? JSON.stringify(billingAddress) : null,
-        subtotal ?? 0, shippingCost ?? 0, taxAmount ?? 0, discountAmount ?? 0,
-        couponCode ?? null,
-        totalAmount ?? 0,
-        paymentMethod ?? 'cod',
-        notes ?? null,
-        req.ip ?? null
-      ]
+      `INSERT INTO orders (order_number, user_id, firebase_uid, shipping_address_id, shipping_address, billing_address, subtotal, shipping_cost, tax_amount, discount_amount, coupon_code, total_amount, status, payment_status, payment_method, notes, ip_address, ordered_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, NOW())`,
+      safeParams
     );
-    
-    // Create order items
+
+    // Insert order items and update stock
     for (const item of orderItems) {
       await database.insert(
-        `INSERT INTO order_items (
-          order_id, product_id, product_name, product_sku, product_image,
-          quantity, unit_price, total_price, size, color
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          orderId, item.productId, item.productName,
-          item.productSku ?? null, item.productImage ?? null,
-          item.quantity, item.unitPrice, item.totalPrice,
-          item.size ?? null, item.color ?? null
-        ]
+        `INSERT INTO order_items (order_id, product_id, product_name, product_sku, product_image, quantity, unit_price, total_price, size, color)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, item.productId, item.productName, item.productSku || null, item.productImage || null, item.quantity, item.unitPrice, item.totalPrice, item.size || null, item.color || null]
       );
-      
-      // Update product stock
-      await database.query(
-        'UPDATE products SET stock_quantity = stock_quantity - ?, sales_count = sales_count + ? WHERE id = ?',
-        [item.quantity, item.quantity, item.productId]
-      );
+      await database.query('UPDATE products SET stock_quantity = stock_quantity - ?, sales_count = sales_count + ? WHERE id = ?', [item.quantity, item.quantity, item.productId]);
     }
-    
-    // Clear user's cart
-    if (userId) {
-      await database.query('DELETE FROM carts WHERE user_id = ?', [userId]);
-    } else if (firebaseUid) {
-      await database.query('DELETE FROM carts WHERE firebase_uid = ?', [firebaseUid]);
-    }
-    
-    // Update coupon usage
-    if (couponCode) {
-      await database.query(
-        'UPDATE coupons SET usage_count = usage_count + 1 WHERE code = ?',
-        [couponCode]
-      );
-    }
-    
-    await connection.commit();
-    
+
+    // Clear cart
+    if (userId) await database.query('DELETE FROM carts WHERE user_id = ?', [userId]);
+    else if (firebaseUid) await database.query('DELETE FROM carts WHERE firebase_uid = ?', [firebaseUid]);
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
-      data: {
-        orderId,
-        orderNumber,
-        totalAmount,
-        status: 'pending',
-        paymentStatus: 'pending'
-      }
+      data: { orderId, orderNumber, totalAmount, status: 'pending', paymentStatus: 'pending' }
     });
-    
-  } catch (error) {
-    await connection.rollback();
-    console.error('Create order error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to create order'
-    });
-  } finally {
-    connection.release();
+
+  } catch (err) {
+    console.error('Create order error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to create order' });
   }
 };
 
@@ -480,7 +402,7 @@ exports.updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status, trackingNumber, shippingCarrier, notes } = req.body;
     
-    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'processing', 'Packed', 'Shipped', 'Out for Delivery', 'delivered', 'cancelled'];
     
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
