@@ -60,12 +60,20 @@ async function uploadImage(buffer, options = {}) {
     };
   };
 
-  // Fallback to local storage if Cloudinary not configured at all
-  if (!isCloudinaryConfigured) {
-    return saveLocal();
+  // In production, Cloudinary must be configured - no local fallback
+  if (process.env.NODE_ENV === 'production') {
+    if (!isCloudinaryConfigured) {
+      throw new Error('Cloudinary must be configured in production. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.');
+    }
+  } else {
+    // Development: fallback to local if Cloudinary not configured
+    if (!isCloudinaryConfigured) {
+      console.warn('Cloudinary not configured, using local storage fallback (development only)');
+      return saveLocal();
+    }
   }
 
-  // Try Cloudinary; fallback to local on any error (invalid creds, network, etc.)
+  // Try Cloudinary upload
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -78,7 +86,14 @@ async function uploadImage(buffer, options = {}) {
       },
       (error, result) => {
         if (error) {
-          console.warn('Cloudinary upload failed, falling back to local:', error.message);
+          // In production, reject on Cloudinary failure
+          if (process.env.NODE_ENV === 'production') {
+            console.error('Cloudinary upload failed in production:', error.message);
+            reject(new Error(`Cloudinary upload failed: ${error.message}`));
+            return;
+          }
+          // Development: fallback to local storage
+          console.warn('Cloudinary upload failed, falling back to local (development only):', error.message);
           resolve(saveLocal());
           return;
         }

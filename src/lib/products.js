@@ -103,13 +103,40 @@ export async function uploadProductImage(file) {
 export async function createProduct(productData) {
   try {
     const token = await getAuthToken();
+    
+    // Map frontend field names to backend field names
+    const mapped = {
+      name: productData.name,
+      description: productData.description,
+      price: Number(productData.price) || 0,
+      comparePrice: Number(productData.original_price || productData.comparePrice) || null,
+      stockQuantity: Number(productData.stock_count || productData.stockQuantity) || 0,
+      category: productData.category,
+      categoryId: productData.category_id || productData.categoryId || null,
+      sku: productData.sku || null,
+      featuredImage: productData.image_url || productData.featuredImage || productData.image || null,
+      images: productData.image2_url || productData.images || [],
+      badge: productData.badge || null,
+      isActive: productData.is_active !== undefined ? productData.is_active : true,
+      isFeatured: productData.is_featured || false,
+      isNew: productData.is_new || false,
+      isBestseller: productData.is_bestseller || false
+    };
+    
+    // Build images array if image2_url is a string
+    if (typeof mapped.images === 'string') {
+      mapped.images = [mapped.images];
+    }
+    
+    console.log('Creating product with mapped fields:', mapped);
+    
     const response = await fetch(`${API_URL}/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(productData)
+      body: JSON.stringify(mapped)
     });
     
     const result = await response.json();

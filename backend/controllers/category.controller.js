@@ -130,15 +130,37 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, slug, image, displayOrder, isActive } = req.body;
+    // Accept both camelCase and snake_case from frontend
+    const name = req.body.name;
+    const image = req.body.image;
+    const displayOrder = req.body.displayOrder ?? req.body.display_order;
+    const isActive = req.body.isActive ?? req.body.is_active;
+    let slug = req.body.slug ?? req.body.slug_url;
     
-    // Sanitize undefined values to null
-    const safeParams = [name, slug, image, displayOrder, isActive].map(v => v === undefined ? null : v);
-    safeParams.push(id);
+    // Fetch existing category to get current slug if not provided
+    const existing = await database.getOne('SELECT slug, name FROM categories WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    
+    // Generate slug from name if not provided
+    if (!slug && name) {
+      slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    if (!slug) {
+      slug = existing.slug;
+    }
+    
+    // Sanitize undefined values to null/defaults
+    const safeName = name !== undefined ? name : existing.name;
+    const safeSlug = slug !== undefined ? slug : existing.slug;
+    const safeImage = image !== undefined ? image : null;
+    const safeDisplayOrder = displayOrder !== undefined ? displayOrder : 0;
+    const safeIsActive = isActive !== undefined ? isActive : true;
     
     await database.query(
       'UPDATE categories SET name = ?, slug = ?, image = ?, display_order = ?, is_active = ? WHERE id = ?',
-      safeParams
+      [safeName, safeSlug, safeImage, safeDisplayOrder, safeIsActive, id]
     );
     
     const updatedCategory = await database.getOne(

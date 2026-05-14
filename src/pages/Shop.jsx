@@ -104,7 +104,8 @@ export default function Shop() {
     let items = [...allProducts];
     if (selectedCategory !== 'All') {
       items = items.filter((p) => {
-        const productCategory = p.category?.toLowerCase() || '';
+        // Defensive: category might be number, null, or undefined
+        const productCategory = String(p.category || '').toLowerCase();
         const selectedCat = selectedCategory.toLowerCase();
         // Match exact, partial, or word-based
         return productCategory === selectedCat || 
@@ -116,12 +117,16 @@ export default function Shop() {
       items = items.filter((p) => p.occasion === selectedOccasion || p.tags?.includes(selectedOccasion));
     }
     if (selectedColor !== 'All') {
-      items = items.filter((p) => p.color === selectedColor || p.name.toLowerCase().includes(selectedColor.toLowerCase()));
+      items = items.filter((p) => p.color === selectedColor || (p.name || '').toLowerCase().includes(selectedColor.toLowerCase()));
     }
-    if (sortBy === 'price-asc') items.sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-desc') items.sort((a, b) => b.price - a.price);
-    if (sortBy === 'name') items.sort((a, b) => a.name.localeCompare(b.name));
-    if (sortBy === 'newest') items.sort((a, b) => (b.id > a.id ? 1 : -1));
+    if (priceRange !== 'All') {
+      const [min, max] = priceRange.split('-').map(Number);
+      items = items.filter((p) => (p.price || 0) >= min && (max ? (p.price || 0) <= max : true));
+    }
+    if (sortBy === 'price-asc') items.sort((a, b) => (a.price || 0) - (b.price || 0));
+    if (sortBy === 'price-desc') items.sort((a, b) => (b.price || 0) - (a.price || 0));
+    if (sortBy === 'name') items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (sortBy === 'newest') items.sort((a, b) => ((b.id || 0) > (a.id || 0) ? 1 : -1));
     return items;
   }, [allProducts, selectedCategory, selectedOccasion, selectedColor, sortBy]);
 

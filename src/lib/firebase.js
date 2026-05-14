@@ -1,17 +1,21 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-};
+// Parse Firebase config from environment variable (JSON string)
+let firebaseConfig;
+
+try {
+  const configString = import.meta.env.VITE_FIREBASE_CONFIG;
+  if (configString) {
+    firebaseConfig = JSON.parse(configString);
+  } else {
+    console.error('VITE_FIREBASE_CONFIG is not set in .env file');
+  }
+} catch (error) {
+  console.error('Failed to parse VITE_FIREBASE_CONFIG:', error);
+}
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const app = firebaseConfig ? initializeApp(firebaseConfig) : null;
+export const auth = app ? getAuth(app) : null;
 export default app;

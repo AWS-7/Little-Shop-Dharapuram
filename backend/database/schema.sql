@@ -3,8 +3,29 @@
 -- Replaces Supabase PostgreSQL
 -- Compatible with Node.js + Express.js backend
 -- ============================================
+--
+-- DEPLOYMENT INSTRUCTIONS (GoDaddy/VPS):
+--
+-- 1. Via phpMyAdmin (GoDaddy Shared Hosting):
+--    - Login to GoDaddy cPanel → phpMyAdmin
+--    - Select your database (use GoDaddy-provided database name)
+--    - Click "Import" tab
+--    - Choose this schema.sql file
+--    - Click "Go" to import
+--
+-- 2. Via MySQL CLI (VPS):
+--    mysql -u your_username -p your_database_name < schema.sql
+--
+-- 3. IMPORTANT: Update database name in .env file to match GoDaddy database name
+--    DB_HOST=localhost
+--    DB_USER=your_godaddy_db_user
+--    DB_PASSWORD=your_godaddy_db_password
+--    DB_NAME=your_godaddy_db_name (NOT littleshop_db)
+--
+-- 4. Remove "CREATE DATABASE" line below if using existing GoDaddy database
+-- ============================================
 
--- Create Database
+-- Create Database (remove this line when using existing GoDaddy database)
 CREATE DATABASE IF NOT EXISTS littleshop_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE littleshop_db;
 
