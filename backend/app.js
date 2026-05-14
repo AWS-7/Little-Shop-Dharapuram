@@ -23,6 +23,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "http:", "https:", "*.cloudinary.com", "res.cloudinary.com"],
     },
   },
+  crossOriginResourcePolicy: false, // Allow images to load from uploads on different origin
 }));
 
 // CORS Configuration
@@ -35,10 +36,10 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Rate Limiting
+// Rate Limiting (relaxed for development)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'development' ? 2000 : 100,
   message: {
     success: false,
     message: 'Too many requests, please try again later.'

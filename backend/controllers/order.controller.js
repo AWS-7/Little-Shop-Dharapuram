@@ -115,14 +115,18 @@ exports.createOrder = async (req, res) => {
         status, payment_status, payment_method, notes, ip_address, ordered_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, NOW())`,
       [
-        orderNumber, userId, firebaseUid,
-        shippingAddressId || null,
+        orderNumber,
+        userId ?? null,
+        firebaseUid ?? null,
+        shippingAddressId ?? null,
         shippingAddress ? JSON.stringify(shippingAddress) : null,
         billingAddress ? JSON.stringify(billingAddress) : null,
-        subtotal, shippingCost, taxAmount, discountAmount, couponCode, totalAmount,
-        paymentMethod || 'cod',
-        notes,
-        req.ip
+        subtotal ?? 0, shippingCost ?? 0, taxAmount ?? 0, discountAmount ?? 0,
+        couponCode ?? null,
+        totalAmount ?? 0,
+        paymentMethod ?? 'cod',
+        notes ?? null,
+        req.ip ?? null
       ]
     );
     
@@ -134,8 +138,10 @@ exports.createOrder = async (req, res) => {
           quantity, unit_price, total_price, size, color
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          orderId, item.productId, item.productName, item.productSku, item.productImage,
-          item.quantity, item.unitPrice, item.totalPrice, item.size, item.color
+          orderId, item.productId, item.productName,
+          item.productSku ?? null, item.productImage ?? null,
+          item.quantity, item.unitPrice, item.totalPrice,
+          item.size ?? null, item.color ?? null
         ]
       );
       
@@ -209,14 +215,17 @@ exports.getMyOrders = async (req, res) => {
       params
     );
     
-    // Get orders
+    const safeLimit = parseInt(limit) || 10;
+    const safeOffset = parseInt(offset) || 0;
+
+    // Get orders — LIMIT/OFFSET interpolated directly
     const orders = await database.getMany(
       `SELECT id, order_number, total_amount, status, payment_status, ordered_at, shipping_address
        FROM orders
        ${whereClause}
        ORDER BY ordered_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      params
     );
     
     // Get items for each order
@@ -243,9 +252,12 @@ exports.getMyOrders = async (req, res) => {
         totalItems: countResult.total
       }
     });
-    
+
   } catch (error) {
     console.error('Get my orders error:', error);
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: [], pagination: { currentPage: 1, totalPages: 0, totalItems: 0 }, note: 'orders table not created yet' });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders'
@@ -420,19 +432,22 @@ exports.getAllOrders = async (req, res) => {
     
     const whereClause = whereConditions.join(' AND ');
     
+    const safeLimit = parseInt(limit) || 20;
+    const safeOffset = parseInt(offset) || 0;
+
     // Get total count
     const countResult = await database.getOne(
       `SELECT COUNT(*) as total FROM orders WHERE ${whereClause}`,
       params
     );
-    
-    // Get orders
+
+    // Get orders — LIMIT/OFFSET interpolated directly (mysql2 execute() can't handle these as params)
     const orders = await database.getMany(
       `SELECT * FROM orders
        WHERE ${whereClause}
        ORDER BY ordered_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      params
     );
     
     res.json({
@@ -447,6 +462,9 @@ exports.getAllOrders = async (req, res) => {
     
   } catch (error) {
     console.error('Get all orders error:', error);
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: [], pagination: { currentPage: 1, totalPages: 0, totalItems: 0 }, note: 'orders table not created yet' });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders'
@@ -543,5 +561,25 @@ exports.updatePaymentStatus = async (req, res) => {
       success: false,
       message: 'Failed to update payment status'
     });
+  }
+};
+
+/**
+ * Get new orders since a timestamp (for admin notifications)
+ */
+exports.getNewOrders = async (req, res) => {
+  try {
+    const since = req.query.since;
+    const query = since
+      ? 'SELECT id, order_number, total_amount, status, payment_status, ordered_at FROM orders WHERE ordered_at > ? ORDER BY ordered_at DESC'
+      : 'SELECT id, order_number, total_amount, status, payment_status, ordered_at FROM orders ORDER BY ordered_at DESC LIMIT 10';
+    const params = since ? [since] : [];
+    const orders = await database.getMany(query, params);
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: [], note: 'orders table not created yet' });
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch new orders' });
   }
 };

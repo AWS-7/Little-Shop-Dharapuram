@@ -4,6 +4,42 @@
 
 const database = require('../config/database');
 
+exports.getPendingByProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const requests = await database.getMany(
+      `SELECT * FROM restock_notifications
+       WHERE product_id = ? AND is_notified = FALSE
+       ORDER BY created_at DESC`,
+      [productId]
+    );
+    res.json({ success: true, data: requests || [] });
+  } catch (error) {
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: [], note: 'restock_notifications table not created yet' });
+    }
+    console.error('Get pending restock error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pending restock requests' });
+  }
+};
+
+exports.markRequestsAsNotified = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    await database.query(
+      'UPDATE restock_notifications SET is_notified = TRUE, notified_at = NOW() WHERE product_id = ? AND is_notified = FALSE',
+      [productId]
+    );
+    res.json({ success: true, message: 'Restock requests marked as notified' });
+  } catch (error) {
+    if (error.message && error.message.includes("doesn't exist")) {
+      return res.json({ success: true, data: [], note: 'restock_notifications table not created yet' });
+    }
+    console.error('Mark restock notified error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark restock requests' });
+  }
+};
+
 exports.getAggregated = async (req, res) => {
   try {
     const stats = await database.getOne(

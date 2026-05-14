@@ -24,6 +24,7 @@ router.post('/category-image', verifyFirebaseToken, requireAdmin, uploadSingle, 
 
 // Hero banner upload
 router.post('/banner', verifyFirebaseToken, requireAdmin, uploadSingle, uploadController.uploadBanner);
+router.post('/banners', verifyFirebaseToken, requireAdmin, uploadSingle, uploadController.uploadBanner);
 
 // Payment proof upload (user)
 router.post('/payment-proof', verifyFirebaseToken, uploadSingle, uploadController.uploadPaymentProof);

@@ -14,11 +14,18 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Database connection check on startup
 const startServer = async () => {
   try {
+    // Debug: verify Cloudinary env vars
+    console.log('🔧 Cloudinary config:', {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'NOT SET',
+      api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET',
+    });
+
     // Test database connection
     const db = await database.getConnection();
     console.log('✅ MySQL Database connected successfully');
     db.release();
-    
+
     // Start server
     app.listen(PORT, () => {
       console.log(`

@@ -478,3 +478,37 @@ exports.getAbandonedCarts = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch abandoned carts' });
   }
 };
+
+/**
+ * Mark cart as converted (after order placed)
+ */
+exports.markCartConverted = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    await database.query(
+      'DELETE FROM carts WHERE user_id = ? OR firebase_uid = ?',
+      [userId, userId]
+    );
+    res.json({ success: true, message: 'Cart marked as converted' });
+  } catch (error) {
+    console.error('Mark cart converted error:', error);
+    res.status(500).json({ success: false, message: 'Failed to convert cart' });
+  }
+};
+
+/**
+ * Mark reminder as sent for abandoned cart
+ */
+exports.markReminderSent = async (req, res) => {
+  try {
+    const { cartId } = req.params;
+    await database.query(
+      'UPDATE carts SET reminder_sent = TRUE WHERE id = ?',
+      [cartId]
+    );
+    res.json({ success: true, message: 'Reminder marked as sent' });
+  } catch (error) {
+    console.error('Mark reminder sent error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark reminder' });
+  }
+};

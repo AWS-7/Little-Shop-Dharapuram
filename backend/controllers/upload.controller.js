@@ -99,13 +99,15 @@ exports.uploadProductImage = async (req, res) => {
       });
     }
 
+    console.log('Uploading product image:', req.file.originalname, 'size:', req.file.size, 'mimetype:', req.file.mimetype);
+
     const productSlug = req.body.productSlug || req.body.slug || 'product';
     const result = await cloudinaryService.uploadProductImage(
       req.file.buffer,
       productSlug
     );
 
-    const url = result.secure_url;
+    const url = result.secure_url || result.url;
 
     res.json({
       success: true,
@@ -118,10 +120,11 @@ exports.uploadProductImage = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Upload product image error:', error);
+    console.error('Upload product image error:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to upload product image',
+      message: 'Failed to upload product image: ' + error.message,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
@@ -184,13 +187,20 @@ exports.uploadBanner = async (req, res) => {
       bannerName
     );
 
-    const baseUrl = result.secure_url;
+    const baseUrl = result.secure_url || result.url;
+    const isLocal = !baseUrl?.includes('res.cloudinary.com');
 
     res.json({
       success: true,
       message: 'Banner uploaded with desktop and mobile versions',
       data: {
-        desktop: {
+        url: baseUrl,
+        filename: result.public_id,
+        desktop: isLocal ? {
+          filename: result.public_id,
+          url: baseUrl,
+          fullUrl: baseUrl,
+        } : {
           filename: result.public_id,
           url: cloudinaryService.getOptimizedUrl(baseUrl, {
             width: 1920,
@@ -203,7 +213,11 @@ exports.uploadBanner = async (req, res) => {
             crop: 'fill',
           }),
         },
-        mobile: {
+        mobile: isLocal ? {
+          filename: result.public_id,
+          url: baseUrl,
+          fullUrl: baseUrl,
+        } : {
           filename: result.public_id,
           url: cloudinaryService.getOptimizedUrl(baseUrl, {
             width: 768,

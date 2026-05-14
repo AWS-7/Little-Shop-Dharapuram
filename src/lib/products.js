@@ -139,8 +139,8 @@ export async function getAllProducts() {
       .filter(p => p.is_active) // Only active products
       .map(p => ({
         ...p,
-        image: resolveImageUrl(p.images?.[0] || p.image_url || p.image),
-        image2: resolveImageUrl(p.images?.[1] || p.image2_url || p.image2),
+        image: resolveImageUrl(parseImages(p.images)[0] || p.featured_image || p.image_url || p.image),
+        image2: resolveImageUrl(parseImages(p.images)[1] || p.image2_url || p.image2),
         // Map stock_quantity (DB) to stockCount (UI)
         stockCount: p.stock_quantity !== undefined ? p.stock_quantity : p.stockCount || 0
       }));
@@ -164,8 +164,8 @@ export async function getAllProductsAdmin() {
     // Map database fields to client-side fields
     const mappedData = (result.data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.images?.[0] || p.image_url || p.image),
-      image2: resolveImageUrl(p.images?.[1] || p.image2_url || p.image2),
+      image: resolveImageUrl(parseImages(p.images)[0] || p.featured_image || p.image_url || p.image),
+      image2: resolveImageUrl(parseImages(p.images)[1] || p.image2_url || p.image2),
       stockCount: p.stock_quantity !== undefined ? p.stock_quantity : p.stockCount || 0
     }));
 
@@ -191,16 +191,16 @@ export async function getProductById(id) {
       return { data: null, error: null };
     }
 
-    // Map database fields to client-side fields
-    const data = result.data;
-    if (data) {
-      data.image = resolveImageUrl(data.image_url || data.image);
-      data.image2 = resolveImageUrl(data.image2_url || data.image2);
-      data.stockCount = data.stock_quantity !== undefined ? data.stock_quantity : data.stockCount || 0;
-      data.stock_count = data.stockCount; // alias for Checkout.jsx compatibility
+    // Backend getProductBySlug returns { product, relatedProducts }
+    const product = result.data?.product || result.data;
+    if (product) {
+      product.image = resolveImageUrl(product.featured_image || product.image_url || product.image);
+      product.image2 = resolveImageUrl(product.image2_url || product.image2);
+      product.stockCount = product.stock_quantity !== undefined ? product.stock_quantity : product.stockCount || 0;
+      product.stock_count = product.stockCount; // alias for Checkout.jsx compatibility
     }
 
-    return { data, error: null };
+    return { data: product, error: null };
   } catch (e) {
     return { data: null, error: null };
   }
@@ -228,7 +228,7 @@ export async function getProductByIdAdmin(id) {
 
     const data = result.data;
     if (data) {
-      data.image = resolveImageUrl(data.image_url || data.image);
+      data.image = resolveImageUrl(data.image_url || data.featured_image || data.image);
       data.image2 = resolveImageUrl(data.image2_url || data.image2);
       data.stockCount = data.stock_quantity !== undefined ? data.stock_quantity : data.stockCount || 0;
     }
@@ -251,7 +251,7 @@ export async function getLatestProducts(limit = 4) {
 
     const mappedData = (result.data || []).map(p => ({
       ...p,
-      image: resolveImageUrl(p.image_url || p.image),
+      image: resolveImageUrl(p.featured_image || p.image_url || p.image),
       stockCount: p.stock_quantity !== undefined ? p.stock_quantity : p.stockCount || 0
     }));
 
@@ -298,6 +298,14 @@ export async function getHandpickedProducts(categories) {
 // If the URL is already absolute (https://...), return as-is.
 // If it's a relative storage path (e.g., "products/img.jpg"), prepend the backend uploads URL.
 const PLACEHOLDER_IMG = 'https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image';
+
+function parseImages(images) {
+  if (Array.isArray(images)) return images;
+  if (typeof images === 'string' && images.trim().startsWith('[')) {
+    try { return JSON.parse(images); } catch { return []; }
+  }
+  return [];
+}
 
 export function resolveImageUrl(url) {
   if (!url) return PLACEHOLDER_IMG;

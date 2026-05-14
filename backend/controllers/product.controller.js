@@ -501,6 +501,14 @@ exports.createProduct = async (req, res) => {
       careInstructions
     } = req.body;
 
+    // Validate required fields
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Product name is required' });
+    }
+    if (price === undefined || price === null || isNaN(Number(price))) {
+      return res.status(400).json({ success: false, message: 'Valid price is required' });
+    }
+
     let finalFeaturedImage = featuredImage || null;
     let finalImages = images || [];
 
@@ -510,7 +518,7 @@ exports.createProduct = async (req, res) => {
         req.file.buffer,
         name || 'product'
       );
-      finalFeaturedImage = result.secure_url;
+      finalFeaturedImage = result.secure_url || result.url;
     }
 
     // Handle direct multiple product images upload (multipart)
@@ -519,7 +527,7 @@ exports.createProduct = async (req, res) => {
         req.files,
         { folder: 'littleshop/products' }
       );
-      const uploadedUrls = uploadResults.map((r) => r.secure_url);
+      const uploadedUrls = uploadResults.map((r) => r.secure_url || r.url);
       finalImages = Array.isArray(finalImages) ? [...finalImages, ...uploadedUrls] : uploadedUrls;
     }
 
@@ -536,14 +544,14 @@ exports.createProduct = async (req, res) => {
         meta_title, meta_description, weight, dimensions, material, care_instructions
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        name, slug, description, price, comparePrice, costPrice,
-        stockQuantity, categoryId, category, sku,
-        finalImages.length ? JSON.stringify(finalImages) : null, finalFeaturedImage,
+        name, slug, description ?? null, price ?? null, comparePrice ?? null, costPrice ?? null,
+        stockQuantity ?? 0, categoryId ?? null, category ?? null, sku ?? null,
+        finalImages.length ? JSON.stringify(finalImages) : null, finalFeaturedImage ?? null,
         isActive !== undefined ? isActive : true,
         isFeatured !== undefined ? isFeatured : false,
         isNew !== undefined ? isNew : false,
         isBestseller !== undefined ? isBestseller : false,
-        metaTitle, metaDescription, weight, dimensions, material, careInstructions
+        metaTitle ?? null, metaDescription ?? null, weight ?? null, dimensions ?? null, material ?? null, careInstructions ?? null
       ]
     );
 
@@ -561,11 +569,15 @@ exports.createProduct = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create product error:', error);
+    console.error('Create product error:', error.message);
+    console.error('Stack:', error.stack);
+    if (error.sqlMessage) {
+      console.error('SQL Error:', error.sqlMessage);
+    }
     res.status(500).json({
       success: false,
-      message: 'Failed to create product',
-      error: error.message
+      message: 'Failed to create product: ' + error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -585,7 +597,7 @@ exports.updateProduct = async (req, res) => {
         req.file.buffer,
         updateData.name || 'product'
       );
-      updateData.featuredImage = result.secure_url;
+      updateData.featuredImage = result.secure_url || result.url;
     }
 
     // Handle direct multiple product images upload (multipart)
@@ -594,7 +606,7 @@ exports.updateProduct = async (req, res) => {
         req.files,
         { folder: 'littleshop/products' }
       );
-      const uploadedUrls = uploadResults.map((r) => r.secure_url);
+      const uploadedUrls = uploadResults.map((r) => r.secure_url || r.url);
       const existingImages = Array.isArray(updateData.images) ? updateData.images : [];
       updateData.images = [...existingImages, ...uploadedUrls];
     }
@@ -614,7 +626,8 @@ exports.updateProduct = async (req, res) => {
       const dbField = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
       if (allowedFields.includes(dbField)) {
         updates.push(`${dbField} = ?`);
-        values.push(dbField === 'images' ? JSON.stringify(value) : value);
+        const safeValue = value === undefined ? null : value;
+        values.push(dbField === 'images' ? JSON.stringify(safeValue) : safeValue);
       }
     }
 

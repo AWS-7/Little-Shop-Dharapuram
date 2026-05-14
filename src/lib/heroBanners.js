@@ -103,10 +103,11 @@ export async function getAllHeroBanners() {
  * @param {Object} banner - Banner data
  * @returns {Promise<{data: Object|null, error: Error|null}>}
  */
-export async function createHeroBanner({ title, image, sort_order = 0 }) {
+export async function createHeroBanner(banner) {
   try {
+    const { title, image, subtitle, buttonText, buttonLink, sort_order = 0, is_active = true } = banner;
     console.log('💾 Creating hero banner:', { title, image });
-    
+
     const token = await getAuthToken();
     const response = await fetch(`${API_URL}/banners`, {
       method: 'POST',
@@ -117,8 +118,11 @@ export async function createHeroBanner({ title, image, sort_order = 0 }) {
       body: JSON.stringify({
         image,
         title,
+        subtitle,
+        buttonText,
+        buttonLink,
         sort_order,
-        is_active: true
+        is_active
       })
     });
     

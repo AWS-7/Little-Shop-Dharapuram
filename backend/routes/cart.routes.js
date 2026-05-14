@@ -30,5 +30,12 @@ router.get('/summary', optionalAuth, cartController.getCartSummary);
 
 // Admin: abandoned carts
 router.get('/abandoned', verifyFirebaseToken, requireAdmin, cartController.getAbandonedCarts);
+router.get('/active', verifyFirebaseToken, requireAdmin, cartController.getAbandonedCarts); // alias
+
+// Mark cart converted after order placed
+router.put('/:userId/convert', verifyFirebaseToken, cartController.markCartConverted);
+
+// Mark reminder sent for abandoned cart
+router.put('/:cartId/reminder', verifyFirebaseToken, requireAdmin, cartController.markReminderSent);
 
 module.exports = router;

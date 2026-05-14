@@ -209,16 +209,17 @@ function FabricCareAccordion({ fabric, category }) {
 
 // Map a raw Supabase row to the shape our UI expects
 function mapSupabaseProduct(p) {
+  const images = Array.isArray(p.images) ? p.images : [];
   return {
     id: p.id,
     name: p.name,
-    price: p.price,
-    originalPrice: p.original_price,
-    image: resolveImageUrl(p.image_url || p.image),
+    price: p.price !== undefined ? Number(p.price) : 0,
+    originalPrice: p.originalPrice !== undefined ? Number(p.originalPrice) : (p.compare_price !== undefined ? Number(p.compare_price) : null),
+    image: resolveImageUrl(p.featured_image || p.image_url || p.image),
     image2: resolveImageUrl(p.image2_url || p.image2),
     gallery: p.gallery || [
-      resolveImageUrl(p.image_url || p.image),
-      ...(p.image2_url || p.image2 ? [resolveImageUrl(p.image2_url || p.image2)] : [])
+      resolveImageUrl(p.featured_image || p.image_url || p.image),
+      ...(images.length > 1 ? [resolveImageUrl(images[1])] : [])
     ].filter(Boolean),
     category: p.category,
     badge: p.badge,
@@ -256,18 +257,15 @@ export default function ProductDetail() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [flashSale, setFlashSale] = useState(null);
 
-  // Try placeholder first, then fetch from Supabase
+  // Fetch real product from backend first; fallback to placeholder only if not found
   useEffect(() => {
-    const placeholder = PLACEHOLDER_PRODUCTS.find((p) => p.id === id);
-    if (placeholder) {
-      setProduct(placeholder);
-      setProductLoading(false);
-      return;
-    }
-    // Not a placeholder ID — fetch from Supabase
     getProductById(id).then(({ data, error }) => {
       if (!error && data) {
         setProduct(mapSupabaseProduct(data));
+      } else {
+        // Fallback to placeholder only if backend has no data
+        const placeholder = PLACEHOLDER_PRODUCTS.find((p) => p.id === id);
+        if (placeholder) setProduct(placeholder);
       }
       setProductLoading(false);
     });
@@ -559,12 +557,12 @@ export default function ProductDetail() {
               ) : (
                 <>
                   <span className="text-4xl font-bold text-gray-900">
-                    {CURRENCY}{product.price.toLocaleString()}
+                    {CURRENCY}{(product.price ?? 0).toLocaleString()}
                   </span>
                   {product.originalPrice && (
                     <div className="flex flex-col">
                       <span className="text-lg text-gray-400 line-through">
-                        {CURRENCY}{product.originalPrice.toLocaleString()}
+                        {CURRENCY}{(product.originalPrice ?? 0).toLocaleString()}
                       </span>
                       <span className="text-red-500 text-xs font-bold">
                         {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
@@ -842,7 +840,7 @@ export default function ProductDetail() {
                     <p className="font-inter text-sm text-purple-primary font-medium">
                       {flashSale 
                         ? <span className="text-red-600">{CURRENCY}{flashSale.discounted_price?.toLocaleString()}</span>
-                        : `${CURRENCY}${product.price.toLocaleString()}`
+                        : `${CURRENCY}${(product.price ?? 0).toLocaleString()}`
                       }
                     </p>
                   </div>

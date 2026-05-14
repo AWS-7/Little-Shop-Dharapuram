@@ -119,8 +119,9 @@ export async function loginAdmin(username, password) {
 
     // Create session
     const session = createAdminSession();
-    // Attach API token to session
+    // Replace fake token with real JWT for API auth
     if (apiToken) {
+      session.token = apiToken;
       session.apiToken = apiToken;
       localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
     }
@@ -172,8 +173,9 @@ export function verifyAdminSession() {
       return null;
     }
     
-    // Verify token format
-    if (!session.token || !session.token.startsWith('admin_')) {
+    // Verify token format — real JWTs have 3 dot-separated parts; old fake tokens started with 'admin_'
+    const isJWT = session.token && session.token.split('.').length === 3;
+    if (!isJWT) {
       logoutAdmin();
       return null;
     }
@@ -209,12 +211,15 @@ export function getAdminSession() {
 }
 
 /**
- * Logout admin - clear session
+ * Logout admin - clear session and all auth tokens
  */
 export function logoutAdmin() {
   clearSessionTimeout();
   localStorage.removeItem(ADMIN_SESSION_KEY);
-  
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('firebase_auth_token');
+
   // Log logout action (async, don't wait)
   logAdminAction('logout', { timestamp: new Date().toISOString() });
 }

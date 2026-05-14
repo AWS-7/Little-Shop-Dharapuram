@@ -110,11 +110,26 @@ const verifyFirebaseToken = async (req, res, next) => {
           [decoded.adminId || decoded.sub || 'custom_' + Date.now(), decoded.email, decoded.username || 'Admin', decoded.role || 'customer']
         );
         user = await database.getOne('SELECT * FROM users WHERE id = ?', [userId]);
+      } else {
+        // Update role if JWT claims differ, and refresh last_login
+        const tokenRole = decoded.role || 'customer';
+        if (user.role !== tokenRole) {
+          await database.query(
+            'UPDATE users SET role = ?, last_login = NOW() WHERE id = ?',
+            [tokenRole, user.id]
+          );
+          user.role = tokenRole;
+        } else {
+          await database.query(
+            'UPDATE users SET last_login = NOW() WHERE id = ?',
+            [user.id]
+          );
+        }
       }
 
       req.user = user;
       req.userId = user.id;
-      req.firebaseUid = user.firebase_uid;
+      req.firebaseUid = user.firebase_uid || null;
 
       return next();
 

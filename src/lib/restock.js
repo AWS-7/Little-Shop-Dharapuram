@@ -106,8 +106,13 @@ export async function getRestockRequests(filters = {}) {
  */
 export async function getAggregatedRestockRequests() {
   try {
+    const token = await getAuthToken();
     // Get all pending requests grouped by product
-    const response = await fetch(`${API_URL}/restock/aggregated`);
+    const response = await fetch(`${API_URL}/restock/aggregated`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const result = await response.json();
 
     if (!result.success) {
@@ -261,8 +266,13 @@ export async function checkProductRestockRequests(productId) {
  */
 export async function notifyRestockCustomers(productId, productName, newStockCount) {
   try {
+    const token = await getAuthToken();
     // Get pending requests for this product
-    const response = await fetch(`${API_URL}/restock/pending/${productId}`);
+    const response = await fetch(`${API_URL}/restock/pending/${productId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const result = await response.json();
     const requests = result.data || [];
 
@@ -271,7 +281,6 @@ export async function notifyRestockCustomers(productId, productName, newStockCou
     }
 
     // Mark all as notified
-    const token = await getAuthToken();
     const updateResponse = await fetch(`${API_URL}/restock/${productId}/notify`, {
       method: 'PUT',
       headers: {

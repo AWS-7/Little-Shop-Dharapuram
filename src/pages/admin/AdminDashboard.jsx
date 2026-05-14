@@ -376,18 +376,25 @@ export default function AdminDashboard() {
   const [notifPermission, setNotifPermission] = useState({ granted: false, error: null });
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
-  // Map raw Supabase order to dashboard format
-  const mapOrder = (o) => ({
-    id: o.order_id || o.id,
-    customer: o.customer?.name || 'Unknown',
-    email: o.customer?.email || '',
-    total: o.total || 0,
-    status: o.status || 'confirmed',
-    date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
-    items: o.items?.length || 0,
-    user_id: o.user_id || null,
-    _raw: o,
-  });
+  // Map raw backend order to dashboard format
+  const mapOrder = (o) => {
+    // Parse shipping_address JSON if it's a string
+    let shipping = o.shipping_address;
+    if (typeof shipping === 'string') {
+      try { shipping = JSON.parse(shipping); } catch { shipping = {}; }
+    }
+    return {
+      id: o.id || o.order_id,
+      customer: shipping?.name || 'Unknown',
+      email: shipping?.email || '',
+      total: o.total_amount || 0,
+      status: o.status || 'pending',
+      date: o.ordered_at ? new Date(o.ordered_at).toLocaleDateString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
+      items: o.items?.length || 0,
+      user_id: o.user_id || null,
+      _raw: o,
+    };
+  };
 
   // Reusable fetch function
   const fetchOrders = useCallback(async () => {
@@ -1439,12 +1446,6 @@ export default function AdminDashboard() {
     const edits = inventoryEdits[productId];
     if (!edits) return;
 
-    // Check if it's a demo product (numeric ID) - can't update in Supabase
-    if (typeof productId === 'string' && /^\d+$/.test(productId)) {
-      showToast('Demo products cannot be updated in Supabase. Create a real product first.', 'error');
-      return;
-    }
-
     // Get current product to check if stock is being added
     const currentProduct = products.find((p) => p.id === productId);
     const oldStock = currentProduct?.stockCount || 0;
@@ -1476,7 +1477,8 @@ export default function AdminDashboard() {
     // Build updates object only with valid values
     const updates = {};
     if (newPrice !== null) updates.price = newPrice;
-    if (edits.stockCount !== undefined && edits.stockCount !== '') updates.stock_count = newStock;
+    // Map frontend stock_count to backend stock_quantity
+    if (edits.stockCount !== undefined && edits.stockCount !== '') updates.stock_quantity = newStock;
     
     // Check if there are any updates to make
     if (Object.keys(updates).length === 0) {

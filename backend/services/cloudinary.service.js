@@ -7,6 +7,12 @@
 const cloudinary = require('../config/cloudinary');
 const sharp = require('sharp');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+// Local upload fallback when Cloudinary is not configured
+const LOCAL_UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+const isCloudinaryConfigured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
 
 // ──────────────────────────────────────────
 // Upload helpers
@@ -32,6 +38,34 @@ async function uploadImage(buffer, options = {}) {
     .jpeg({ quality: 85, progressive: true, mozjpeg: true })
     .toBuffer();
 
+  // Helper: save locally and return Cloudinary-shaped result
+  const saveLocal = () => {
+    const subDir = folder.replace(/\//g, path.sep);
+    const fullDir = path.join(LOCAL_UPLOAD_DIR, subDir);
+    if (!fs.existsSync(fullDir)) {
+      fs.mkdirSync(fullDir, { recursive: true });
+    }
+    const safeName = `${filename.replace(/[^a-zA-Z0-9_-]/g, '_')}.jpg`;
+    const filePath = path.join(fullDir, safeName);
+    fs.writeFileSync(filePath, compressedBuffer);
+    const relativePath = path.join('uploads', subDir, safeName).replace(/\\/g, '/');
+    const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const publicUrl = `${baseUrl}/${relativePath}`;
+    return {
+      public_id: relativePath,
+      secure_url: publicUrl,
+      url: publicUrl,
+      bytes: compressedBuffer.length,
+      created_at: new Date().toISOString(),
+    };
+  };
+
+  // Fallback to local storage if Cloudinary not configured at all
+  if (!isCloudinaryConfigured) {
+    return saveLocal();
+  }
+
+  // Try Cloudinary; fallback to local on any error (invalid creds, network, etc.)
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -43,7 +77,11 @@ async function uploadImage(buffer, options = {}) {
         eager: eager.length ? eager : undefined,
       },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          console.warn('Cloudinary upload failed, falling back to local:', error.message);
+          resolve(saveLocal());
+          return;
+        }
         resolve(result);
       }
     );
@@ -85,6 +123,14 @@ async function uploadMultipleImages(files, options = {}) {
  * @returns {Promise<Object>}
  */
 async function deleteImage(publicId) {
+  if (!isCloudinaryConfigured) {
+    // Local file deletion fallback
+    const localPath = path.join(process.cwd(), publicId);
+    if (fs.existsSync(localPath)) {
+      fs.unlinkSync(localPath);
+    }
+    return { result: 'ok' };
+  }
   return cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
 }
 
