@@ -132,9 +132,13 @@ exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, slug, image, displayOrder, isActive } = req.body;
     
+    // Sanitize undefined values to null
+    const safeParams = [name, slug, image, displayOrder, isActive].map(v => v === undefined ? null : v);
+    safeParams.push(id);
+    
     await database.query(
       'UPDATE categories SET name = ?, slug = ?, image = ?, display_order = ?, is_active = ? WHERE id = ?',
-      [name, slug, image, displayOrder, isActive, id]
+      safeParams
     );
     
     const updatedCategory = await database.getOne(

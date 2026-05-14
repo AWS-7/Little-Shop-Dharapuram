@@ -190,14 +190,23 @@ exports.getMyOrders = async (req, res) => {
 /**
  * Get order details
  */
+// Safe JSON parse helper
+function safeParseJSON(str, fallback = null) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch (e) { return str; }
+}
+
 exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     
-    const order = await database.getOne(
-      `SELECT * FROM orders WHERE id = ? AND (user_id = ? OR firebase_uid = ?)`,
-      [orderId, req.userId, req.firebaseUid]
-    );
+    const order = isAdmin
+      ? await database.getOne('SELECT * FROM orders WHERE id = ?', [orderId])
+      : await database.getOne(
+          `SELECT * FROM orders WHERE id = ? AND (user_id = ? OR firebase_uid = ?)`,
+          [orderId, req.userId, req.firebaseUid]
+        );
     
     if (!order) {
       return res.status(404).json({
@@ -216,8 +225,8 @@ exports.getOrderDetails = async (req, res) => {
       success: true,
       data: {
         ...order,
-        shippingAddress: order.shipping_address ? JSON.parse(order.shipping_address) : null,
-        billingAddress: order.billing_address ? JSON.parse(order.billing_address) : null,
+        shippingAddress: safeParseJSON(order.shipping_address),
+        billingAddress: safeParseJSON(order.billing_address),
         items
       }
     });

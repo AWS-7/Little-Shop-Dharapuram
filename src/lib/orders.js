@@ -188,13 +188,16 @@ export async function updateOrderStatus(orderId, status) {
   try {
     console.log(`Updating order ${orderId} → status: ${status}`);
     
+    const token = await getAuthToken();
+    
     // Get current order data before updating
-    const getResponse = await fetch(`${API_URL}/orders/${orderId}`);
+    const getResponse = await fetch(`${API_URL}/orders/${orderId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     const getResult = await getResponse.json();
     const currentOrder = getResult.data;
     
     // Update via API
-    const token = await getAuthToken();
     const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
       method: 'PUT',
       headers: {
@@ -210,28 +213,27 @@ export async function updateOrderStatus(orderId, status) {
       return { data: null, error: new Error(result.message) };
     }
     
-    console.log('Order status updated:', result.data);
+    console.log('Order status updated:', result.message);
     
     // Send WhatsApp notification for important status changes
-    const updatedOrder = result.data;
     const previousStatus = currentOrder?.status;
     
     // Trigger notification on status change to 'paid' (order confirmed)
     if (status === 'paid' && previousStatus !== 'paid') {
-      sendWhatsAppNotification(updatedOrder, 'paid').catch(err => {
+      sendWhatsAppNotification(currentOrder, 'paid').catch(err => {
         console.error('WhatsApp notification failed (non-blocking):', err);
       });
     }
     
     // Also notify on shipped and delivered
-    if ((status === 'shipped' && previousStatus !== 'shipped') || 
+    if ((status === 'Shipped' && previousStatus !== 'Shipped') || 
         (status === 'delivered' && previousStatus !== 'delivered')) {
-      sendWhatsAppNotification(updatedOrder, status).catch(err => {
+      sendWhatsAppNotification(currentOrder, status).catch(err => {
         console.error('WhatsApp notification failed (non-blocking):', err);
       });
     }
     
-    return { data: result.data, error: null };
+    return { data: { orderId, status }, error: null };
   } catch (e) {
     console.error('Order status update exception:', e);
     return { data: null, error: e };

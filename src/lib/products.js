@@ -390,7 +390,11 @@ export async function getAllCategories() {
   try {
     const response = await fetch(`${API_URL}/categories`);
     const result = await response.json();
-    return { data: result.data || [], error: result.success ? null : new Error(result.message) };
+    const categories = (result.data || []).map(c => ({
+      ...c,
+      image: resolveImageUrl(c.image)
+    }));
+    return { data: categories, error: result.success ? null : new Error(result.message) };
   } catch (e) {
     return { data: [], error: e };
   }
@@ -471,7 +475,7 @@ export async function uploadCategoryImage(file) {
     formData.append('file', optimizedBlob, fileName);
     
     const token = await getAuthToken();
-    const uploadResponse = await fetch(`${API_URL}/uploads/categories`, {
+    const uploadResponse = await fetch(`${API_URL}/uploads/category-image`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

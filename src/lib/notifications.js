@@ -1,5 +1,6 @@
 // MIGRATED: Using new backend API instead of Supabase
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+import { sendAdminOrderNotification, isWhatsAppConfigured } from './whatsapp';
 
 // Helper to get auth token
 async function getAuthToken() {
@@ -178,6 +179,7 @@ function playNotificationSound() {
 
 let pollInterval = null;
 let lastCheckTime = new Date().toISOString();
+const notifiedOrderIds = new Set(); // Track already-notified orders
 
 export function startOrderNotifications(callback) {
   if (pollInterval) return;
@@ -196,7 +198,14 @@ export function startOrderNotifications(callback) {
       const result = await response.json();
       
       if (result.success && result.data && result.data.length > 0) {
+        let hasNewOrders = false;
+        
         for (const order of result.data) {
+          // Skip if already notified this order
+          if (notifiedOrderIds.has(order.id)) continue;
+          notifiedOrderIds.add(order.id);
+          hasNewOrders = true;
+          
           console.log('New order detected:', order);
           
           try {
@@ -204,7 +213,7 @@ export function startOrderNotifications(callback) {
             await sendOrderEmailNotification(order);
             
             // Send WhatsApp notification if configured
-            const whatsappConfigured = await isWhatsAppConfigured();
+            const whatsappConfigured = isWhatsAppConfigured();
             if (whatsappConfigured) {
               await sendAdminOrderNotification(order);
             }
@@ -217,9 +226,15 @@ export function startOrderNotifications(callback) {
             console.error('Error processing order notification:', error);
           }
         }
+        
+        // Only update time if we actually processed new orders
+        if (hasNewOrders) {
+          lastCheckTime = new Date().toISOString();
+        }
+      } else {
+        // No orders — update check time to avoid re-fetching old ones
+        lastCheckTime = new Date().toISOString();
       }
-      
-      lastCheckTime = new Date().toISOString();
     } catch (error) {
       console.error('Error polling for new orders:', error);
     }
@@ -230,6 +245,7 @@ export function stopOrderNotifications() {
   if (pollInterval) {
     clearInterval(pollInterval);
     pollInterval = null;
+    notifiedOrderIds.clear();
     console.log('Order notifications stopped');
   }
 }
